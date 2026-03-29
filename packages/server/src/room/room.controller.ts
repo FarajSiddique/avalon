@@ -30,13 +30,6 @@ export class RoomController {
 		private readonly jwtService: JwtService,
 	) {}
 
-	// GET /health — Railway health check probe
-	@Get("health")
-	@HttpCode(HttpStatus.OK)
-	health(): { status: string } {
-		return { status: "ok" };
-	}
-
 	/**
 	 * GET /rooms/:code
 	 * Returns the room snapshot (players, phase, canStart, etc.).

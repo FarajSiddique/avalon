@@ -57,28 +57,6 @@ async function createTestApp(): Promise<INestApplication> {
 }
 
 // ---------------------------------------------------------------------------
-// GET /health
-// ---------------------------------------------------------------------------
-
-describe('GET /health', () => {
-  let app: INestApplication;
-
-  beforeAll(async () => {
-    app = await createTestApp();
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('returns 200 with { status: "ok" }', async () => {
-    const res = await request(app.getHttpServer()).get('/health');
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'ok' });
-  });
-});
-
-// ---------------------------------------------------------------------------
 // POST /rooms
 // ---------------------------------------------------------------------------
 

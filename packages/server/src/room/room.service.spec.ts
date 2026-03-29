@@ -252,6 +252,7 @@ describe('RoomService.removePlayer()', () => {
     const svc = makeService();
     const code = svc.createRoom();
     svc.addPlayer(code, 'socket-0', 'Alice');
+    svc.addPlayer(code, 'socket-1', 'Bob');
     svc.removePlayer('socket-0');
     expect(svc.getRoom(code)!.players.has('socket-0')).toBe(false);
   });

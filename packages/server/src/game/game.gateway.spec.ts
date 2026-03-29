@@ -117,7 +117,10 @@ async function createGateway(): Promise<{
       { provide: WsGuard, useValue: mockWsGuard },
       { provide: RoomService, useValue: mockRoomService },
     ],
-  }).compile();
+  })
+    .overrideGuard(WsGuard)
+    .useValue(mockWsGuard)
+    .compile();
 
   const gateway = module.get<GameGateway>(GameGateway);
   const mockServer = makeMockServer();
@@ -180,7 +183,7 @@ describe('GameGateway.handleConnection() — valid token, linkSocket returns tru
     mockRoomService.getRoom.mockReturnValue(makeFakeRoom(SAMPLE_PAYLOAD.roomCode));
 
     const client = makeMockSocket();
-    gateway.handleConnection(client as never);
+    await gateway.handleConnection(client as never);
 
     const roomUpdateEmissions = mockServer
       .getEmissions()

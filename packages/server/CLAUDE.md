@@ -1,8 +1,11 @@
 # Server Package
 
-NestJS 11 + TypeScript backend. Game rules, role logic, WS event contracts, and XState
-phases are in `.claude/rules/game-rules.md` and `.claude/rules/roles.md` — loaded
-automatically when editing server files.
+NestJS 11 + TypeScript backend.
+
+> **Game rules and role definitions are in `.claude/rules/game-rules.md` and
+> `.claude/rules/roles.md`. Only read those files when the task explicitly involves
+> game logic, role behaviour, quest rules, WS event contracts, or XState phases.
+> Do not load them for general TypeScript / NestJS work.**
 
 ## Module Layout
 

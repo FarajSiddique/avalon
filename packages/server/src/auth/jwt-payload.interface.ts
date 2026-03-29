@@ -6,3 +6,11 @@ export interface JwtPayload {
 	/** Display name chosen at join time */
 	playerName: string;
 }
+
+export function buildJwtPayload(
+	playerId: string,
+	roomCode: string,
+	playerName: string,
+): JwtPayload {
+	return { sub: playerId, roomCode, playerName };
+}

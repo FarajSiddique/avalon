@@ -18,7 +18,7 @@ import { CreateRoomRequestDto } from "./dto/create-room-request.dto";
 import { CreateRoomResponseDto } from "./dto/create-room-response.dto";
 import { JoinRoomRequestDto } from "./dto/join-room-request.dto";
 import { JoinRoomResponseDto } from "./dto/join-room-response.dto";
-import { JwtPayload } from "../auth/jwt-payload.interface";
+import { buildJwtPayload } from "../auth/jwt-payload.interface";
 import { Player, RoomSnapshot } from "@avalon/shared";
 
 @Controller()
@@ -83,13 +83,7 @@ export class RoomController {
 			throw err;
 		}
 
-		// TO-DO shared utility to create JWTPayload
-		const jwtPayload: JwtPayload = {
-			sub: player.id,
-			roomCode: code,
-			playerName: player.name,
-		};
-		const token = this.jwtService.sign(jwtPayload);
+		const token = this.jwtService.sign(buildJwtPayload(player.id, code, player.name));
 
 		this.logger.log({
 			eventId: "ROOM_CREATED",
@@ -137,12 +131,7 @@ export class RoomController {
 			throw err;
 		}
 
-		const jwtPayload: JwtPayload = {
-			sub: player.id,
-			roomCode: upperCode,
-			playerName: player.name,
-		};
-		const token = this.jwtService.sign(jwtPayload);
+		const token = this.jwtService.sign(buildJwtPayload(player.id, upperCode, player.name));
 
 		this.logger.log({
 			eventId: "ROOM_JOINED",

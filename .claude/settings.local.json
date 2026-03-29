@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./node_modules/.bin/jest --config jest.config.ts --no-coverage)"
+    ]
+  }
+}

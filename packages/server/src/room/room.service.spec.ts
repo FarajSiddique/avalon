@@ -580,6 +580,47 @@ describe('RoomService.toSnapshot()', () => {
 });
 
 // ---------------------------------------------------------------------------
+// createRoom() — settings initialisation
+// ---------------------------------------------------------------------------
+
+describe('RoomService.createRoom() — settings', () => {
+  it('initialises settings with empty characters and ladyOfLake false', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    const room = svc.getRoom(code)!;
+
+    expect(room.settings).toEqual({ characters: [], ladyOfLake: false });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toSnapshot() — settings included
+// ---------------------------------------------------------------------------
+
+describe('RoomService.toSnapshot() — settings', () => {
+  it('includes the room settings in the snapshot', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    const room = svc.getRoom(code)!;
+    room.settings = { characters: ['PERCIVAL', 'MORGANA'] as any, ladyOfLake: true };
+
+    const snapshot = svc.toSnapshot(room);
+
+    expect(snapshot.settings).toEqual({ characters: ['PERCIVAL', 'MORGANA'], ladyOfLake: true });
+  });
+
+  it('snapshot settings default is empty characters and ladyOfLake false', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    const room = svc.getRoom(code)!;
+
+    const snapshot = svc.toSnapshot(room);
+
+    expect(snapshot.settings).toEqual({ characters: [], ladyOfLake: false });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // LobbyException
 // ---------------------------------------------------------------------------
 

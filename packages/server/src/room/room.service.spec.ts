@@ -979,3 +979,62 @@ describe('RoomService.updateSettings()', () => {
     ).toThrow(expect.objectContaining({ code: 'ROOM_IN_PROGRESS' }));
   });
 });
+
+// ---------------------------------------------------------------------------
+// linkSocket() — reconnect during in_progress
+// ---------------------------------------------------------------------------
+
+describe('RoomService.linkSocket() — reconnect during in_progress', () => {
+  it('returns true when an existing player reconnects during an in_progress game', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-old', 'Alice');
+    svc.setPhase(code, 'in_progress');
+
+    const room = svc.getRoom(code)!;
+    const alice = [...room.players.values()].find((p) => p.name === 'Alice')!;
+
+    const result = svc.linkSocket(alice.id, 'socket-new', code);
+
+    expect(result).toBe(true);
+  });
+
+  it('re-keys the player entry to the new socket ID on reconnect', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-old', 'Alice');
+    svc.setPhase(code, 'in_progress');
+
+    const room = svc.getRoom(code)!;
+    const alice = [...room.players.values()].find((p) => p.name === 'Alice')!;
+    svc.linkSocket(alice.id, 'socket-new', code);
+
+    const updatedRoom = svc.getRoom(code)!;
+    expect(updatedRoom.players.has('socket-new')).toBe(true);
+    expect(updatedRoom.players.has('socket-old')).toBe(false);
+  });
+
+  it('returns false for a new player (UUID not in room) when game is in_progress', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-1', 'Alice');
+    svc.setPhase(code, 'in_progress');
+
+    const result = svc.linkSocket('completely-unknown-uuid', 'socket-new', code);
+
+    expect(result).toBe(false);
+  });
+
+  it('updates hostSocketId on reconnect when the reconnecting player is the host', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-host', 'Host');
+    svc.setPhase(code, 'in_progress');
+
+    const room = svc.getRoom(code)!;
+    const host = [...room.players.values()].find((p) => p.isHost)!;
+    svc.linkSocket(host.id, 'socket-host-new', code);
+
+    expect(svc.getRoom(code)!.hostSocketId).toBe('socket-host-new');
+  });
+});

@@ -325,15 +325,7 @@ export class RoomService implements OnModuleInit {
     const room = this.rooms.get(roomCode);
     if (!room) return false;
 
-    // Only accept connections to rooms that are still in the lobby phase.
-    // This prevents stale tokens (valid for 4h) from replaying into a game
-    // that is already in progress or into a recycled room slot.
-    if (room.phase !== 'lobby') return false;
-
     // Find the player by UUID regardless of their current socketId key.
-    // linkSocket is the authoritative room-membership check — the JWT is a
-    // bearer credential only. Any code that removes a player (kick, eviction,
-    // last-player removal) must remove from this Map; the JWT alone cannot revoke access.
     let found: Player | undefined;
     let oldSocketId: string | undefined;
 
@@ -345,6 +337,9 @@ export class RoomService implements OnModuleInit {
       }
     }
 
+    // New join (player not in room): only allowed in lobby.
+    // Reconnect (player already in room): allowed in any phase.
+    if (!found && room.phase !== 'lobby') return false;
     if (!found || oldSocketId === undefined) return false;
 
     // Guard: if the socket is already correctly linked, nothing to do

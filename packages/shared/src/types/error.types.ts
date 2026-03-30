@@ -7,6 +7,8 @@ export type LobbyErrorCode =
   | 'NAME_TAKEN'
   | 'ALREADY_IN_ROOM'
   | 'NOT_IN_ROOM'
+  | 'NOT_HOST'
+  | 'GAME_NOT_STARTABLE'
   | 'INVALID_PAYLOAD';
 
 export interface LobbyError {

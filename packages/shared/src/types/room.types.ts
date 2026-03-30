@@ -1,6 +1,13 @@
 // Room and player types shared between client and server.
 
-export type PlayerStatus = 'not_ready' | 'ready';
+export type PlayerStatus = 'not_ready' | 'ready' | 'disconnected';
+
+export type CharacterName = 'PERCIVAL' | 'MORGANA' | 'MORDRED' | 'OBERON';
+
+export interface GameSettings {
+  characters: CharacterName[];
+  ladyOfLake: boolean;
+}
 
 export interface Player {
   id: string;          // Stable opaque UUID — safe to broadcast to all clients
@@ -11,13 +18,14 @@ export interface Player {
   joinedAt: number;    // Unix timestamp ms
 }
 
-export type RoomPhase = 'lobby';
+export type RoomPhase = 'lobby' | 'in_progress';
 
 export interface Room {
   code: string;
   hostSocketId: string;
   players: Map<string, Player>; // keyed by socket ID
   phase: RoomPhase;
+  settings: GameSettings;
   createdAt: number;
   maxPlayers: number;  // 10
   minPlayers: number;  // 5
@@ -36,6 +44,7 @@ export interface RoomSnapshot {
   phase: RoomPhase;
   players: PlayerSnapshot[];  // ordered by joinedAt ascending
   playerCount: number;
-  canStart: boolean;          // playerCount >= 5 && all players ready
+  canStart: boolean;          // playerCount >= 5 && all players ready (lobby only)
   isFull: boolean;            // playerCount >= 10
+  settings: GameSettings;
 }

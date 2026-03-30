@@ -288,6 +288,29 @@ export class RoomService implements OnModuleInit {
     room.phase = phase;
   }
 
+  updateSettings(socketId: string, settings: GameSettings): Room {
+    const code = this.socketToRoom.get(socketId);
+    if (!code) {
+      throw new LobbyException('NOT_IN_ROOM', 'You are not currently in a room');
+    }
+
+    const room = this.rooms.get(code);
+    if (!room) {
+      throw new LobbyException('NOT_IN_ROOM', 'Room not found');
+    }
+
+    if (room.phase !== 'lobby') {
+      throw new LobbyException('ROOM_IN_PROGRESS', 'Cannot update settings after game has started');
+    }
+
+    if (room.hostSocketId !== socketId) {
+      throw new LobbyException('NOT_HOST', 'Only the host can update game settings');
+    }
+
+    room.settings = settings;
+    return room;
+  }
+
   /**
    * Links a real Socket.io socket ID to a player that was added via HTTP with an
    * empty placeholder socketId.  Called from GameGateway.handleConnection once the

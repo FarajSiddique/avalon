@@ -922,3 +922,60 @@ describe('RoomService.linkSocket()', () => {
     expect(room.players.has('socket-real')).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// updateSettings()
+// ---------------------------------------------------------------------------
+
+describe('RoomService.updateSettings()', () => {
+  it('host can update characters and ladyOfLake', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-host', 'Host');
+
+    const room = svc.updateSettings('socket-host', { characters: ['MORDRED'] as any, ladyOfLake: true });
+
+    expect(room.settings).toEqual({ characters: ['MORDRED'], ladyOfLake: true });
+  });
+
+  it('persists the updated settings on the room object', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-host', 'Host');
+    svc.updateSettings('socket-host', { characters: ['OBERON'] as any, ladyOfLake: false });
+
+    const room = svc.getRoom(code)!;
+
+    expect(room.settings.characters).toContain('OBERON');
+  });
+
+  it('throws NOT_HOST when a non-host player calls updateSettings', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-host', 'Host');
+    svc.addPlayer(code, 'socket-guest', 'Guest');
+
+    expect(() =>
+      svc.updateSettings('socket-guest', { characters: [] as any, ladyOfLake: false }),
+    ).toThrow(expect.objectContaining({ code: 'NOT_HOST' }));
+  });
+
+  it('throws NOT_IN_ROOM when the socket is not in any room', () => {
+    const svc = makeService();
+
+    expect(() =>
+      svc.updateSettings('unknown-socket', { characters: [] as any, ladyOfLake: false }),
+    ).toThrow(expect.objectContaining({ code: 'NOT_IN_ROOM' }));
+  });
+
+  it('throws ROOM_IN_PROGRESS when the game has already started', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-host', 'Host');
+    svc.setPhase(code, 'in_progress');
+
+    expect(() =>
+      svc.updateSettings('socket-host', { characters: [] as any, ladyOfLake: false }),
+    ).toThrow(expect.objectContaining({ code: 'ROOM_IN_PROGRESS' }));
+  });
+});

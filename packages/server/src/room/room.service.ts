@@ -6,6 +6,9 @@ import {
   PlayerSnapshot,
   RoomSnapshot,
   LobbyErrorCode,
+  RoomPhase,
+  GameSettings,
+  OptionalCharacter,
   MIN_PLAYERS,
   MAX_PLAYERS,
 } from '@avalon/shared';
@@ -126,6 +129,7 @@ export class RoomService implements OnModuleInit {
       createdAt: Date.now(),
       maxPlayers: MAX_PLAYERS,
       minPlayers: MIN_PLAYERS,
+      settings: { characters: [], ladyOfLake: false },
     };
     this.rooms.set(code, room);
     return code;
@@ -267,6 +271,23 @@ export class RoomService implements OnModuleInit {
     return code ? this.rooms.get(code) : undefined;
   }
 
+  getPlayerById(roomCode: string, playerId: string): Player | undefined {
+    const room = this.rooms.get(roomCode);
+    if (!room) return undefined;
+    for (const player of room.players.values()) {
+      if (player.id === playerId) return player;
+    }
+    return undefined;
+  }
+
+  setPhase(roomCode: string, phase: RoomPhase): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) {
+      throw new LobbyException('ROOM_NOT_FOUND', `Room "${roomCode}" does not exist`);
+    }
+    room.phase = phase;
+  }
+
   /**
    * Links a real Socket.io socket ID to a player that was added via HTTP with an
    * empty placeholder socketId.  Called from GameGateway.handleConnection once the
@@ -349,6 +370,7 @@ export class RoomService implements OnModuleInit {
       playerCount: players.length,
       canStart: players.length >= MIN_PLAYERS && allReady,
       isFull: players.length >= MAX_PLAYERS,
+      settings: room.settings,
     };
   }
 }

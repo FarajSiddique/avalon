@@ -76,6 +76,7 @@ function makeFakeRoom(code: string): Room {
     createdAt: Date.now(),
     maxPlayers: 10,
     minPlayers: 5,
+    settings: { characters: [], ladyOfLake: false },
   };
 }
 

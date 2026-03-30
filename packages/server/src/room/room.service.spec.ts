@@ -594,6 +594,76 @@ describe('LobbyException', () => {
 });
 
 // ---------------------------------------------------------------------------
+// getPlayerById()
+// ---------------------------------------------------------------------------
+
+describe('RoomService.getPlayerById()', () => {
+  it('returns the player when found by UUID', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-1', 'Alice');
+    const room = svc.getRoom(code)!;
+    const player = [...room.players.values()][0];
+
+    const found = svc.getPlayerById(code, player.id);
+
+    expect(found).toBeDefined();
+    expect(found!.name).toBe('Alice');
+  });
+
+  it('returns undefined for an unknown UUID', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.addPlayer(code, 'socket-1', 'Alice');
+
+    const found = svc.getPlayerById(code, 'non-existent-uuid');
+
+    expect(found).toBeUndefined();
+  });
+
+  it('returns undefined for an unknown room code', () => {
+    const svc = makeService();
+
+    const found = svc.getPlayerById('NOROOM', 'some-uuid');
+
+    expect(found).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// setPhase()
+// ---------------------------------------------------------------------------
+
+describe('RoomService.setPhase()', () => {
+  it('transitions the room phase to in_progress', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+
+    svc.setPhase(code, 'in_progress');
+
+    expect(svc.getRoom(code)!.phase).toBe('in_progress');
+  });
+
+  it('transitions the room phase back to lobby', () => {
+    const svc = makeService();
+    const code = svc.createRoom();
+    svc.setPhase(code, 'in_progress');
+
+    svc.setPhase(code, 'lobby');
+
+    expect(svc.getRoom(code)!.phase).toBe('lobby');
+  });
+
+  it('throws ROOM_NOT_FOUND for an unknown room code', () => {
+    const svc = makeService();
+
+    expect(() => svc.setPhase('NOROOM', 'in_progress')).toThrow(
+      expect.objectContaining({ code: 'ROOM_NOT_FOUND' }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // linkSocket()
 // ---------------------------------------------------------------------------
 

@@ -2,10 +2,10 @@
 
 export type PlayerStatus = 'not_ready' | 'ready' | 'disconnected';
 
-export type CharacterName = 'PERCIVAL' | 'MORGANA' | 'MORDRED' | 'OBERON';
+export type OptionalCharacter = 'PERCIVAL' | 'MORGANA' | 'MORDRED' | 'OBERON';
 
 export interface GameSettings {
-  characters: CharacterName[];
+  characters: OptionalCharacter[];
   ladyOfLake: boolean;
 }
 

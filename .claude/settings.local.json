@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(./node_modules/.bin/jest --config jest.config.ts --no-coverage)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(pnpm install *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

@@ -15,9 +15,6 @@
     "build": "tsc",
     "dev": "tsc --watch"
   },
-  "dependencies": {
-    "class-validator": "^0.14.0"
-  },
   "devDependencies": {
     "typescript": "^5.7.0"
   }

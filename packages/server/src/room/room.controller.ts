@@ -40,9 +40,11 @@ export class RoomController {
 	getRoom(@Param("code") code: string): RoomSnapshot {
 		const upperCode = code.toUpperCase();
 		const room = this.roomService.getRoom(upperCode);
+
 		if (!room) {
 			throw new NotFoundException(`Room "${upperCode}" not found`);
 		}
+
 		return this.roomService.toSnapshot(room);
 	}
 
@@ -83,7 +85,9 @@ export class RoomController {
 			throw err;
 		}
 
-		const token = this.jwtService.sign(buildJwtPayload(player.id, code, player.name));
+		const token = this.jwtService.sign(
+			buildJwtPayload(player.id, code, player.name),
+		);
 
 		this.logger.log({
 			eventId: "ROOM_CREATED",
@@ -131,7 +135,9 @@ export class RoomController {
 			throw err;
 		}
 
-		const token = this.jwtService.sign(buildJwtPayload(player.id, upperCode, player.name));
+		const token = this.jwtService.sign(
+			buildJwtPayload(player.id, upperCode, player.name),
+		);
 
 		this.logger.log({
 			eventId: "ROOM_JOINED",

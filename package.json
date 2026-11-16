@@ -1,18 +1,47 @@
 {
   "name": "avalon",
+  "version": "0.1.0",
   "private": true,
   "engines": {
     "node": ">=24"
   },
+  "packageManager": "pnpm@10.34.5",
   "scripts": {
-    "dev": "pnpm --parallel -r dev",
-    "build": "pnpm -r build",
-    "test": "pnpm --filter @avalon/server test"
+    "dev": "tsx watch --clear-screen=false server.ts",
+    "build": "next build && pnpm build:server",
+    "build:server": "esbuild server.ts --bundle --platform=node --target=node24 --format=esm --packages=external --outfile=dist/server.mjs",
+    "start": "NODE_ENV=production node dist/server.mjs",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test --project=e2e",
+    "test:api": "cd bruno && pnpm dlx @usebruno/cli@4 run --env local",
+    "screenshots": "playwright test --project=screenshots",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["@nestjs/core", "esbuild"]
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/turbopack": "4.3.3",
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "esbuild": "^0.28.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "prettier": "^3.10.1",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.1.0"
   }
 }

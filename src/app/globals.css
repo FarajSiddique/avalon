@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/*
+ * Token contract.
+ *
+ * Components use the Tailwind utilities generated below (bg-canvas, text-ink,
+ * border-line, font-display, ...). A theme is a set of values for the plain
+ * custom properties (--canvas, --ink, ...). The neutral values here are a
+ * placeholder shell; each design direction overrides them inside its own
+ * `.theme-*` wrapper. The winning direction's values move to :root later.
+ *
+ * Layers (see docs/design/README.md):
+ *   primitive  --<theme>-<hue>-<step>   raw values, defined per theme
+ *   semantic   --canvas, --ink, ...     the contract below
+ *   component  --seat-size, ...         defined per theme where needed
+ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --canvas: #15131d;
+  --surface: #201d2b;
+  --well: #100e17;
+
+  /* Text */
+  --ink: #f1ecdf;
+  --ink-muted: #a8a2b8;
+
+  /* Lines and focus */
+  --line: #37324a;
+  --line-strong: #5a5378;
+  --focus: #ffd58a;
+
+  /* Action colour (firelight) and its cool counterpart */
+  --accent: #f0a348;
+  --accent-strong: #ffbd66;
+  --on-accent: #1b1206;
+  --accent-cool: #8fa8ff;
+
+  /* Game meaning */
+  --good: #7fb2ff;
+  --evil: #f0646c;
+  --success: #6fd3a0;
+  --fail: #f0646c;
+  --warning: #f2c14e;
+
+  /* Type */
+  --display-font: ui-serif, Georgia, "Times New Roman", serif;
+  --body-font:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Shape */
+  --corner-sm: 6px;
+  --corner-md: 10px;
+  --corner-lg: 16px;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-well: var(--well);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-focus: var(--focus);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-on-accent: var(--on-accent);
+  --color-accent-cool: var(--accent-cool);
+  --color-good: var(--good);
+  --color-evil: var(--evil);
+  --color-success: var(--success);
+  --color-fail: var(--fail);
+  --color-warning: var(--warning);
+
+  --font-display: var(--display-font);
+  --font-body: var(--body-font);
+
+  --radius-sm: var(--corner-sm);
+  --radius-md: var(--corner-md);
+  --radius-lg: var(--corner-lg);
+}
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--body-font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

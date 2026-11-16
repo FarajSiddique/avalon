@@ -5,17 +5,17 @@ Dark Arthurian theme. Hidden loyalty — Good vs Evil across 5 Quests.
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19 + TypeScript + Vite 6 |
-| Styling | Tailwind CSS + shadcn/ui (themed via CSS variables) |
-| Client state | Zustand |
-| Real-time | Socket.io |
-| Backend | NestJS 11 + TypeScript |
-| WebSockets | `@nestjs/websockets` + `@nestjs/platform-socket.io` |
-| Game logic | XState v5 (runs inside NestJS GameService) |
-| Monorepo | pnpm workspaces |
-| Deployment | Vercel (client) + Railway (server) |
+| Layer        | Technology                                          |
+| ------------ | --------------------------------------------------- |
+| Frontend     | React 19 + TypeScript + Vite 6                      |
+| Styling      | Tailwind CSS + shadcn/ui (themed via CSS variables) |
+| Client state | Zustand                                             |
+| Real-time    | Socket.io                                           |
+| Backend      | NestJS 11 + TypeScript                              |
+| WebSockets   | `@nestjs/websockets` + `@nestjs/platform-socket.io` |
+| Game logic   | XState v5 (runs inside NestJS GameService)          |
+| Monorepo     | pnpm workspaces                                     |
+| Deployment   | Vercel (client) + Railway (server)                  |
 
 ## Monorepo Structure
 

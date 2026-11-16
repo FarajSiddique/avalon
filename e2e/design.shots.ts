@@ -9,9 +9,14 @@ import {
 } from "../src/design/directions";
 
 /**
- * Regenerates docs/design/screenshots/<direction>/<screen>-<width>.png for
+ * Regenerates docs/design/screenshots/<direction>/<screen>-<width>.jpg for
  * every prototype screen at phone and desktop width. Run with
  * `pnpm build && pnpm screenshots`.
+ *
+ * Whole pages are captured by growing the viewport to the page's height, so
+ * a bar fixed to the bottom of the screen lands at the bottom of the image
+ * instead of covering the middle of it. The press-and-hold states are
+ * captured at the normal viewport size, because a finger is "down".
  */
 
 const OUT = path.join(__dirname, "..", "docs", "design", "screenshots");
@@ -26,8 +31,25 @@ interface Shot {
   url: string;
   /** Put the page in the state to capture. */
   prepare?: (page: Page) => Promise<void>;
-  /** Capture only the viewport (for states that need a finger held down). */
+  /** Keep the normal viewport height (for states that need a finger held down). */
   viewportOnly?: boolean;
+}
+
+/** Wait until the screen has rendered, fonts are in and its height is stable. */
+async function settle(page: Page): Promise<void> {
+  await page.locator("main:visible").first().waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  let previous = -1;
+  await expect
+    .poll(async () => {
+      const height = await page.evaluate(
+        () => document.documentElement.scrollHeight,
+      );
+      const stable = height === previous;
+      previous = height;
+      return stable;
+    })
+    .toBe(true);
 }
 
 /** Press and hold the role card so the secret side is showing. */
@@ -39,6 +61,33 @@ async function holdRoleCard(page: Page): Promise<void> {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await expect(card).toHaveAttribute("aria-pressed", "true");
+}
+
+for (const viewport of VIEWPORTS) {
+  test.describe(`index ${viewport.width}`, () => {
+    test.use({ viewport, deviceScaleFactor: viewport.width < 600 ? 2 : 1 });
+
+    test("00-index", async ({ page }) => {
+      await page.goto("/design");
+      await settle(page);
+      const height = await page.evaluate(
+        () => document.documentElement.scrollHeight,
+      );
+      await page.setViewportSize({ width: viewport.width, height });
+      // The three live previews are iframes; give them time to paint.
+      for (const frame of page.frames().slice(1)) {
+        await frame.waitForLoadState("load");
+      }
+      await page.waitForTimeout(1500);
+      mkdirSync(OUT, { recursive: true });
+      await page.screenshot({
+        path: path.join(OUT, `00-index-${viewport.width}.jpg`),
+        type: "jpeg",
+        quality: 82,
+        fullPage: true,
+      });
+    });
+  });
 }
 
 for (const direction of DIRECTIONS) {
@@ -76,24 +125,38 @@ for (const direction of DIRECTIONS) {
           });
 
           await page.goto(shot.url);
-          await page.evaluate(() => document.fonts.ready);
-          await shot.prepare?.(page);
+          await settle(page);
+
+          // No page may scroll sideways. Checked at the real viewport size.
+          const overflow = await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth -
+              document.documentElement.clientWidth,
+          );
+
+          if (shot.viewportOnly) {
+            await shot.prepare?.(page);
+          } else {
+            const height = await page.evaluate(
+              () => document.documentElement.scrollHeight,
+            );
+            await page.setViewportSize({
+              width: viewport.width,
+              height: Math.max(height, viewport.height),
+            });
+          }
           // Let entrance animations settle so captures are comparable.
           await page.waitForTimeout(700);
 
           const dir = path.join(OUT, direction.slug);
           mkdirSync(dir, { recursive: true });
           await page.screenshot({
-            path: path.join(dir, `${shot.name}-${viewport.width}.png`),
+            path: path.join(dir, `${shot.name}-${viewport.width}.jpg`),
+            type: "jpeg",
+            quality: 82,
             fullPage: !shot.viewportOnly,
           });
 
-          // No page may scroll sideways.
-          const overflow = await page.evaluate(
-            () =>
-              document.documentElement.scrollWidth -
-              document.documentElement.clientWidth,
-          );
           expect(overflow, "horizontal overflow in px").toBeLessThanOrEqual(0);
           expect(errors, "console errors").toEqual([]);
         });

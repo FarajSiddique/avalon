@@ -534,6 +534,13 @@ and reconnect bugs.
   finished quests grows between two views. On first load nothing animates.
 - Secret content uses `useHoldToReveal`: hidden by default, visible only
   while pressed, hidden again on release, blur or tab switch.
+- Quest cards must not give a player's side away to someone glancing at
+  their phone. Both cards look the same and both can be tapped by everyone.
+  A Good player's Fail is refused by the server, and the refusal is shown only
+  after that tap. Once a vote or a card is locked, the screen says only that
+  it is locked; the player's own choice is shown again only on press and
+  hold. (The prototypes do not do this yet: they show Fail as disabled for a
+  Good player. Phase 3 fixes it.)
 - No Zustand (one server-sent object is the whole store) and no shadcn/ui (the
   chosen direction's components are bespoke; native elements such as
   `<dialog>` cover the rest).
@@ -658,6 +665,8 @@ order. Nothing in them needs a new decision except the answers listed under
   from the prototype components, driven by `GameView` and sending
   `game:action`. Vote and quest reveal overlays triggered by view changes.
   A "my role" control that uses `useHoldToReveal`. Away markers on seats.
+  Quest cards follow the privacy rule under [Client](#client): both cards
+  look the same for every player.
 - Tests: e2e for a full five-player game with a fixed seed up to three quest
   results, at a phone viewport.
 

@@ -11,7 +11,13 @@ app to see them.
 | Starlit Vale   | `/design/starlit`  | [starlit.md](./starlit.md)   |
 
 Screenshots of every screen at 390px and 1440px are in
-[`screenshots/`](./screenshots). Regenerate them with `pnpm build && pnpm screenshots`.
+[`screenshots/`](./screenshots), named `<direction>/<nn>-<screen>-<width>.jpg`.
+Regenerate them with `pnpm build && pnpm screenshots`. Phone screenshots show
+the whole page, with the bar that is fixed to the bottom of the screen drawn at
+the bottom of the image.
+
+The recommendation, with the strengths and costs of each direction, is on the
+`/design` page (`src/app/design/page.tsx`).
 
 ## What every direction provides
 
@@ -71,3 +77,16 @@ Shared between directions (and kept for the real game): the view types in
 - Artwork is original CSS and inline SVG written for this repo. The
   inspiration images are mood references only and are not in the repo.
 - Fonts are open-licensed and loaded with `next/font`.
+
+## Known gaps shared by all three
+
+- **Quest cards can give your side away.** For a Good player the Fail card is
+  shown as disabled, so someone glancing at the phone learns the player is
+  Good. The real game will show both cards the same to everyone (see "Client"
+  in `docs/architecture.md`).
+- **Seven players only.** The mock game has seven seats. Seat layouts need
+  checking, and in places new rules, for 5, 6, 8, 9 and 10.
+- **No screens yet** for the assassination, the end of the game or the Lady of
+  the Lake.
+- **Checked in desktop Chromium only**, at 390px and 1440px. Not yet checked
+  on real phones, in Safari, or with a screen reader.

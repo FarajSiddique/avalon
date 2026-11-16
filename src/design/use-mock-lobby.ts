@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { OptionalRole } from "@/shared/roles";
+import { TEAM_BALANCE, isPlayerCount } from "@/shared/constants";
+import { ROLES, type OptionalRole } from "@/shared/roles";
 import type { LobbyView, StartBlocker } from "@/shared/views";
 import { lobbyView } from "./mock";
 
@@ -22,15 +23,33 @@ export interface MockLobby {
   canStart: boolean;
 }
 
-function blockersFor(players: LobbyView["players"]): StartBlocker[] {
+/** The same checks the server will run, so the prototype behaves like the game. */
+function blockersFor(view: LobbyView): StartBlocker[] {
   const blockers: StartBlocker[] = [];
-  const away = players.filter((p) => !p.connected).map((p) => p.id);
-  const waiting = players.filter((p) => !p.ready).map((p) => p.id);
+  const away = view.players.filter((p) => !p.connected).map((p) => p.id);
+  const waiting = view.players.filter((p) => !p.ready).map((p) => p.id);
   if (away.length > 0) blockers.push({ kind: "disconnected", playerIds: away });
   if (waiting.length > 0) {
     blockers.push({ kind: "not_ready", playerIds: waiting });
   }
+  const count = view.players.length;
+  if (isPlayerCount(count)) {
+    // The Assassin is always in, plus every Evil optional role switched on.
+    const evilRoles =
+      1 +
+      view.settings.optionalRoles.filter(
+        (role) => ROLES[role].alignment === "evil",
+      ).length;
+    const allowed = TEAM_BALANCE[count].evil;
+    if (evilRoles > allowed) {
+      blockers.push({ kind: "too_many_evil_roles", allowed });
+    }
+  }
   return blockers;
+}
+
+function withBlockers(view: LobbyView): LobbyView {
+  return { ...view, startBlockers: blockersFor(view) };
 }
 
 export function useMockLobby(): MockLobby {
@@ -39,11 +58,7 @@ export function useMockLobby(): MockLobby {
   const withPlayers = (
     current: LobbyView,
     players: LobbyView["players"],
-  ): LobbyView => ({
-    ...current,
-    players,
-    startBlockers: blockersFor(players),
-  });
+  ): LobbyView => withBlockers({ ...current, players });
 
   return {
     view,
@@ -60,7 +75,7 @@ export function useMockLobby(): MockLobby {
     toggleRole: (role) =>
       setView((current) => {
         const on = current.settings.optionalRoles.includes(role);
-        return {
+        return withBlockers({
           ...current,
           settings: {
             ...current.settings,
@@ -68,7 +83,7 @@ export function useMockLobby(): MockLobby {
               ? current.settings.optionalRoles.filter((r) => r !== role)
               : [...current.settings.optionalRoles, role],
           },
-        };
+        });
       }),
     toggleLady: () =>
       setView((current) => ({

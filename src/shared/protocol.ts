@@ -122,6 +122,8 @@ export interface ClientToServerEvents {
   "lobby:start": (ack: Ack<null>) => void;
   /** Next run. Every in-game move goes through this one event. */
   "game:action": (action: GameAction, ack: Ack<null>) => void;
+  /** Next run. Host only. End the game and return everyone to the lobby. */
+  "room:reset": (ack: Ack<null>) => void;
 }
 
 export interface ServerToClientEvents {

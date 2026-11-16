@@ -9,7 +9,8 @@ import next from "next";
 import { attachRealtime } from "@/server/realtime/attach";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = process.env.HOSTNAME ?? "0.0.0.0";
+// Not HOSTNAME: container platforms set that to the container id.
+const hostname = process.env.HOST ?? "0.0.0.0";
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 
 async function main(): Promise<void> {

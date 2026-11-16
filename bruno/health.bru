@@ -1,0 +1,31 @@
+meta {
+  name: Health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/health
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq ok
+}
+
+tests {
+  test("is answered at request time, not cached", function () {
+    const cacheControl = res.getHeader("cache-control") || "";
+    expect(cacheControl).to.not.contain("s-maxage");
+  });
+}
+
+docs {
+  Liveness check used by the hosting platform.
+
+  The app has no other HTTP API: everything about rooms and the game goes over
+  Socket.IO at /api/socket (see docs/architecture.md, "Protocol"). Socket flows
+  are covered by `pnpm test` and `pnpm test:e2e`.
+}

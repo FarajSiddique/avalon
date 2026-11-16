@@ -10,91 +10,116 @@ The full design is in `docs/architecture.md`. Read it before changing structure.
 
 | Layer      | Technology                                                                 |
 | ---------- | -------------------------------------------------------------------------- |
-| App        | One Next.js 16 app: App Router, React 19, TypeScript strict                |
-| Styling    | Tailwind CSS v4, themed with CSS custom properties (`src/app/globals.css`) |
-| Real-time  | Socket.IO on the same HTTP server as Next.js, via `server.ts`              |
+| App        | One TanStack Start app: React 19, TypeScript strict, Vite                  |
+| Styling    | Tailwind CSS v4, themed with CSS custom properties (`src/styles.css`)      |
+| Hosting    | One Cloudflare Worker (`src/server.ts`, `wrangler.jsonc`)                  |
+| Real-time  | Plain WebSockets to one Durable Object per room (`src/server/room`)        |
 | Game logic | A plain typed reducer in `src/server/game` (no XState)                     |
-| State      | In memory in the single Node process. No database                          |
-| Validation | zod, in `src/shared/protocol.ts`                                           |
-| Tests      | Vitest (logic, sockets), Playwright (browser flows), Bruno (HTTP)          |
-| Hosting    | One always-on Node service, exactly one instance (Railway). Not Vercel     |
+| State      | In each room's Durable Object storage. No other database                   |
+| Validation | zod, in `src/shared/schemas.ts`                                            |
+| Tests      | Vitest (pure logic), Playwright (browser flows on the built Worker), Bruno |
 
-This is Next.js 16 with Cache Components on. It differs from older versions: read
-the guides in `node_modules/next/dist/docs/` before using a Next.js API you are not
-sure about.
+TanStack Start reached 1.0 in October 2026 and Cloudflare's tooling moves fast.
+Both are newer than most training data: check the current docs (Context7 or the
+official sites) before using an API you are not sure about.
 
 ## Commands
 
 ```
-pnpm dev          # custom server with hot reload, http://localhost:3000
-pnpm build        # next build, then bundle server.ts to dist/server.mjs
-pnpm start        # run the production build
-pnpm lint         # eslint
-pnpm typecheck    # next typegen + tsc --noEmit
-pnpm test         # vitest
-pnpm test:e2e     # playwright against the production build (run pnpm build first)
-pnpm test:api     # bruno collection (server must be running on :3000)
-pnpm screenshots  # regenerate docs/design/screenshots (run pnpm build first)
-pnpm format       # prettier
+pnpm dev           # app and rooms in Cloudflare's local runtime, http://localhost:3000
+pnpm build         # production build into dist/
+pnpm start         # serve the production build locally (run pnpm build first)
+pnpm lint          # eslint
+pnpm typecheck     # wrangler types + tsc --noEmit
+pnpm test          # vitest
+pnpm test:e2e      # playwright against the production build (run pnpm build first)
+pnpm test:restart  # proves a room survives a server restart (run pnpm build first)
+pnpm test:api      # bruno collection (server must be running on :3000)
+pnpm screenshots   # regenerate docs/design/screenshots (run pnpm build first)
+pnpm format        # prettier
+pnpm run deploy    # build and deploy to Cloudflare. Ask the owner first
 ```
 
-Always run the app through `pnpm dev` or `pnpm start`. Plain `next dev` and
-`next start` do not start the socket server.
+Two files are generated. `worker-configuration.d.ts` (by `wrangler types`, which
+`pnpm typecheck` runs) is not committed. `src/routeTree.gen.ts` (by the dev
+server or build) is committed, as TanStack recommends, so a fresh clone
+typechecks. Never edit it by hand: after adding, moving or removing a route, run
+`pnpm build` or `pnpm dev` and commit the result. CI fails if it is stale.
 
 ## Layout
 
 ```
-server.ts          Custom server: Next.js + Socket.IO on one port
-src/app/           Routes. / (landing), /room/[code] (lobby and game), /api/health, /design (prototypes)
-src/shared/        Types, constants, protocol. Imported by both sides. Plain TS + zod only
-src/server/        Room store, socket handlers, view projection, game engine. Server process only
-src/client/        Browser helpers: socket, seat token, room store hook, hold-to-reveal
+wrangler.jsonc     The Worker and its ROOM Durable Object binding
+src/server.ts      Worker entry: /api/socket/CODE goes to the room object, the rest to TanStack Start
+src/routes/        File-based routes. / (landing), /room/$code (lobby and game), /api/health, /design (prototypes)
+src/components/    Screens and components of the real app
+src/functions/     Server functions (createRoom)
+src/shared/        Types, constants, protocol, validators. Imported by both sides
+src/server/        Room object, room rules, view projection, game engine. Worker only
+src/client/        Browser helpers: connection, seat token, room store hook, hold-to-reveal, sound
 src/design/        Prototype-only mock data and helpers (removed after a direction is picked)
 e2e/               Playwright: *.e2e.ts behaviour, *.shots.ts screenshots
+scripts/           contrast.mjs, restart-check.mjs
 bruno/             Bruno collection
 docs/              architecture.md, design specs and screenshots
 ```
 
+In `src/routes`, files and folders that start with `-` are not routes (components,
+styles). A folder's layout is its `route.tsx`.
+
 ## Rules that must not be broken
 
-**Server-authoritative.** All game state and logic live in the server process.
-Clients send intents and render what they are sent.
+**Server-authoritative.** All game state and logic live in the room's Durable
+Object. Clients send intents and render what they are sent.
 
 - Never trust the client for role assignment, votes or quest cards. Validate every
   action in the reducer against the full state.
-- The only code that may turn server state into something sent to a client is
-  `projectView` in `src/server/realtime/project-view.ts`. It builds one `RoomView`
-  per player. Never emit to a whole room, and never send a `RoomRecord` or
-  `GameState`.
+- The only code that may turn room state into something sent to a client is
+  `projectView` in `src/server/room/project-view.ts`. It builds one `RoomView` per
+  player. Never send the same message to every socket, and never send a
+  `RoomState` or `GameState`.
 - A client must never receive: another player's role before the game ends, a vote
   before every vote is in, or which player played which quest card.
-- Simultaneous reveals: collect every vote and every quest card on the server, then
+- Simultaneous reveals: collect every vote and every quest card in the room, then
   reveal all at once.
 - Quest cards: keep and send only the count of Fail cards. Discard who played what
   as soon as the quest resolves.
 - Randomness in game logic comes from the injected `Rng`, never `Math.random`.
 
+**The room object forgets.** A Durable Object sleeps whenever it is idle and loses
+its memory. In `src/server/room/room-object.ts`:
+
+- Save the room to storage after every change. Fields on the class are only a cache.
+- A socket's seat lives in its attachment. Who is connected is read from the live
+  sockets, never stored.
+- Anything that must happen later is an alarm. Never `setTimeout` or `setInterval`.
+- Keep rules out of this file. They are pure functions in `state.ts` and
+  `src/server/game`, tested in plain Node.
+- `pnpm test:restart` must keep passing.
+
 **Import boundaries** (enforced by ESLint):
 
-- `src/app`, `src/client` and `src/design` must not import `src/server`. Next.js
-  bundles them separately, so they would get an empty copy of the room store.
-  Everything about a room goes over the socket.
-- `src/shared` imports only zod and other `src/shared` files.
-- Do not use the `server-only` package in `src/server`: it throws outside the
-  Next.js bundler, which is where that code runs.
-
-**One instance.** Rooms are in process memory. Never scale the service past one
-replica, and never move room state into a Next.js route handler or Server Action.
+- Browser code (`src/routes` except `src/routes/api`, `src/components`, `src/client`,
+  `src/design`) must not import `src/server` or `cloudflare:*`. It reaches the server
+  only through the room WebSocket (`src/client/connection.ts`) and server functions
+  (`src/functions`).
+- `src/shared` imports only other `src/shared` files, plus zod in `schemas.ts`.
+  Keep `protocol.ts` free of runtime dependencies so zod stays out of the browser.
 
 ## Conventions
 
 - TypeScript strict, no `any`. Prettier on every file you touch (`pnpm format`).
-- Colours, fonts and radii come from the tokens in `src/app/globals.css`
-  (`bg-canvas`, `text-ink`, `border-line`, `font-display`, ...). No raw colour
-  values in components.
+- Colours, fonts and radii come from the tokens in `src/styles.css` (`bg-canvas`,
+  `text-ink`, `border-line`, `font-display`, ...). No raw colour values in
+  components.
+- Links in the real app use the router's typed `Link` (`to="/room/$code"` with
+  `params`). `ProtoLink` is for the prototypes only.
+- Forms read their fields at submit time and keep submit buttons disabled until
+  `useHydrated()` is true, so input typed before the page is interactive is not lost.
 - Secret information on screen uses `useHoldToReveal` (hidden until pressed).
 - Never signal meaning with colour alone: Good and Evil, Approve and Reject,
   Success and Fail each need a shape or icon and a text label.
 - Touch targets are at least 44 by 44 px. Check layouts at 390px and 1440px.
-- Tests locate elements by role. After a client-side navigation Next.js keeps the
-  previous route mounted but hidden, so label and text locators can match twice.
+- Fonts are self-hosted with Fontsource packages. No font CDN.
+- In browser tests, the address changes before the new screen is drawn. Wait for an
+  element of the new screen, not for the URL.

@@ -1,8 +1,11 @@
-.next
 dist
 node_modules
 pnpm-lock.yaml
-next-env.d.ts
+.wrangler
+.tanstack
+src/routeTree.gen.ts
+worker-configuration.d.ts
 test-results
 playwright-report
 docs/design/screenshots
+docs/evidence

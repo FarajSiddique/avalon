@@ -4,6 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   DIRECTIONS,
   ROLE_VARIANTS,
+  STARLIT_MOTION_PATH,
   TABLE_STEPS,
   designPaths,
 } from "../src/design/directions";
@@ -19,7 +20,13 @@ import {
  * captured at the normal viewport size, because a finger is "down".
  */
 
-const OUT = path.join(__dirname, "..", "docs", "design", "screenshots");
+const OUT = path.join(
+  import.meta.dirname,
+  "..",
+  "docs",
+  "design",
+  "screenshots",
+);
 
 const VIEWPORTS = [
   { width: 390, height: 844 },
@@ -52,15 +59,24 @@ async function settle(page: Page): Promise<void> {
     .toBe(true);
 }
 
-/** Press and hold the role card so the secret side is showing. */
+/**
+ * Press and hold the role card so the secret side is showing. A press that
+ * lands before the page has finished loading its scripts does nothing, so
+ * press again until the card reports that it is held.
+ */
 async function holdRoleCard(page: Page): Promise<void> {
   const card = page.locator("button[aria-pressed]:visible").first();
   await card.scrollIntoViewIfNeeded();
   const box = await card.boundingBox();
   if (!box) throw new Error("No hold-to-reveal control found");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await expect(card).toHaveAttribute("aria-pressed", "true");
+  await expect(async () => {
+    await page.mouse.up();
+    await page.mouse.down();
+    await expect(card).toHaveAttribute("aria-pressed", "true", {
+      timeout: 400,
+    });
+  }).toPass({ timeout: 10_000 });
 }
 
 for (const viewport of VIEWPORTS) {
@@ -106,6 +122,17 @@ for (const direction of DIRECTIONS) {
       name: `${String(6 + index).padStart(2, "0")}-table-${step}`,
       url: paths.table(step),
     })),
+    // Only Starlit Vale has the motion and sound gallery. It is tens of
+    // screens long, so only the top is captured.
+    ...(direction.slug === "starlit"
+      ? [
+          {
+            name: "11-motion-gallery",
+            url: STARLIT_MOTION_PATH,
+            viewportOnly: true,
+          },
+        ]
+      : []),
   ];
 
   for (const viewport of VIEWPORTS) {

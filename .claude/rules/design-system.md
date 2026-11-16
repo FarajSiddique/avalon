@@ -1,8 +1,10 @@
 ---
 paths:
-  - "src/app/**/*"
+  - "src/routes/**/*"
+  - "src/components/**/*"
   - "src/design/**/*"
   - "src/client/**/*"
+  - "src/styles.css"
 ---
 
 # Design System
@@ -19,7 +21,7 @@ shadcn/ui system is gone; do not bring it back.
 ### Tokens
 
 Components never use raw colour values. They use the Tailwind utilities generated
-from the semantic tokens in `src/app/globals.css`, or `var(--token)`.
+from the semantic tokens in `src/styles.css`, or `var(--token)`.
 
 | Token                                        | Utility examples                         | Use                                    |
 | -------------------------------------------- | ---------------------------------------- | -------------------------------------- |
@@ -51,6 +53,6 @@ component tokens. A theme sets the semantic layer.
 - Every screen that shows secret information hides it until the player presses and
   holds (`useHoldToReveal` in `src/client/use-hold-to-reveal.ts`) and says so.
 - All motion stops under `prefers-reduced-motion: reduce`.
-- Fonts are open-licensed and loaded with `next/font`. Artwork is original CSS and
+- Fonts are open-licensed and self-hosted with Fontsource packages. Artwork is original CSS and
   inline SVG, or open-licensed with the licence noted in the spec. No emoji as icons.
 - No UI kit. Components are hand-built on the tokens with native elements.

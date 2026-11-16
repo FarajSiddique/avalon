@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { RoomCode } from "@/shared/views";
 import { RoomClient, type RoomSnapshot } from "./room-client";

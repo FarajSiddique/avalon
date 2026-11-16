@@ -40,7 +40,8 @@ The tables below are implemented in `src/shared/constants.ts`. Keep the two in s
 
 ## Phases
 
-The engine is a typed reducer (`src/server/game/engine.ts`). The phase is a
+The engine is a typed reducer (`src/server/game/engine.ts`), called by the room's
+Durable Object, which saves the result after every action. The phase is a
 discriminated union, `Phase`, mirrored for clients as `PhaseView` in
 `src/shared/views.ts`.
 
@@ -97,15 +98,19 @@ already knows (do not exclude Oberon, that would reveal him).
 - The token passes to the examined player. A player who has held it cannot be
   examined. Used exactly 3 times per game. Best with 7 or more players.
 
-## Socket protocol
+## Protocol
 
-Defined and typed in `src/shared/protocol.ts`. See "Protocol" in
-`docs/architecture.md` for the full table.
+Defined and typed in `src/shared/protocol.ts`, validated in
+`src/shared/schemas.ts`. See "Protocol" in `docs/architecture.md` for the full
+table.
 
-- Client to server: `room:create`, `room:join`, `room:resume`, `room:leave`,
-  `lobby:ready`, `lobby:settings`, `lobby:kick`, `lobby:start`, `game:action`,
-  `room:reset`. Each has an acknowledgement that returns `Result<T>`.
+- Creating a room is a server function, `createRoom` (`src/functions/rooms.ts`).
+- Everything else is a request on the room's WebSocket (`/api/socket/CODE`):
+  `room:join`, `room:resume`, `room:watch`, `room:leave`, `lobby:ready`,
+  `lobby:settings`, `lobby:kick`, `lobby:start`, `game:action`, `room:reset`. Each is
+  `{ id, event, payload }` and is answered by one `{ type: "ack", id, result }`.
 - `game:action` carries a `GameAction`: `confirm_role`, `draft_team`,
   `propose_team`, `vote`, `play_card`, `lady_examine`, `assassinate`.
-- Server to client: `room:state` (a full `RoomView` for that one player) and
-  `room:closed`. There are no partial updates and no room-wide broadcasts.
+- The room pushes `{ type: "state", view }` (a full `RoomView` for that one player)
+  and `{ type: "closed", reason }`. There are no partial updates and no message sent
+  to every socket.

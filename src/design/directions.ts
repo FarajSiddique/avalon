@@ -76,3 +76,6 @@ export function nextTableStep(step: TableStep): TableStep {
   const index = TABLE_STEPS.indexOf(step);
   return TABLE_STEPS[(index + 1) % TABLE_STEPS.length] ?? "propose";
 }
+
+/** Starlit Vale also has a gallery of every moment of motion and sound. */
+export const STARLIT_MOTION_PATH = "/design/starlit/motion";

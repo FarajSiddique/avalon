@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { TEAM_BALANCE, isPlayerCount } from "@/shared/constants";
 import { ROLES, type OptionalRole } from "@/shared/roles";

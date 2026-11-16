@@ -9,6 +9,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Wrangler and the Cloudflare tooling must not phone home from CI.
+  WRANGLER_SEND_METRICS: "false"
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -26,8 +30,11 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: The committed route tree matches the routes
+        run: git diff --exit-code src/routeTree.gen.ts
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - run: pnpm test:restart
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

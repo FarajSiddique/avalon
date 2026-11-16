@@ -23,9 +23,10 @@ tests {
 }
 
 docs {
-  Liveness check used by the hosting platform.
+  Liveness check, answered by the Worker.
 
-  The app has no other HTTP API: everything about rooms and the game goes over
-  Socket.IO at /api/socket (see docs/architecture.md, "Protocol"). Socket flows
-  are covered by `pnpm test` and `pnpm test:e2e`.
+  The app has no other public HTTP API. Creating a room is a server function,
+  and everything else goes over the room's WebSocket at /api/socket/CODE (see
+  docs/architecture.md, "Protocol"). Those flows are covered by `pnpm test`,
+  `pnpm test:e2e` and `pnpm test:restart`.
 }

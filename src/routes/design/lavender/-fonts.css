@@ -1,0 +1,11 @@
+/*
+ * Fonts for Lavender Vigil, self-hosted from Fontsource (SIL Open Font License).
+ * Display: Press Start 2P. Body: VT323. Both have one weight, 400.
+ */
+@import "@fontsource/press-start-2p/400.css";
+@import "@fontsource/vt323/400.css";
+
+.theme-lavender {
+  --font-lavender-display: "Press Start 2P";
+  --font-lavender-body: "VT323";
+}

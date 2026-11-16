@@ -3,7 +3,7 @@
 A candlelit oak table at night. The phone is the table: the players are
 conspirators leaning in over a rune circle that glows like embers.
 
-Route: `/design/ember`. Code: `src/app/design/ember/`.
+Route: `/design/ember`. Code: `src/routes/design/ember/`.
 
 ## Mood
 
@@ -20,7 +20,7 @@ photographic. Everything is drawn with CSS gradients and inline SVG.
 
 ### Primitives
 
-All raw colours live in `theme.css` as `--ember-<hue>-<step>`.
+All raw colours live in `-theme.css` as `--ember-<hue>-<step>`.
 
 | Hue                                         | Steps                                                                                                   |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -37,7 +37,7 @@ All raw colours live in `theme.css` as `--ember-<hue>-<step>`.
 
 ### Semantic tokens
 
-The contract from `src/app/globals.css`, as set under `.theme-ember`.
+The contract from `src/styles.css`, as set under `.theme-ember`.
 
 | Token             | Primitive       | Value     | Use                                         |
 | ----------------- | --------------- | --------- | ------------------------------------------- |
@@ -64,7 +64,7 @@ The contract from `src/app/globals.css`, as set under `.theme-ember`.
 | `--corner-md`     |                 | `4px`     | Frames and buttons                          |
 | `--corner-lg`     |                 | `6px`     | Cards                                       |
 
-Component tokens sit on top of these (also in `theme.css`): paper
+Component tokens sit on top of these (also in `-theme.css`): paper
 (`--paper`, `--paper-ink`, `--paper-ink-muted`, `--paper-good`,
 `--paper-evil`, `--paper-success`, `--paper-fail`), frames (`--frame-outer`,
 `--frame-inner`, `--frame-gilt`), the rune circle (`--rune-line`,
@@ -165,11 +165,12 @@ shapes (a border, the unlit switch knob, the Reject button border).
 | Display | Cinzel      | 600, 700, 800        | SIL Open Font Licence 1.1 |
 | Body    | EB Garamond | 500, 600, italic 500 | SIL Open Font Licence 1.1 |
 
-Both are variable fonts loaded in `layout.tsx` with `next/font/google`
-(`Cinzel`, `EB_Garamond`, `subsets: ["latin"]`, `display: "swap"`), exposed as
-`--font-cinzel` and `--font-garamond` on the theme wrapper, and wired to
-`--display-font` and `--body-font` in `theme.css`. Next downloads and
-self-hosts them, so nothing is fetched from Google at run time.
+Both are variable fonts, self-hosted from Fontsource packages
+(`@fontsource-variable/cinzel`, `@fontsource-variable/eb-garamond`) and
+imported in `-fonts.css`, which also names them `--font-cinzel` and
+`--font-garamond` on the theme wrapper. `-theme.css` wires those to
+`--display-font` and `--body-font`. Nothing is fetched from a font service at
+run time.
 
 Sizes:
 
@@ -241,7 +242,7 @@ packages, no external URLs.
 | "Vote locked", "Card locked", tally | Rise 6px and fade in                                                                            | 260ms, same curve                       |
 | Result cards                        | Dealt onto the table one after another                                                          | 420ms each, 140ms apart                 |
 
-Reduced motion: `globals.css` cuts every animation and transition to almost
+Reduced motion: `src/styles.css` cuts every animation and transition to almost
 zero under `prefers-reduced-motion: reduce`. Every animation here starts and
 ends in its resting state (entrance animations use `from` keyframes only), so
 with motion off the page looks the same, just still: candles lit, circle
@@ -351,12 +352,7 @@ are slow, decorative and off under reduced motion.
   the lobby, as the prototype requires).
 - No screens yet for the Lady of the Lake, the assassination or the end of
   the game.
-- Texture overlays and shadows in `theme.css` use raw `rgb()` values with
+- Texture overlays and shadows in `-theme.css` use raw `rgb()` values with
   alpha. Colours that carry meaning are all tokens.
-- Dynamic routes wrap `await params` in `<Suspense>`. Without it, Next 16.4
-  logged "encountered URL data during prerendering or a navigation" in the
-  browser console on every visit.
-- `theme.css` must not declare `@layer theme, base, components, utilities;`.
-  With the Tailwind Turbopack loader that statement made the dev server
-  rebuild the file on every request (an endless reload). Layer order comes
-  from `globals.css`.
+- `-theme.css` does not declare the cascade layer order. It comes from
+  `src/styles.css`, which loads first.

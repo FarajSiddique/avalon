@@ -2,7 +2,7 @@
 
 A cozy 16-bit role-playing game: the knights have made camp in a lavender field at dusk, and one of them is a traitor.
 
-Route: `/design/lavender`. Code: `src/app/design/lavender/`.
+Route: `/design/lavender`. Code: `src/routes/design/lavender/`.
 
 ## Mood
 
@@ -70,7 +70,7 @@ Violet dominant, flat colours only. 20 primitives: 16 carry the interface, and 4
 
 ### Component tokens
 
-All in `theme.css`, third layer. The ones that shape the direction:
+All in `-theme.css`, third layer. The ones that shape the direction:
 
 - `--px`: one art pixel. 3px on phones and tablets, 4px from 1024px. Every sprite, frame, drop shadow and press offset is a whole multiple of it, so pixels stay square and the same size across a screen.
 - `--frame-color`, `--frame-outline`, `--frame-drop`: the three colours of the stepped frame.
@@ -134,7 +134,7 @@ The landing tagline sits on the top three sky bands, which are the canvas, surfa
 | Display | Press Start 2P | 400    | Wordmark 40px (72px wide screen), titles 24px (32px), headings 16px, buttons 14px, labels 12px, tags 10px | OFL 1.1 |
 | Body    | VT323          | 400    | Body 22px, secondary 20px, names 22 to 24px, inputs 24px. Never below 20px.                               | OFL 1.1 |
 
-Both load in `layout.tsx` with `next/font/google` (`subsets: ["latin"]`, `display: "swap"`), are exposed as `--font-lavender-display` and `--font-lavender-body` on the wrapper, and are wired to `--display-font` and `--body-font` in `theme.css`.
+Both are self-hosted from Fontsource packages (`@fontsource/press-start-2p`, `@fontsource/vt323`), imported in `-fonts.css`, which also names them `--font-lavender-display` and `--font-lavender-body` on the theme wrapper. `-theme.css` wires those to `--display-font` and `--body-font`. Nothing is fetched from a font service at run time.
 
 What was tried, in 390px-wide screenshots on the plum canvas:
 
@@ -151,12 +151,12 @@ All artwork is original work created for this repo (the repo's licence applies).
 
 How each piece is made:
 
-- **Sprites** (`_components/pixel/sprites.ts`): arrays of strings with a colour key, one character per art pixel. `PixelSprite` turns one into an inline SVG with `shape-rendering: crispEdges`, sized `calc(var(--px) * columns)`. This covers the knight's helm (the mascot and every seat's avatar, recoloured by plume), the seated knight's body, three campfire frames, the logs and stones, the big star, the grail and skull on the quest cards, and 18 one-colour icons that take `currentColor`.
+- **Sprites** (`-components/pixel/sprites.ts`): arrays of strings with a colour key, one character per art pixel. `PixelSprite` turns one into an inline SVG with `shape-rendering: crispEdges`, sized `calc(var(--px) * columns)`. This covers the knight's helm (the mascot and every seat's avatar, recoloured by plume), the seated knight's body, three campfire frames, the logs and stones, the big star, the grail and skull on the quest cards, and 18 one-colour icons that take `currentColor`.
 - **The pixel raster** (`pixel-canvas.ts`): a small grid you paint rectangles and sprites onto, which then emits one SVG path per colour. Everything larger than a sprite is drawn by code onto this raster.
 - **The dusk scene** (`dusk-scene.tsx`): banded sky with one early scanline of the next colour at each band (a banded stand-in for a blend), seeded stars, cloud streaks, a crescent moon cut from two discs, far hills, a castle built from towers, parapets and stepped spires with lit windows and a banner, pines in three-row tiers, a lavender field drawn as rows that grow taller towards the viewer, a clearing with a tent, three seated knights and the fire, and two rows of dark bushes that break the lower edge into the page. Three layouts share the code: a phone scene (256 by 168 art pixels), a wide scene (480 by 216, used from 768px) and a low strip of hills (640 by 48) along the foot of the wide lobby and role screens.
 - **The great helm** on the face-down role card (`great-helm.tsx`): drawn by code at the screen's own pixel size, 36 by 44 art pixels, not an enlarged copy of the small helm.
 - **The clearing** on the wide table screen (`camp-ground.tsx`): a stepped ellipse of grass with the fire in the middle; the seven seats are placed around it.
-- **Stepped frames** (`.lv-frame` in `theme.css`): 17 hard box-shadows, no blur. One pixel of frame colour in a plus shape (which notches the corners), one pixel of dark outline, then the outline again one pixel lower as a drop shadow.
+- **Stepped frames** (`.lv-frame` in `-theme.css`): 17 hard box-shadows, no blur. One pixel of frame colour in a plus shape (which notches the corners), one pixel of dark outline, then the outline again one pixel lower as a drop shadow.
 - **Speech boxes** (`DialogBox`): a cream frame with a name plate sitting on the top edge, as in a role-playing game.
 - **Dither** (`.lv-dither`, `.lv-card-back`, disabled buttons): a checker made with a hard-stop `conic-gradient`, one or two art pixels per square. This is the only gradient function used, and it has no soft stops.
 
@@ -175,7 +175,7 @@ Everything uses `steps()`. Nothing eases and nothing fades.
 | Press               | Buttons, seats, cards, the role card                 | Instant: one art pixel down, drop shadow removed      |
 | Card pop            | The three result cards                               | 320ms, `steps(2, end)`, staggered by 160ms            |
 
-Reduced motion: `globals.css` cuts every animation to a single 0.01ms run. Each animated element's base style is its resting frame, so nothing is left broken: the first flame frame stays, sparks and the glint stay hidden, stars stay lit, the cursor stays visible, arrows stay still, cards sit in place. Checked with `prefers-reduced-motion: reduce` emulated: no running animations.
+Reduced motion: `src/styles.css` cuts every animation to a single 0.01ms run. Each animated element's base style is its resting frame, so nothing is left broken: the first flame frame stays, sparks and the glint stay hidden, stars stay lit, the cursor stays visible, arrows stay still, cards sit in place. Checked with `prefers-reduced-motion: reduce` emulated: no running animations.
 
 ## Privacy treatment
 
@@ -202,7 +202,7 @@ Database matches that were used:
 - Typography search "pixel retro game": pairing "Pixel Retro" (Press Start 2P with VT323), with its note that Press Start 2P is very wide and VT323 suits body text. Google Fonts search confirmed Pixelify Sans and VT323 are in the database.
 - UX searches: touch target size and pressed states, reduced motion, "animate one or two key elements per view" (each screen has at most the fire, a few stars and one prompt moving), safe areas for fixed bars, and focus indicators of at least 2px at 3:1.
 - `references/quick-reference.md` and `references/pro-rules.md`: visible labels on inputs, `aria-live` for status changes, no emoji as icons, one primary action per screen, pressed states that do not shift layout, fixed bars with safe-area padding and scroll padding so focus is not hidden.
-- The design-system skill: the three-layer token structure (primitive, semantic, component) in `theme.css`.
+- The design-system skill: the three-layer token structure (primitive, semantic, component) in `-theme.css`.
 
 No database match, chosen by hand:
 

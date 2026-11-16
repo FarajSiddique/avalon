@@ -1,15 +1,20 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "@tanstack/react-router";
 import { DIRECTIONS, designPaths, type DirectionSlug } from "./directions";
+import { ProtoLink } from "./proto-link";
 
 /**
  * Prototype-only bar above every design screen. It is deliberately plain so
  * it is never mistaken for part of a direction.
  */
-export function DesignNav({ direction }: { direction: DirectionSlug }) {
-  const pathname = usePathname();
+export function DesignNav({
+  direction,
+  extra = [],
+}: {
+  direction: DirectionSlug;
+  /** Extra screens one direction has and the others do not. */
+  extra?: { label: string; href: string }[];
+}) {
+  const pathname = useLocation({ select: (location) => location.pathname });
   const paths = designPaths(direction);
   const current = DIRECTIONS.find((d) => d.slug === direction);
 
@@ -17,7 +22,7 @@ export function DesignNav({ direction }: { direction: DirectionSlug }) {
     {
       label: "Landing",
       href: paths.landing,
-      active: pathname === paths.landing,
+      active: pathname === paths.landing || pathname === `${paths.landing}/`,
     },
     { label: "Lobby", href: paths.lobby, active: pathname === paths.lobby },
     {
@@ -30,16 +35,20 @@ export function DesignNav({ direction }: { direction: DirectionSlug }) {
       href: paths.table("propose"),
       active: pathname.startsWith(`${paths.landing}/table`),
     },
+    ...extra.map((screen) => ({
+      ...screen,
+      active: pathname.startsWith(screen.href),
+    })),
   ];
 
   return (
     <nav
       aria-label="Prototype navigation"
-      className="sticky top-0 z-50 flex h-11 shrink-0 items-center gap-1 overflow-x-auto border-b border-white/15 bg-black px-2 font-sans text-[13px] text-white/80"
+      className="sticky top-0 z-50 flex h-11 shrink-0 items-center gap-1 overflow-x-auto border-b border-white/15 bg-black px-2 text-[13px] text-white/80"
       style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}
     >
       <Link
-        href="/design"
+        to="/design"
         className="flex h-11 shrink-0 items-center px-2 text-white/60 hover:text-white"
         aria-label="All design directions"
       >
@@ -50,7 +59,7 @@ export function DesignNav({ direction }: { direction: DirectionSlug }) {
       </span>
       <span className="mx-1 h-4 w-px shrink-0 bg-white/20" aria-hidden />
       {screens.map((screen) => (
-        <Link
+        <ProtoLink
           key={screen.label}
           href={screen.href}
           aria-current={screen.active ? "page" : undefined}
@@ -61,7 +70,7 @@ export function DesignNav({ direction }: { direction: DirectionSlug }) {
           }`}
         >
           {screen.label}
-        </Link>
+        </ProtoLink>
       ))}
     </nav>
   );

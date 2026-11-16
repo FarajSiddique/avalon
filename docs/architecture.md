@@ -7,20 +7,37 @@ decisions. Answered and open points are listed in
 
 ## Decisions at a glance
 
-| Topic              | Decision                                                                                                               |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| App                | One Next.js 16 app (App Router, React 19, TypeScript strict, Tailwind CSS v4), one `package.json`, pnpm.               |
-| Real-time          | Socket.IO attached to the same Node HTTP server as Next.js, through a custom server (`server.ts`). One port.           |
-| Hosting            | One long-running Node service with exactly one instance (Railway recommended, Fly.io equivalent). Not Vercel.          |
-| Game logic         | A plain typed reducer on the server. No XState.                                                                        |
-| Room state         | In memory, in the single Node process. Rooms are temporary. No database.                                               |
-| Identity           | No accounts. A random seat token per player per room, kept in the browser's `localStorage`, hashed on the server.      |
-| Hidden information | The server sends each player one full, filtered view of the room (`RoomView`). Raw game state never leaves the server. |
-| Client state       | The latest `RoomView`, held in a tiny store read with `useSyncExternalStore`. No Zustand, no client game logic.        |
-| UI kit             | Hand-built components on design tokens. No shadcn/ui.                                                                  |
-| Tests              | Vitest for logic and sockets, Playwright for multi-browser flows, Bruno for the HTTP health check.                     |
+| Topic              | Decision                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| App                | One TanStack Start app (React 19, TypeScript strict, Tailwind CSS v4, Vite), one `package.json`, pnpm.             |
+| Hosting            | One Cloudflare Worker. It serves the pages and routes each room's WebSocket to that room's Durable Object.         |
+| Real-time          | Plain WebSockets, one per browser tab, to the room's Durable Object. No Socket.IO.                                 |
+| Game logic         | A plain typed reducer on the server. No XState.                                                                    |
+| Room state         | One Durable Object per room, addressed by room code. The room is saved to the object's storage after every change. |
+| Identity           | No accounts. A random seat token per player per room, kept in the browser's `localStorage`, hashed on the server.  |
+| Hidden information | The room sends each player one full, filtered view (`RoomView`). Raw room state never leaves the room object.      |
+| Client state       | The latest `RoomView`, held in a tiny store read with `useSyncExternalStore`. No Zustand, no client game logic.    |
+| UI kit             | Hand-built components on design tokens. No shadcn/ui.                                                              |
+| Tests              | Vitest for pure logic, Playwright for multi-browser flows against the built Worker, Bruno for the health check.    |
 
-## The real-time decision
+## How this was decided
+
+Checkpoint 1 took three steps, and this document keeps the reasoning for each.
+
+1. **First build: Next.js with a custom Node server and Socket.IO** (Option A
+   below). It was built and proven in this repo, then replaced.
+2. **The owner chose Cloudflare as the host** (15 November 2026), after the
+   comparison below showed Durable Objects to be the best serverless fit.
+3. **The framework changed from Next.js to TanStack Start**, because on
+   Cloudflare Next.js runs through a beta or buggy adapter and this app uses
+   almost none of what Next.js is good at. See
+   [The framework decision](#the-framework-decision).
+
+The app was ported and the same real-time round trip was proven again, this
+time through a Durable Object in Cloudflare's local runtime. Nothing has been
+deployed.
+
+## The real-time and hosting decision
 
 ### The constraint, and what changed
 
@@ -29,18 +46,17 @@ state and decides what each player may see.
 
 The brief for this checkpoint assumed that Vercel functions cannot hold
 WebSockets. **That is no longer true.** Vercel made WebSocket support in
-Vercel Functions generally available on 20 October 2026 (public beta since
-June 2026). This document therefore compares three options, not two. The
-decision below still stands, for reasons that have nothing to do with whether
-Vercel can open a socket.
+Vercel Functions generally available on 20 October 2026. The comparison
+therefore covers four options.
 
 Facts in this section were checked against vendor pages on 15 November 2026.
 Sources are listed at the end of the section. Prices and limits change, so
 check them again before paying for anything.
 
-### Option A: one Next.js app on a custom Node server, one always-on service
+### Option A: a custom Node server with Socket.IO, one always-on service
 
-`server.ts` creates one Node HTTP server. Next.js handles normal requests.
+This is what checkpoint 1 built and proved first, on Next.js. `server.ts`
+creates one Node HTTP server. Next.js handles normal requests.
 Socket.IO handles the WebSocket upgrade on `/api/socket`. Both run in the same
 process, so the socket handlers can keep every room in a plain `Map`.
 
@@ -55,8 +71,8 @@ process, so the socket handlers can keep every room in a plain `Map`.
   seat and sends the current view. A full view on every change means there is
   no missed-event replay to build.
 - **Room state storage.** Process memory. No database, no cache, nothing to
-  keep in sync. State is lost when the process restarts (see
-  [Deploys and restarts](#deploys-and-restarts)).
+  keep in sync. State is lost when the process restarts, so every
+  deploy ends the games in progress.
 - **Cost.** One small service. Railway Hobby is 5 USD a month and includes
   5 USD of usage; a small Node process fits inside that. Fly.io's smallest
   machine (shared-cpu-1x, 256 MB) is 2.19 USD a month, though Next.js is more
@@ -113,129 +129,77 @@ because Next.js itself has no upgrade API.
 - **Cost.** Vercel Hobby is free but limited to non-commercial use. Redis is
   extra (free tiers exist).
 
-### Option D: Cloudflare Workers and Durable Objects
+### Option D: Cloudflare Workers and Durable Objects (chosen)
 
-Added on 15 November 2026 after the owner asked about Cloudflare. Option B
-already covered PartyServer as a separate service next to Vercel. This is the
-all-Cloudflare version: one Worker serves the Next.js app and also exports a
-Durable Object class, and each room is one Durable Object.
+One Worker serves the app and also exports a Durable Object class. Each room
+is one Durable Object.
 
 - **Server-authoritative hidden information.** A Durable Object is a small
   single-threaded server with its own storage, addressed by name (the room
   code). One object per room is exactly this game's shape: one authority per
   room, nothing shared between rooms.
 - **Per-player filtering.** The room object holds every player's WebSocket
-  and sends each one its own view. `projectView` is used unchanged.
+  and sends each one its own view, built by `projectView`.
 - **Reconnection.** Sockets stay connected while the object sleeps
-  ("hibernation"). The client library `partysocket` reconnects and buffers
-  messages. Resuming a seat with the token is the same as today.
-- **Room state storage.** The object's memory is wiped whenever it
-  hibernates (after about 10 seconds idle), so the room must be written to
-  the object's built-in SQLite storage after every change and loaded when it
-  wakes. `GameState` is plain JSON, so this is one write per action. Timers
-  (host hand-over, expiry) become Durable Object alarms.
-- **Deploys.** Since 30 October 2026 a deploy no longer drops hibernating
-  sockets, and the room is in storage anyway. Games survive deploys. This
-  removes Option A's biggest weakness.
+  ("hibernation"). The browser reconnects by itself after a drop and takes
+  its seat back with its token.
+- **Room state storage.** The object's memory is wiped whenever it sleeps
+  (after about 10 seconds idle), so the room is written to the object's
+  built-in storage after every change and loaded when it wakes. Timers
+  become alarms.
+- **Deploys and restarts.** The room is in storage, and since 30 October
+  2026 a deploy no longer drops sleeping sockets. Games survive deploys.
+  This was Option A's biggest weakness. It is proven locally here: a room
+  survives a full restart of the server process, and both players reconnect
+  and keep their seats without reloading the page.
 - **Cost.** The free plan covers this game (100,000 requests a day; 20
   incoming WebSocket messages count as one request; sleeping time is not
-  billed). Paid starts at 5 USD a month. There is no always-on process to
-  pay for while nobody plays.
+  billed). Paid starts at 5 USD a month. Nothing is billed while nobody
+  plays.
 
 What it costs:
 
-- **Socket.IO does not run on Workers.** The transport becomes plain
-  WebSockets (with `partyserver` and `partysocket`, or by hand).
-  Acknowledgements become a small request and reply envelope that we write.
-- **Next.js on Workers goes through an adapter, and that is the risk.**
-  Cloudflare now recommends `vinext` (a reimplementation of the Next.js API
-  on Vite), which is in beta and says its Cache Components support is
-  incomplete. The older OpenNext adapter supports Next.js 16 but has open
-  bugs with `cacheComponents: true`, including on 16.4. This app can turn
-  Cache Components off (it does not need them), but it would no longer be
-  running on stock Next.js, and `next/font` and image handling work
-  differently there.
-- **Local development changes.** The room object runs in Cloudflare's local
-  runtime, not in Node. Whether a Durable Object in a custom worker entry
-  runs under each dev flow could not be confirmed from the docs.
+- **Socket.IO does not run on Workers.** The transport is plain WebSockets
+  with a small request and answer layer of our own
+  (`src/client/connection.ts`).
+- **Nothing may live only in memory.** Every change is saved, each socket
+  remembers its seat in its attachment, and anything that must happen later
+  is an alarm. This is a discipline, kept by review and by the restart check.
 - **Free-plan CPU is 10 ms per request.** Fine for the room object. Not yet
-  measured for server-rendering this app's pages.
+  measured for server-rendering the art-heavy pages. If a page exceeds it,
+  that route can be rendered in the browser instead, or the 5 USD plan
+  removes the limit.
 
-Cloudflare Containers (generally available, paid plan only) could run the
-existing Node server, but containers sleep, lose their disk and are reached
-through a Durable Object anyway. That is Option A with more parts, so it is
-not considered further.
-
-**Assessment.** Durable Objects are the best serverless fit for this game,
-better than Vercel's WebSockets (Option C), and arguably a better long-term
-home than Option A: free when idle, nothing to keep alive, games survive
-deploys. The unknown is not the real-time part; it is running this Next.js
-16.4 app on Workers through a beta or buggy adapter.
-
-**What this means for the plan.** The game engine, `projectView`, the view
-and protocol types and every screen are the same in Options A and D. Only
-the transport and the store differ (`server.ts`, `attach.ts`,
-`room-store.ts`, `src/client/socket.ts`). So:
-
-1. Build the game on Option A, which is proven in this repo.
-2. In Phase 1, keep the client behind one small interface
-   (`request(event, payload)` returning a `Result`, and `onState`), so
-   nothing above it knows about Socket.IO.
-3. If Cloudflare is wanted, run a short trial before or after the game is
-   built: deploy this app to Workers with the room as a Durable Object and
-   see whether the adapter holds. That needs a Cloudflare account and the
-   owner's approval.
+Cloudflare Containers (generally available, paid plan only) could have run
+the Option A server unchanged, but containers sleep, lose their disk and are
+reached through a Durable Object anyway. That is Option A with more parts.
 
 ### Comparison
 
-Options A to C (Option D is assessed in its own section above).
+|                                   | A: Node server, one service       | B: Vercel + PartyServer         | B: Vercel + Ably                         | C: Vercel WebSockets + Redis               | D: Cloudflare Worker + Durable Objects |
+| --------------------------------- | --------------------------------- | ------------------------------- | ---------------------------------------- | ------------------------------------------ | -------------------------------------- |
+| Pieces to deploy                  | 1                                 | 2                               | 3 (Vercel, Ably, database)               | 2 (Vercel, Redis)                          | 1                                      |
+| One app, one deploy               | Yes                               | No                              | Code yes, services no                    | Code yes, plus one service                 | Yes                                    |
+| Where game state lives            | Process memory                    | Durable Object                  | External database                        | Redis                                      | Durable Object storage                 |
+| Authoritative logic               | In process                        | In the room object              | Stateless functions with locking         | Stateless functions with locking           | In the room object                     |
+| Per-player filtering              | Function call, emit per player    | Send per connection             | One channel per player, token-restricted | Per socket, through publish and subscribe  | Function call, send per socket         |
+| Reconnection                      | Socket.IO, then resume with token | Library, then resume with token | Library, then resume with token          | Hand-written; forced every 5 to 13 minutes | Small client, then resume with token   |
+| Survives a deploy                 | No                                | Yes                             | Yes                                      | Yes                                        | Yes (proven locally)                   |
+| Local development matches hosting | Yes                               | Two dev servers                 | Needs the service or a mock              | Needs Vercel's dev tooling and Redis       | Yes, same runtime                      |
+| Monthly cost at hobby scale       | About 5 USD                       | 0 to 5 USD                      | 0 USD until limits, then 35 USD and up   | 0 USD on free tiers (non-commercial)       | 0 USD on the free plan                 |
+| Accounts to create                | 1                                 | 2                               | 3                                        | 2                                          | 1                                      |
 
-|                                   | A: custom server, one service     | B: Vercel + PartyServer             | B: Vercel + Ably                         | C: Vercel WebSockets + Redis               |
-| --------------------------------- | --------------------------------- | ----------------------------------- | ---------------------------------------- | ------------------------------------------ |
-| Pieces to deploy                  | 1                                 | 2                                   | 3 (Vercel, Ably, database)               | 2 (Vercel, Redis)                          |
-| "One Next.js app"                 | Yes (not on Vercel)               | No (game code is a separate Worker) | Yes for code, plus two services          | Yes for code, plus one service             |
-| Where game state lives            | Process memory                    | Durable Object memory and storage   | External database                        | Redis                                      |
-| Authoritative logic               | In process                        | In the room object                  | In stateless functions with locking      | In stateless functions with locking        |
-| Per-player filtering              | Function call, emit per player    | Send per connection                 | One channel per player, token-restricted | Per socket, through publish and subscribe  |
-| Reconnection                      | Socket.IO, then resume with token | Library, then resume with token     | Library, then resume with token          | Hand-written; forced every 5 to 13 minutes |
-| Survives a deploy                 | No (unless snapshot is added)     | Yes if written to storage           | Yes                                      | Yes                                        |
-| Local development matches hosting | Yes, same `server.ts`             | Two dev servers                     | Needs the service or a mock              | Needs Vercel's dev tooling and Redis       |
-| Monthly cost at hobby scale       | About 5 USD                       | 0 to 5 USD                          | 0 USD until limits, then 35 USD and up   | 0 USD on free tiers (non-commercial)       |
-| Accounts to create                | 1                                 | 2                                   | 3                                        | 2                                          |
-
-### Decision: Option A
+### Decision: Option D
 
 Avalon's state is tiny, changes a few times a minute, and has two hard
-requirements: one authority, and secrets that never reach the wrong client.
-The simplest design that meets both is one process that owns the state in
-memory and decides, per player, what to send. Option A is exactly that and
-nothing else:
+requirements: one authority per room, and secrets that never reach the wrong
+client. Options A and D both give exactly that, with filtering as one pure
+function. D adds what A could not: games survive deploys, nothing runs or
+bills while nobody plays, and there is no single process to keep alive.
 
-- No distributed state. No locks, no cache, no publish and subscribe layer
-  that carries secrets.
-- Filtering is one pure function that can be tested exhaustively.
-- One codebase, one process, one deploy. Local development runs the same
-  `server.ts` that production runs, so the real-time path proven in this
-  checkpoint is the path that ships.
-- A flat, small bill.
-
-What it costs, plainly: the app is not on Vercel, it runs as a single
-instance, and a deploy interrupts games in progress. For a game played by a
-handful of friends at a time, those are acceptable. A single Node process can
-hold thousands of sockets, so the one-instance rule is not a practical limit
-here.
-
-**The small extra piece** the brief asked about: there is none at runtime.
-The one thing that is not stock Next.js is `server.ts` (about 50 lines), and
-the production build has a second step that bundles it (`pnpm build` runs
-`next build` and then `esbuild`).
-
-**What would change this decision.** Wanting Vercel hosting and previews more
-than simplicity, or needing more than one instance or region. The move would
-then be to Option C. The code is laid out so that only two files would be
-replaced (`src/server/rooms/room-store.ts` and
-`src/server/realtime/attach.ts`); the game engine, the view projection, the
-protocol types and every screen stay as they are.
+What D costs is discipline about memory (above) and a host-specific server
+entry. The game engine, `projectView`, the view and protocol types and every
+screen do not know which host they run on.
 
 ### Sources (read 15 November 2026)
 
@@ -270,76 +234,157 @@ protocol types and every screen stay as they are.
   <https://github.com/cloudflare/partykit/tree/main/packages/partyserver>
 - Cloudflare Containers: <https://developers.cloudflare.com/containers/faq/>
 
-Not confirmed from a primary source: whether Railway's app sleeping closes
-open WebSockets, and whether an idle open socket counts as load for Fly.io's
-autostop. Both features must simply be switched off (see
-[Deployment](#deployment)).
+Not confirmed from a primary source: whether a Durable Object exported from
+a custom server entry runs under every local dev flow. It does under
+`vite dev` and `vite preview` with the Cloudflare Vite plugin, which is what
+this repo uses and tests.
+
+## The framework decision
+
+With Cloudflare as the host, the choice was between Next.js 16 and TanStack
+Start. Facts checked on 15 November 2026.
+
+|                                | Next.js 16 on Cloudflare                                                                                                                                                   | TanStack Start on Cloudflare                                                               |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| How it runs on Workers         | Through `vinext` (beta, Cache Components incomplete) or OpenNext (open bugs with Cache Components on 16.4). Cloudflare's official Next.js adapter is still in development. | Official guides from Cloudflare and from TanStack. Cloudflare built the Vite integration.  |
+| Local development              | Next.js runs in Node. The Worker runtime is only used in a preview step.                                                                                                   | `vite dev` runs the server code in Cloudflare's local runtime, the same one as production. |
+| Where the room server plugs in | A custom worker entry wrapped around an adapter's output.                                                                                                                  | A documented custom server entry (`src/server.ts`) that exports the Durable Object class.  |
+| What this app uses of it       | Very little: no Server Components, caching or image pipeline.                                                                                                              | Routes, typed links and params, one server function, the server entry.                     |
+| Maturity                       | Very mature, but not on this host.                                                                                                                                         | 1.0 stable since 13 October 2026. Young, with frequent releases.                           |
+
+**Decision: TanStack Start.** The app is a client-rendered game driven by a
+socket. Next.js's strengths go unused here, and on Cloudflare it works against
+the platform. Moving to Cloudflare already meant replacing Socket.IO and the
+in-memory store, so the framework changed in the same step, before any game
+logic existed.
+
+What it costs, plainly:
+
+- The framework is one month past 1.0. Work from the current docs, not from
+  memory.
+- Static prerendering and SPA mode have open bugs with the Cloudflare plugin
+  (TanStack/router issues 7481, 6330, 7740, 7527). This app uses plain server
+  rendering, the default, which avoids both. Do not turn those features on
+  without checking the issues.
+- There is no `next/font`. Fonts are self-hosted with Fontsource packages
+  (same open licences).
+
+Sources:
+<https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/>,
+<https://tanstack.com/blog/tanstack-start-1-0>,
+<https://tanstack.com/start/latest/docs/framework/react/guide/server-entry-point>,
+<https://tanstack.com/start/latest/docs/framework/react/guide/hosting>,
+<https://developers.cloudflare.com/workers/vite-plugin/>.
 
 ## App structure
 
 ```
 avalon/
-├── server.ts                    The custom server: Next.js + Socket.IO on one port
+├── wrangler.jsonc               The Worker: entry file and the ROOM Durable Object binding
+├── vite.config.ts               Cloudflare plugin, Tailwind, TanStack Start, React
 ├── src/
-│   ├── app/                     Next.js routes (App Router)
-│   │   ├── page.tsx             Landing: create or join a room
-│   │   ├── room/[code]/         The room: lobby and game, one client screen driven by RoomView
-│   │   ├── api/health/route.ts  Liveness check
-│   │   └── design/              The three design prototypes (removed after the pick)
-│   ├── shared/                  Used by both server and browser. Plain TypeScript and zod only.
+│   ├── server.ts                The Worker entry: sockets go to room objects, the rest to TanStack Start
+│   ├── router.tsx               Router setup
+│   ├── routes/                  File-based routes
+│   │   ├── __root.tsx           Document shell, global styles, not-found page
+│   │   ├── index.tsx            Landing: create or join a room
+│   │   ├── room.$code.tsx       The room: lobby and game, one screen driven by RoomView
+│   │   ├── api/health.ts        Liveness check (a server route)
+│   │   └── design/              The design prototypes (removed after the pick)
+│   ├── components/              Screens and components of the real app
+│   ├── functions/rooms.ts       Server functions. `createRoom` is the only one
+│   ├── shared/                  Used by both sides. Plain TypeScript, plus zod in schemas.ts only
 │   │   ├── constants.ts         Game tables: team balance, quest sizes, fail rule, limits
 │   │   ├── roles.ts             Role catalogue
 │   │   ├── views.ts             RoomView: everything a client may ever see
-│   │   ├── protocol.ts          Socket events, payload schemas, error codes
+│   │   ├── protocol.ts          Requests, messages, error codes. No runtime dependencies
+│   │   ├── schemas.ts           zod validators for everything a browser can send
 │   │   └── copy.ts              Player-facing sentences built from views
-│   ├── server/                  Runs only inside server.ts. Never imported by src/app or src/client.
-│   │   ├── rooms/room-store.ts  In-memory rooms, seats, tokens, expiry
-│   │   ├── realtime/attach.ts   Socket.IO handlers
-│   │   ├── realtime/project-view.ts  The only function that turns server state into a RoomView
+│   ├── server/                  Runs only in the Worker. Never imported by browser code
+│   │   ├── room/room-object.ts  The Durable Object: storage, sockets, alarms
+│   │   ├── room/state.ts        Room state and the rules for changing it. Pure
+│   │   ├── room/project-view.ts The only function that turns room state into a RoomView
+│   │   ├── room/code.ts         Room code generation
 │   │   └── game/                The engine (next run): state, setup, reducer, knowledge
 │   ├── client/                  Browser-only helpers
-│   │   ├── socket.ts            The one Socket.IO connection per tab
+│   │   ├── connection.ts        The room WebSocket: reconnect, heartbeat, request and answer
 │   │   ├── session.ts           Seat tokens in localStorage
 │   │   ├── room-client.ts       Holds the latest RoomView
 │   │   ├── use-room.ts          React hook over room-client
-│   │   └── use-hold-to-reveal.ts  Press-and-hold privacy behaviour
+│   │   ├── use-hydrated.ts      True once React has taken over the page
+│   │   ├── use-hold-to-reveal.ts  Press-and-hold privacy behaviour
+│   │   └── sound/               Synthesised sound cues and ambience
 │   └── design/                  Prototype-only: mock data, direction list, prototype bar
 ├── e2e/                         Playwright: *.e2e.ts (behaviour), *.shots.ts (screenshots)
+├── scripts/                     contrast.mjs (WCAG checker), restart-check.mjs (rooms survive a restart)
 ├── bruno/                       Bruno collection for HTTP endpoints
-├── scripts/contrast.mjs         WCAG contrast checker for tokens
 └── docs/                        This document and the design specs
 ```
 
 ### Routes
 
-| Route                  | Rendering                   | Purpose                                                                                                             |
-| ---------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `/`                    | Static shell, client form   | Enter a name and create a room, or enter a code to join.                                                            |
-| `/room/[code]`         | Static shell, client screen | Everything from lobby to game over. The screen is chosen from `view.stage` and `view.phase.name`, not from the URL. |
-| `/api/health`          | Dynamic route handler       | Returns `{ "status": "ok" }` for the host's health check.                                                           |
-| `/api/socket`          | Not a Next.js route         | The Socket.IO endpoint, handled by `server.ts` before Next.js sees it.                                              |
-| `/design`, `/design/*` | Static                      | Design prototypes with mock data.                                                                                   |
+| Route                  | Kind         | Purpose                                                                                                             |
+| ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `/`                    | Page         | Enter a name and create a room, or enter a code to join.                                                            |
+| `/room/$code`          | Page         | Everything from lobby to game over. The screen is chosen from `view.stage` and `view.phase.name`, not from the URL. |
+| `/api/health`          | Server route | Returns `{ "status": "ok" }`.                                                                                       |
+| `/api/socket/CODE`     | Not a route  | WebSocket upgrade, sent by `src/server.ts` straight to room CODE's Durable Object.                                  |
+| `/design`, `/design/*` | Pages        | Design prototypes with mock data.                                                                                   |
 
 The game is one route on purpose. Phase changes arrive over the socket, and a
-URL per phase would let the address bar disagree with the server.
+URL per phase would let the address bar disagree with the room.
 
-### The one rule about imports
+### Import rules
 
-Next.js bundles `src/app` separately from the custom server. A module imported
-by both sides exists twice in memory. So:
+- **Browser code never imports `src/server/**` or `cloudflare:*`.** That
+  covers `src/routes` (except `src/routes/api`), `src/components`,
+  `src/client` and `src/design`. Room state and validators stay out of the
+  browser bundle.
+- **The browser reaches the server in two ways only:** the room WebSocket
+  (`src/client/connection.ts`) and server functions in `src/functions` (the
+  bundler replaces their bodies with a network call in the browser build).
+- `src/shared/**` imports only other shared files, plus zod in `schemas.ts`.
+  `protocol.ts` has no runtime dependencies, which keeps zod out of the
+  browser bundle.
 
-- **Room and game state is only ever touched from `server.ts` and
-  `src/server/**`.** Route handlers, Server Components and Server Actions must
-  not import `src/server/**`. They would get an empty copy of the store.
-- **Every read or change of room state goes over the socket.** There are no
-  HTTP endpoints for rooms.
-- `src/shared/**` may import only zod and other shared files, so it is safe on
-  both sides.
+ESLint enforces these (`no-restricted-imports` in `eslint.config.mjs`). Typed
+routes add a second net: a link to a route that does not exist is a type
+error.
 
-ESLint enforces both rules (`no-restricted-imports` in `eslint.config.mjs`).
-`src/server/**` does not use the `server-only` package, because that package
-throws when imported outside the Next.js bundler, which is exactly where this
-code runs.
+## The room object
+
+`RoomObject` (`src/server/room/room-object.ts`) is the Durable Object class.
+The Worker reaches a room with `env.ROOM.getByName(code)`.
+
+**It sleeps, and its memory is wiped when it does.** Cloudflare puts the
+object to sleep whenever it is not handling a message, and wakes it for the
+next one. Three rules follow, and every change to this file must keep them:
+
+1. **The room is saved after every change.** `RoomState` is plain JSON under
+   one storage key. Fields on the class are only a cache of storage.
+2. **Each socket remembers its own seat** in its attachment
+   (`serializeAttachment({ playerId })`). Who is connected is read from the
+   live sockets (`ctx.getWebSockets()`), never stored.
+3. **Anything that must happen later is an alarm**, not a `setTimeout`. One
+   object has one alarm, so `nextExpiryCheck` (and later the host hand-over)
+   work out the earliest moment something is due.
+
+What it does:
+
+| Entry point          | When                                       | What happens                                                                                           |
+| -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `create(code, name)` | Called by the `createRoom` server function | Claims the object for a new room and returns the host's seat token. Returns null if the code is taken. |
+| `fetch(request)`     | A browser opens `/api/socket/CODE`         | Accepts the WebSocket. If there is no room, says so and closes with code 4004.                         |
+| `webSocketMessage`   | A browser sends a request                  | Validates the envelope and the payload, runs the handler, answers with an `ack`.                       |
+| `webSocketClose`     | A socket goes away                         | Tells everyone else, and notes the moment if the room is now empty.                                    |
+| `alarm`              | The room may have expired                  | Deletes an expired room, or sets the next check.                                                       |
+
+Pure logic stays out of this file. `state.ts` holds the rules (create, join,
+find a seat, presence, expiry) as functions from old state to new state, and
+`project-view.ts` builds views. Both are tested in plain Node.
+
+Heartbeats (`ping` and `pong`) are answered by Cloudflare without waking the
+object.
 
 ## Game engine: a plain typed reducer
 
@@ -351,12 +396,14 @@ Chosen over XState v5.
 - The server must validate every action against the full state (is this
   player the leader, is this card legal for their alignment). A reducer that
   returns either a new state or an error does that directly.
-- State is plain JSON. That makes it trivial to test, to log, to snapshot
-  later, and to feed to `projectView`.
+- State is plain JSON. The room object writes the whole room to storage
+  after every change (see [The room object](#the-room-object)), and plain
+  JSON goes in and out of storage as it is. It is also trivial to test, to
+  log and to feed to `projectView`.
 - One less library and one less mental model in a small codebase.
 
-The engine lives in `src/server/game/` and is pure: no sockets, no clock, no
-`Math.random`.
+The engine lives in `src/server/game/` and is pure: no sockets, no storage,
+no clock, no `Math.random`. The room object calls it and saves the result.
 
 ```ts
 // src/server/game/state.ts
@@ -455,64 +502,62 @@ and `.claude/rules/roles.md`):
 There are no reveal phases and no server timers. A vote result or a quest
 result is a fact in the state (`proposals`, `quests`). The client notices that
 the list grew and plays the reveal animation; the game has already moved on.
-A player who reconnects simply sees the current state.
+A player who reconnects simply sees the current state. No timers also means
+nothing in the engine needs the room object to stay awake.
 
 ## Room and session state
 
-`RoomStore` (`src/server/rooms/room-store.ts`) keeps a `Map` of rooms.
-
 ```ts
-interface RoomRecord {
+// src/server/room/state.ts
+interface RoomState {
   code: RoomCode; // 4 letters, see below
   hostId: PlayerId;
   players: PlayerRecord[]; // seat order
   settings: GameSettings;
   createdAt: number;
-  emptySince: number | null;
+  emptySince: number | null; // when the last seated socket left
   game: GameState | null; // null means "in the lobby" (typed as null until the engine lands)
 }
 
 interface PlayerRecord {
   id: PlayerId; // random UUID
   name: string;
-  tokenHash: Buffer; // SHA-256 of the seat secret
+  tokenHash: string; // SHA-256 of the seat secret, hex
   joinedAt: number;
   ready: boolean;
-  socketIds: Set<string>; // connected while not empty
 }
 ```
 
 - **Room codes** are 4 letters from `BCDFGHJKMNPQRSTVWXZ`: no vowels (so no
   accidental words), no look-alike letters, letters only (so a phone keyboard
-  never has to switch to digits). About 130,000 codes. Most players will join
-  from a shared link anyway.
+  never has to switch to digits). About 130,000 codes. The Worker picks a
+  random code and asks that room object to `create`; if the object already
+  holds a room it tries another code.
 - **Names** are 1 to 16 characters, letters and digits in any script plus
   space, hyphen, apostrophe and underscore, unique in the room ignoring case.
-- **Expiry.** A sweep runs every minute. A room with nobody connected for 10
-  minutes is deleted. Any room is deleted after 12 hours.
-- **No persistence.** Rooms live and die with the process.
-
-### Deploys and restarts
-
-A restart ends every game in progress. For now the answer is: deploy when
-nobody is playing. If that becomes annoying, the optional last phase of the
-plan adds a snapshot: on `SIGTERM` write all rooms (they are plain JSON) to a
-file on a volume, load it on boot, and let clients resume with their tokens.
+- **Expiry.** A room with nobody connected for 10 minutes is deleted, and any
+  room is deleted after 12 hours. An alarm does this.
+- **Storage.** One key per room in the room object's own storage. There is no
+  other database.
 
 ## Player identity and reconnection
 
 There are no accounts. A player is a seat in one room.
 
-1. **Create or join.** The browser sends `room:create { name }` or
-   `room:join { code, name }`. The server makes a `PlayerRecord` and a random
-   256-bit secret, stores only the secret's hash, and answers with the seat
-   token `CODE.secret`.
-2. **Remember.** The browser stores the token in `localStorage` under
+1. **Create.** The landing page calls the `createRoom` server function with a
+   name. It returns the room code and the host's seat token. This is the one
+   room operation that is not a socket message, because there is no room to
+   send it to yet.
+2. **Join.** The browser opens the room's socket and sends `room:join` with a
+   name. The room makes a `PlayerRecord` and a random 256-bit secret, stores
+   only the secret's hash, and answers with the seat token `CODE.secret`.
+3. **Remember.** The browser stores the token in `localStorage` under
    `avalon:seat:CODE`.
-3. **Resume.** On every socket connect (first load, refresh, phone waking up,
-   network change) the browser sends `room:resume { token }`. The server finds
-   the seat, binds the socket and sends the current `RoomView`. A token that
-   matches nothing clears the stored token and shows the join form.
+4. **Resume.** On every socket open (first load, refresh, phone waking up,
+   network change, server restart) the browser sends `room:resume` with the
+   token. The room binds the socket to the seat and sends the current
+   `RoomView`. A token that matches nothing clears the stored token and shows
+   the join form.
 
 Details:
 
@@ -522,15 +567,15 @@ Details:
   game simply waits for them. Others see them as "away".
 - The host can remove a player in the lobby (`lobby:kick`). Not during a game.
 - If the host is away for 60 seconds, the host role passes to the next
-  connected player in seat order. This is a timer in `attach.ts`, not in the
-  engine.
-- Tokens are opaque, not JWTs. The server has to look the seat up in memory
-  anyway, so a signed token adds a secret to manage and nothing else. A token
-  dies with its room.
+  connected player in seat order. This is an alarm in the room object, not
+  part of the engine.
+- Tokens are opaque, not JWTs. The room has to look the seat up anyway, so a
+  signed token adds a secret to manage and nothing else. A token dies with
+  its room.
 - The token is in `localStorage`, not a cookie: it is sent in a socket
-  message, so there is no cross-site request risk, and it keeps Next.js
-  rendering free of per-user data. Names are validated and React escapes
-  output, which covers the script-injection risk that `localStorage` carries.
+  message, so there is no cross-site request risk. Names are validated and
+  React escapes output, which covers the script-injection risk that
+  `localStorage` carries.
 - Testing several players in one browser needs separate profiles or private
   windows, because tabs share `localStorage`. Playwright uses separate
   contexts.
@@ -538,22 +583,21 @@ Details:
 ## How role-filtered state reaches each client
 
 ```
-phone A ── game:action ──▶ attach.ts ──▶ applyAction(state, A, action) ──▶ new state
-                                                                              │
-                         for each connected player P:                         ▼
-phone P ◀── room:state ── emit to channel player:CODE:P ◀── projectView(room, P)
+phone A ── game:action ──▶ room object ──▶ applyAction(state, A, action) ──▶ new state ──▶ storage
+                                                                                 │
+                         for each socket with a seat P:                          ▼
+phone P ◀───── state ────── socket.send ◀───────────────────── projectView(state, P, connected)
 ```
 
-1. Every in-game move is one event, `game:action`, validated with zod and then
-   by the reducer.
-2. If the reducer accepts it, the room's state is replaced.
-3. `publish(room)` loops over connected players. For each one it calls
-   `projectView(room, playerId)` and emits the result to that player's own
-   Socket.IO channel (`player:CODE:playerId`). Nothing is ever emitted to a
-   whole room.
+1. Every in-game move is one request, `game:action`, validated with zod and
+   then by the reducer.
+2. If the reducer accepts it, the room's state is replaced and saved.
+3. `publish` loops over the sockets. For each seated socket it calls
+   `projectView(state, playerId, connected)` and sends the result on that
+   socket. There is no broadcast.
 
-`projectView` is the only code allowed to turn server state into something
-sent to a client. What it does per viewer:
+`projectView` is the only code allowed to turn room state into something sent
+to a client. What it does per viewer:
 
 | Data                     | What the viewer gets                                                                                                                                                                                   |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -577,42 +621,55 @@ sent, so there is no order to leak).
 
 ## Protocol
 
-Defined in `src/shared/protocol.ts`, typed on both ends. Every request has an
-acknowledgement of type `Result<T>` (`{ ok: true, data }` or
-`{ ok: false, error: { code, message } }`).
+Defined in `src/shared/protocol.ts`, validated by `src/shared/schemas.ts`.
 
-| Event            | Direction        | Payload                            | Who              | Status                            |
-| ---------------- | ---------------- | ---------------------------------- | ---------------- | --------------------------------- |
-| `room:create`    | client to server | `{ name }`                         | anyone           | Implemented                       |
-| `room:join`      | client to server | `{ code, name }`                   | anyone           | Implemented                       |
-| `room:resume`    | client to server | `{ token }`                        | seat holder      | Implemented                       |
-| `room:leave`     | client to server | none                               | seated, lobby    | Next run                          |
-| `lobby:ready`    | client to server | `{ ready }`                        | seated           | Next run                          |
-| `lobby:settings` | client to server | `{ optionalRoles, ladyOfTheLake }` | host             | Next run                          |
-| `lobby:kick`     | client to server | `{ playerId }`                     | host             | Next run                          |
-| `lobby:start`    | client to server | none                               | host             | Next run                          |
-| `game:action`    | client to server | `GameAction` (see below)           | depends          | Next run                          |
-| `room:reset`     | client to server | none                               | host             | Next run                          |
-| `room:watch`     | client to server | `{ code }`                         | anyone (no seat) | Next run                          |
-| `room:state`     | server to client | `RoomView`                         | one player       | Implemented                       |
-| `room:closed`    | server to client | `{ reason }`                       | one player       | Implemented (type), sent next run |
+**Messages.** JSON over the room's WebSocket.
+
+| Direction       | Shape                                 | Meaning                                                                                        |
+| --------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Browser to room | `{ id, event, payload }`              | A request. `id` is a number the browser picks.                                                 |
+| Room to browser | `{ type: "ack", id, result }`         | The answer to request `id`: `{ ok: true, data }` or `{ ok: false, error: { code, message } }`. |
+| Room to browser | `{ type: "state", view }`             | The full `RoomView` for this player.                                                           |
+| Room to browser | `{ type: "closed", reason }`          | The room is gone for this socket. No reconnect follows.                                        |
+| Both            | the text `ping`, answered with `pong` | Heartbeat.                                                                                     |
+
+**Requests.**
+
+| Request          | Payload                            | Who             | Status                        |
+| ---------------- | ---------------------------------- | --------------- | ----------------------------- |
+| `createRoom`     | `{ name }`                         | anyone          | Implemented (server function) |
+| `room:join`      | `{ name }`                         | anyone          | Implemented                   |
+| `room:resume`    | `{ token }`                        | seat holder     | Implemented                   |
+| `room:watch`     | none                               | anyone, no seat | Next run                      |
+| `room:leave`     | none                               | seated, lobby   | Next run                      |
+| `lobby:ready`    | `{ ready }`                        | seated          | Next run                      |
+| `lobby:settings` | `{ optionalRoles, ladyOfTheLake }` | host            | Next run                      |
+| `lobby:kick`     | `{ playerId }`                     | host            | Next run                      |
+| `lobby:start`    | none                               | host            | Next run                      |
+| `game:action`    | `GameAction` (see below)           | depends         | Next run                      |
+| `room:reset`     | none                               | host            | Next run                      |
 
 `GameAction` is one of: `confirm_role`, `draft_team { playerIds }`,
 `propose_team { playerIds }`, `vote { vote }`, `play_card { card }`,
 `lady_examine { targetId }`, `assassinate { targetId }`.
 
-The server sends one kind of state message: a complete `RoomView`. There are
-no partial updates and no per-event messages (`vote_revealed`, `quest_result`
-and the rest of the old event list are gone). A view is a few kilobytes at
-most, so sending all of it is cheap, and it removes a whole class of ordering
-and reconnect bugs.
+The room sends one kind of state message: a complete `RoomView`. There are no
+partial updates and no per-event messages. A view is a few kilobytes at most,
+so sending all of it is cheap, and it removes a whole class of ordering and
+reconnect bugs.
+
+A request the room does not handle yet is answered with `NOT_ALLOWED`, so a
+newer client against an older room fails politely.
 
 ## Client
 
-- `src/client/socket.ts` opens one same-origin Socket.IO connection per tab
-  (WebSocket first, long-polling as a fallback).
-- `src/client/room-client.ts` listens for `room:state` and keeps the latest
-  view. `useRoom(code)` exposes it to React with `useSyncExternalStore`.
+- `src/client/connection.ts` owns the WebSocket: it reconnects with a growing
+  delay, reconnects at once when the tab or the network comes back, sends a
+  heartbeat so a phone that slept notices a dead socket, and turns requests
+  into promises that always resolve (with an `OFFLINE` error if the socket is
+  down). Nothing above it knows the transport is a WebSocket.
+- `src/client/room-client.ts` keeps the latest view and resumes the seat on
+  every open. `useRoom(code)` exposes it to React with `useSyncExternalStore`.
 - Screens are pure functions of the view: `stage` picks lobby or game,
   `phase.name` picks the game screen. The client holds no game state of its
   own beyond short-lived UI state (a selection in progress, an open sheet).
@@ -620,61 +677,59 @@ and reconnect bugs.
   finished quests grows between two views. On first load nothing animates.
 - Secret content uses `useHoldToReveal`: hidden by default, visible only
   while pressed, hidden again on release, blur or tab switch.
-- Quest cards must not give a player's side away to someone glancing at
-  their phone. Both cards look the same and both can be tapped by everyone.
-  A Good player's Fail is refused by the server, and the refusal is shown only
-  after that tap. Once a vote or a card is locked, the screen says only that
-  it is locked; the player's own choice is shown again only on press and
-  hold. (The prototypes do not do this yet: they show Fail as disabled for a
-  Good player. Phase 3 fixes it.)
-- No Zustand (one server-sent object is the whole store) and no shadcn/ui (the
-  chosen direction's components are bespoke; native elements such as
+- Quest cards must not give a player's side away to someone glancing at their
+  phone. Both cards look the same and both can be tapped by everyone. A Good
+  player's Fail is refused by the room, and the refusal is shown only after
+  that tap. Once a vote or a card is locked, the screen says only that it is
+  locked; the player's own choice is shown again only on press and hold. (The
+  prototypes do not do this yet: they show Fail as disabled for a Good
+  player. Phase 3 fixes it.)
+- Forms read their fields when they are submitted (not from React state), and
+  submit buttons stay disabled until the page has hydrated (`useHydrated`).
+  Nothing typed early is lost, and an early tap cannot trigger the browser's
+  own form submission.
+- Sound is synthesised in the browser (`src/client/sound`), and stays off
+  until the player turns it on.
+- No Zustand (one server-sent object is the whole store) and no shadcn/ui
+  (the chosen direction's components are bespoke; native elements such as
   `<dialog>` cover the rest).
-
-Next.js notes that affect client code: Cache Components is on, so routes are
-static shells and dynamic `params` are read inside `<Suspense>`; and after a
-client-side navigation the previous route stays mounted but hidden, so
-effects must clean up and tests should locate elements by role.
 
 ## Deployment
 
-Nothing was deployed in this checkpoint. Deploying needs the owner's approval.
+Nothing was deployed in this checkpoint. Deploying needs the owner's approval
+and a Cloudflare account.
 
-**Recommended: Railway, one service.**
+| Step            | What                                                                                                                                      |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Account         | A Cloudflare account. The free plan is enough to start.                                                                                   |
+| Deploy          | `pnpm run deploy` (builds, then `wrangler deploy`). The first deploy creates the Worker and the `RoomObject` class from `wrangler.jsonc`. |
+| Address         | `avalon.<account>.workers.dev` by default. A custom domain is optional.                                                                   |
+| Secrets         | None. There are no environment variables.                                                                                                 |
+| After deploying | Play one game on two phones. Check the Worker's CPU time for the landing and prototype pages against the free plan's 10 ms.               |
 
-| Setting       | Value                                                                                                    |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| Build command | `pnpm install --frozen-lockfile && pnpm build`                                                           |
-| Start command | `pnpm start` (runs `node dist/server.mjs`)                                                               |
-| Health check  | `GET /api/health`                                                                                        |
-| Replicas      | Exactly 1. Never more.                                                                                   |
-| App sleeping  | Off ("serverless" mode off). The process must stay up to hold sockets.                                   |
-| Node          | 24 (`.nvmrc`, `engines`)                                                                                 |
-| Environment   | `PORT` is provided by the platform. `NODE_ENV=production` is set by `pnpm start`. No secrets are needed. |
-
-Fly.io works the same way with one machine, `auto_stop_machines` off and
-`min_machines_running = 1`.
-
-`next build` cannot use `output: "standalone"` with a custom server, so the
-service needs `node_modules` at runtime. The platform's default Node builder
-handles that. There is no Dockerfile yet (Docker was not available to test
-one in this checkpoint).
+Changing the Durable Object class (renaming or deleting it) needs a new entry
+under `migrations` in `wrangler.jsonc`. Changing `RoomState` in a way old
+stored rooms cannot be read as needs either a version field and an upgrade
+step in `load`, or a deploy at a time when no rooms exist (rooms live at most
+12 hours).
 
 ## Testing
 
-| Layer             | Tool                                                               | What it covers                                                                                                                                                                                              |
-| ----------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared tables     | Vitest (`src/shared/*.test.ts`)                                    | Team balance, quest sizes, the two-fail rule, name and code cleanup.                                                                                                                                        |
-| Room store        | Vitest (`src/server/rooms/*.test.ts`)                              | Create, join, resume, seat tokens, connection tracking, expiry. Clock and randomness are injected.                                                                                                          |
-| Engine (next run) | Vitest (`src/server/game/*.test.ts`)                               | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                    |
-| View projection   | Vitest                                                             | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own. |
-| Sockets           | Vitest + `socket.io-client` (`src/server/realtime/attach.test.ts`) | Real sockets against an in-process server: each player receives only their own view, resume, error answers.                                                                                                 |
-| Browser flows     | Playwright (`e2e/*.e2e.ts`)                                        | Separate browser contexts as separate phones against the production build. Now: join, presence, drop, return. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport.     |
-| HTTP              | Bruno (`bruno/`)                                                   | The health endpoint.                                                                                                                                                                                        |
-| Design            | Playwright (`e2e/*.shots.ts`)                                      | Screenshots of every prototype screen at 390px and 1440px.                                                                                                                                                  |
+| Layer               | Tool                                              | What it covers                                                                                                                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shared tables       | Vitest (`src/shared/*.test.ts`)                   | Team balance, quest sizes, the two-fail rule, name and code cleanup.                                                                                                                                                                                                                             |
+| Room rules          | Vitest (`src/server/room/*.test.ts`)              | Create, join, seat tokens, presence, expiry, and that state is plain JSON. Clock and randomness are passed in.                                                                                                                                                                                   |
+| Engine (next run)   | Vitest (`src/server/game/*.test.ts`)              | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                                                                                                         |
+| View projection     | Vitest                                            | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own.                                                                                      |
+| Room object and app | Playwright (`e2e/*.e2e.ts`)                       | Separate browser contexts as separate phones, against the built Worker in Cloudflare's local runtime. Now: create, join, presence, drop, return, and that each browser is only ever sent its own view. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport. |
+| Restart             | `pnpm test:restart` (`scripts/restart-check.mjs`) | A room and its seats survive the server process being stopped and started, with no page reload.                                                                                                                                                                                                  |
+| HTTP                | Bruno (`bruno/`)                                  | The health endpoint.                                                                                                                                                                                                                                                                             |
+| Design              | Playwright (`e2e/*.shots.ts`)                     | Screenshots of every prototype screen at 390px and 1440px, with no console errors and no sideways scrolling.                                                                                                                                                                                     |
 
-`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` and `pnpm test:e2e`
-run in GitHub Actions on every pull request (`.github/workflows/ci.yml`).
+The room object is tested through real browsers and a real local Worker, not
+with a mocked runtime. `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+`pnpm build`, `pnpm test:e2e` and `pnpm test:restart` run in GitHub Actions on
+every pull request (`.github/workflows/ci.yml`).
 
 ## What happened to the decisions in `plans/01-lobby-endpoints.md`
 
@@ -683,8 +738,8 @@ decisions were treated as input.
 
 | #   | Old decision                                                                       | Now                                                                                                                                                     |
 | --- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | HTTP creates the room, then the client opens a socket                              | **Dropped.** Create and join are socket events. Room state lives in the custom server, which Next.js route handlers cannot reach (see the import rule). |
-| 2   | Short-lived signed JWT per player                                                  | **Dropped.** Opaque random seat token, hashed on the server. Nothing to sign, no secret to configure, dies with the room.                               |
+| 1   | HTTP creates the room, then the client opens a socket                              | **Kept in spirit.** Creating a room is a server function, because the room object does not exist yet. Joining and everything after are socket requests. |
+| 2   | Short-lived signed JWT per player                                                  | **Dropped.** Opaque random seat token, hashed in the room. Nothing to sign, no secret to configure, dies with the room.                                 |
 | 3   | Ready state is sticky                                                              | **Kept.** Ready never resets by itself.                                                                                                                 |
 | 4   | Host disconnect destroys the room at once                                          | **Dropped.** Phones lock their screens all the time. The host's seat is held like anyone's, and the host role moves on after 60 seconds away.           |
 | 5   | Settings checked for shape on update, for rules at start                           | **Kept, and extended.** The lobby view also carries `startBlockers`, so the host sees why Start is disabled before pressing it.                         |
@@ -694,41 +749,51 @@ decisions were treated as input.
 | 9   | A non-host's seat is held; host can kick; start needs everyone connected and ready | **Kept**, and now applies to the host too.                                                                                                              |
 | n/a | 6-character codes with digits                                                      | **Changed** to 4 letters, easier to say and type across a table.                                                                                        |
 | n/a | One socket per player (new connection kicks the old)                               | **Changed.** Several sockets per seat are allowed.                                                                                                      |
-| n/a | One event per thing that happens                                                   | **Replaced** by one full `room:state` view per player.                                                                                                  |
+| n/a | One event per thing that happens                                                   | **Replaced** by one full `state` message per player.                                                                                                    |
+| n/a | In-memory rooms on one Node server                                                 | **Replaced** by one Durable Object per room with stored state.                                                                                          |
 
 ## Implementation plan for the next run
 
-Each phase ends with `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`
-and `pnpm test:e2e` passing, and one commit or more. Phases are in dependency
-order. Nothing in them needs a new decision except the open points listed under
-[Owner decisions](#owner-decisions).
+Each phase ends with `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`,
+`pnpm test:e2e` and `pnpm test:restart` passing, and one commit or more.
+Phases are in dependency order. Nothing in them needs a new decision except
+the open point listed under [Owner decisions](#owner-decisions).
+
+In every phase that touches the room object: the three rules in
+[The room object](#the-room-object) hold. New state goes in `RoomState` and is
+saved; nothing is kept only in a field; anything timed is an alarm.
 
 ### Phase 0: adopt the chosen design direction
 
-- Move the winner's tokens from `src/app/design/<d>/theme.css` to `:root` in
-  `src/app/globals.css` and its fonts to `src/app/layout.tsx`.
-- Move its components from `src/app/design/<d>/_components` to
-  `src/components/`, keeping the ones the real screens need.
-- Delete `src/app/design/`, `src/design/`, the other two specs and their
-  screenshots, the `screenshots` Playwright project and `e2e/design.shots.ts`.
-  Keep the winner's spec as `docs/design-system.md` and rewrite
-  `.claude/rules/design-system.md` from it.
-- Restyle `/` and the `/room/[code]` placeholder with the real components.
-- Done when: `/` and `/room/[code]` look like the chosen direction at 390px
-  and 1440px (screenshots), and the existing e2e test still passes.
+- Move the winner's tokens from `src/routes/design/<d>/-theme.css` to `:root`
+  in `src/styles.css`, and its font stylesheet to the root route.
+- Move its components from `src/routes/design/<d>/-components` to
+  `src/components/`, keeping the ones the real screens need. Replace
+  `ProtoLink` with the router's typed `Link`.
+- Delete `src/routes/design/`, `src/design/`, the other two specs and their
+  screenshots, the unused font packages, the `screenshots` Playwright project
+  and `e2e/design.shots.ts`. Keep the winner's spec as `docs/design-system.md`
+  and rewrite `.claude/rules/design-system.md` from it.
+- Restyle `/` and the `/room/$code` placeholder with the real components.
+- Done when: `/` and `/room/$code` look like the chosen direction at 390px
+  and 1440px (screenshots), and the existing e2e tests still pass.
 
 ### Phase 1: the lobby
 
-- Server: handlers for `lobby:ready`, `lobby:settings`, `lobby:kick`,
-  `room:leave` in `attach.ts`, with the matching methods on `RoomStore`.
-  Host-only checks. Host hand-over after 60 seconds away. `room:closed` sent
-  to a kicked player. `settingsBlockers` in `src/server/game/setup.ts`, added
-  to `startBlockers` in `projectView`. A simple per-socket rate limit.
+- Room: handlers for `lobby:ready`, `lobby:settings`, `lobby:kick` and
+  `room:leave` in `room-object.ts`, with the rules as pure functions in
+  `state.ts`. Host-only checks. Host hand-over after 60 seconds away, as an
+  alarm (extend `nextExpiryCheck` into one "what is due next" function). A
+  kicked player's sockets get `closed` with reason `kicked`.
+  `settingsBlockers` in `src/server/game/setup.ts`, added to `startBlockers`
+  in `projectView`. A per-socket message budget kept in the socket's
+  attachment.
 - Client: the real lobby screen from the prototype, driven by `LobbyView`:
   code with copy and share, player list, ready toggle, host settings, start
   button with blocker messages (`startBlockerMessages`).
-- Tests: store and socket tests for every handler and every refusal; e2e with
-  five contexts that ready up until Start enables.
+- Tests: unit tests for every rule and refusal; e2e with five contexts that
+  ready up until Start enables; the restart check extended to a lobby with
+  ready states.
 
 ### Phase 2: the engine
 
@@ -737,11 +802,12 @@ order. Nothing in them needs a new decision except the open points listed under
   `knowledge.ts`, `engine.ts` (`startGame`, `applyAction`) for
   `confirm_role`, `draft_team`, `propose_team`, `vote`, `play_card`, with all
   win and loss conditions except assassination and the Lady.
-- `RoomRecord.game` becomes `GameState | null`. `lobby:start` calls
-  `startGame`. `game:action` calls `applyAction` and then `publish`.
+- `RoomState.game` becomes `GameState | null`. `lobby:start` calls
+  `startGame`. `game:action` calls `applyAction`, saves, then publishes.
 - `projectView` produces `GameView` exactly as described under
   [How role-filtered state reaches each client](#how-role-filtered-state-reaches-each-client).
-- `AVALON_SEED` environment variable selects the seeded `Rng` for e2e runs.
+- An `AVALON_SEED` variable (`vars` in `wrangler.jsonc`, set only for tests)
+  selects the seeded `Rng` for e2e runs.
 - Tests: the engine and projection rows of the testing table, including the
   leak test. This phase has no UI.
 
@@ -749,10 +815,11 @@ order. Nothing in them needs a new decision except the open points listed under
 
 - Role reveal, then the table for `team_building`, `team_vote` and `quest`,
   from the prototype components, driven by `GameView` and sending
-  `game:action`. Vote and quest reveal overlays triggered by view changes.
-  A "my role" control that uses `useHoldToReveal`. Away markers on seats.
-  Quest cards follow the privacy rule under [Client](#client): both cards
-  look the same for every player.
+  `game:action`. Vote and quest reveal sequences triggered by view changes,
+  with the motion and sound from the chosen direction's spec. A "my role"
+  control that uses `useHoldToReveal`. Away markers on seats. Quest cards
+  follow the privacy rule under [Client](#client): both cards look the same
+  for every player.
 - Tests: e2e for a full five-player game with a fixed seed up to three quest
   results, at a phone viewport.
 
@@ -785,59 +852,59 @@ order. Nothing in them needs a new decision except the open points listed under
 A laptop or TV that shows the table to the whole room. It has no seat and
 sees nothing secret.
 
-- Protocol: a new `room:watch { code }` event. The socket joins the channel
-  `watch:CODE` and takes no seat. At most four watchers per room.
+- Protocol: the `room:watch` request. The socket's attachment becomes
+  `{ playerId: null, watching: true }`. At most four watchers per room.
 - View: a new `WatchView` (`stage: "watch"`) in `src/shared/views.ts`, built
-  by a new `projectWatchView(room)` next to `projectView`. It carries only
-  public facts: players, settings, quests, score, leader, rejected-team
-  count, finished votes, who has voted or played so far, the Lady's holder,
-  and at the end the roles. It has no `you`, no knowledge, no unrevealed
-  vote and no quest card. To keep the two views honest, `PhaseView` is split
-  into a public part that both use and the private fields that only
-  `GameView` adds (`youConfirmed`, `yourVote`, `onTeam`, `yourCard`).
-- Delivery: `publish(room)` also emits the one watch view to `watch:CODE`.
-  This is the only view sent to more than one socket, and it is safe to do
-  so because it contains nothing private. Update the rule in `CLAUDE.md` to
-  say: only the output of `projectView` and `projectWatchView` may be
-  emitted.
-- Route: `/room/[code]/watch`, linked from the lobby ("Show the table on a
-  big screen"). Desktop-first layout from the prototype's 1440px table. No
-  controls. This is where the full reveal animations and sound play (see the
-  chosen direction's spec); phones stay quieter.
+  by a new `projectWatchView(state, connected)` next to `projectView`. It
+  carries only public facts: players, settings, quests, score, leader,
+  rejected-team count, finished votes, who has voted or played so far, the
+  Lady's holder, and at the end the roles. It has no `you`, no knowledge, no
+  unrevealed vote and no quest card. To keep the two views honest,
+  `PhaseView` is split into a public part that both use and the private
+  fields that only `GameView` adds (`youConfirmed`, `yourVote`, `onTeam`,
+  `yourCard`).
+- Delivery: `publish` also sends the one watch view to every watching socket.
+  This is the only view sent to more than one socket, and it is safe to do so
+  because it contains nothing private. Update the rule in `CLAUDE.md` to say:
+  only the output of `projectView` and `projectWatchView` may be sent.
+- Route: `/room/$code/watch`, linked from the lobby ("Show the table on a big
+  screen"). Desktop-first layout from the prototype's 1440px table. No
+  controls. This is where the full reveal animations, ambience and sound
+  play; phones stay quieter.
 - Tests: a leak test that the serialized watch view never contains a role
   before `game_over`, a vote before the reveal, or any card; an e2e with a
   watcher context beside the player contexts.
 
 ### Phase 7: resilience and polish
 
-- Mid-game reconnect e2e (close a context during a vote, reopen, vote).
-- Offline and reconnecting banners, error messages from failed
-  acknowledgements, empty and loading states.
-- Hardening: `maxHttpBufferSize`, an `Origin` check on the socket handshake
-  in production, rate limits on create, join and watch.
+- Mid-game reconnect e2e (close a context during a vote, reopen, vote), and
+  the restart check extended to a game in progress.
+- Offline and reconnecting banners, error messages from failed requests,
+  empty and loading states.
+- Hardening: an `Origin` check on socket upgrades in `src/server.ts`, limits
+  on room creation per address, the per-socket message budget from Phase 1
+  reviewed.
 - Accessibility pass (keyboard, screen reader labels, reduced motion) and a
   performance check on a mid-range phone profile.
 
-### Phase 8 (optional, in this order)
+### Phase 8: deploy (needs approval)
 
-1. **Restart snapshot**: write rooms to a volume on `SIGTERM`, load on boot.
-2. **Deploy**: one service with the settings above. Needs approval.
+- `pnpm run deploy` to a Cloudflare account, then the checks listed under
+  [Deployment](#deployment).
 
 ## Owner decisions
 
 Answered on 15 November 2026:
 
-| Question                                                                 | Answer                                          |
-| ------------------------------------------------------------------------ | ----------------------------------------------- |
-| Room codes of 4 letters instead of 6 characters                          | Confirmed.                                      |
-| The room survives the host leaving; host role passes on after 60 seconds | Confirmed.                                      |
-| Shared table screen and Lady of the Lake                                 | Both required in the next run (Phases 5 and 6). |
+| Question                                                                 | Answer                                            |
+| ------------------------------------------------------------------------ | ------------------------------------------------- |
+| Host                                                                     | Cloudflare (Workers and Durable Objects).         |
+| Framework                                                                | TanStack Start, with one Durable Object per room. |
+| Room codes of 4 letters instead of 6 characters                          | Confirmed.                                        |
+| The room survives the host leaving; host role passes on after 60 seconds | Confirmed.                                        |
+| Shared table screen and Lady of the Lake                                 | Both required in the next run (Phases 5 and 6).   |
 
 Still open:
 
 1. **Which design direction?** The owner is leaning towards Starlit Vale and
    asked for motion and sound examples first. See `/design/starlit/motion`.
-2. **Hosting.** See [Option D](#option-d-cloudflare-workers-and-durable-objects)
-   for Cloudflare. The choice between one always-on Node service and
-   Cloudflare changes two files and the transport, so it should be made
-   before Phase 1.

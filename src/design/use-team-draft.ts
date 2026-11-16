@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import type { PlayerId } from "@/shared/views";
 

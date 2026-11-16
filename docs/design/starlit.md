@@ -2,7 +2,7 @@
 
 A painted storybook night: a camp on a hill above a sleeping valley, a deep blue sky full of stars, and one small warm fire where the secrets are told.
 
-Prototype: `/design/starlit`. Code: `src/app/design/starlit/`.
+Prototype: `/design/starlit`. Motion and sound gallery: `/design/starlit/motion`. Code: `src/routes/design/starlit/`.
 
 ## Mood
 
@@ -12,7 +12,7 @@ It is the open-air direction of the three. No wood, no parchment, no pixels, no 
 
 ## Palette
 
-Blue dominant. All values live in `theme.css` under `.theme-starlit`.
+Blue dominant. All values live in `-theme.css` under `.theme-starlit`.
 
 ### Primitives
 
@@ -154,7 +154,7 @@ Colour is never the only signal:
 | Display | Fraunces    | 500, 600 (variable)           | Wordmark, headings, the room code, numbers in stars and moons, vote and card labels |
 | Body    | Nunito Sans | 400, 600, 700, 800 (variable) | Everything else                                                                     |
 
-Both are on Google Fonts under the SIL Open Font License 1.1. They load in `layout.tsx` with `next/font/google` as variable fonts (`Fraunces` with the `SOFT`, `WONK` and `opsz` axes; `Nunito_Sans` with its default axes), `display: "swap"`, Latin subset, and are exposed as `--font-fraunces` and `--font-nunito-sans` on the wrapper. `theme.css` wires those to `--display-font` and `--body-font`. Fraunces is set with `"SOFT" 100, "WONK" 0`: the fully soft cut, without the leaning "wonky" letters, with optical sizing on. Both families were legible in every screenshot at both widths, so the pairing from the brief was kept.
+Both are under the SIL Open Font License 1.1. They are variable fonts, self-hosted from Fontsource packages (`@fontsource-variable/fraunces`, the `full.css` cut with the weight, optical size, `SOFT` and `WONK` axes; `@fontsource-variable/nunito-sans`, the weight axis). `-fonts.css` imports them and names them `--font-fraunces` and `--font-nunito-sans` on the wrapper. `-theme.css` wires those to `--display-font` and `--body-font`. Fraunces is set with `"SOFT" 100, "WONK" 0`: the fully soft cut, without the leaning "wonky" letters, with optical sizing on. Both families were legible in every screenshot at both widths, so the pairing from the brief was kept.
 
 Sizes: wordmark `clamp(68px, 19vw, 152px)`; room code `clamp(52px, 15vw, 76px)`; page titles 30 to 32px (phone) and 40 to 48px (wide); panel titles 22 to 24px; body 16 to 17px with line height 1.4 to 1.6; buttons 17px. The only text under 16px is short labels at 13px, always at weight 700 or 800: eyebrows, chips, the tags and status under a seat, the captions under a quest moon on a phone, and the On / Off word under a switch.
 
@@ -192,7 +192,7 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Tokens and curves
 
-`theme.css` holds the motion tokens; `motion.css` holds the classes and keyframes.
+`-theme.css` holds the motion tokens; `-motion.css` holds the classes and keyframes.
 
 | Token           | Value                               | Used for                                             |
 | --------------- | ----------------------------------- | ---------------------------------------------------- |
@@ -207,7 +207,7 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Moments
 
-"Wired" says whether the moment plays in the click-through or only in the gallery. Every row has a static end state under reduced motion: `globals.css` cuts durations to almost nothing, and `theme.css` also zeroes every delay inside `.theme-starlit`, so a timed sequence lands on its end at once (sound may still play).
+"Wired" says whether the moment plays in the click-through or only in the gallery. Every row has a static end state under reduced motion: `src/styles.css` cuts durations to almost nothing, and `-theme.css` also zeroes every delay inside `.theme-starlit`, so a timed sequence lands on its end at once (sound may still play).
 
 | Stage        | Moment                     | What moves                                                                                                                    | Duration                                                             | Easing              | Cue                                                     | Wired                                       | Reduced motion                              |
 | ------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------------------------------------- | ------------------------------------------- | ------------------------------------------- |
@@ -257,11 +257,11 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Reduced motion
 
-`globals.css` cuts every animation and transition to almost nothing. `theme.css` adds two things inside `.theme-starlit`: every animation and transition delay is set to zero (the sequences are timed with delays, which `globals.css` leaves alone), and the decorative loops are switched off or removed. Because every element's normal style is its end state, each screen and each gallery scene shows its final state at once. The gallery's timed scenes (counts, players joining) also jump to their last step under reduced motion. Sound still plays if it is switched on. This was checked: with reduced motion emulated, no finite animation is still running 400ms after any Starlit screen opens, and every gallery scene matches its resting end state 200ms after Play.
+`src/styles.css` cuts every animation and transition to almost nothing. `-theme.css` adds two things inside `.theme-starlit`: every animation and transition delay is set to zero (the sequences are timed with delays, which `src/styles.css` leaves alone), and the decorative loops are switched off or removed. Because every element's normal style is its end state, each screen and each gallery scene shows its final state at once. The gallery's timed scenes (counts, players joining) also jump to their last step under reduced motion. Sound still plays if it is switched on. This was checked: with reduced motion emulated, no finite animation is still running 400ms after any Starlit screen opens, and every gallery scene matches its resting end state 200ms after Play.
 
 ## Sound
 
-Every sound is made in code with the Web Audio API (`src/client/sound/`), so there are no audio files, nothing to license and no new dependency. The folder does not import from `src/app` or `src/design`, so the real game can keep it.
+Every sound is made in code with the Web Audio API (`src/client/sound/`), so there are no audio files, nothing to license and no new dependency. The folder does not import from `src/routes` or `src/design`, so the real game can keep it.
 
 **Sound was checked by measurement, not by ear.** Nobody who built or tested it could listen. Each cue was rendered in Chromium through an `OfflineAudioContext` with the same output stage the page uses, and its length, peak level and audibility were measured. The levels and the character described below are design intent backed by those numbers; they need a listen on real phones.
 
@@ -286,7 +286,7 @@ renderCue(context, out, cue, at, index)  any BaseAudioContext, for offline rende
 createMasterChain(context)       the same output stage, for offline renders
 ```
 
-`CueName` is a union of the 46 names below. Effects that play cues stop them in their clean-up, which matters because Next keeps a page mounted but hidden after a client-side navigation.
+`CueName` is a union of the 46 names below. Effects that play cues stop them in their clean-up, so a sound never outlives the screen that started it.
 
 ### Ambience
 
@@ -428,7 +428,7 @@ One place the skill's advice was not followed in the original direction: "animat
 - Sound was checked by measurement only (length, peak, not silent, no clicks at loop points), never by ear. The mix between cues, and how they sound on a phone speaker, needs a listen.
 - Motion was checked in headless Chromium (video and still frames). Not yet on a real phone, in Safari, or on a slow device: the result sequence animates about twenty elements at once.
 - The gallery's lobby, end-of-game and reconnecting scenes are new vignettes; the real screens for the assassination, the end of the game and a lost connection do not exist yet.
-- After a client-side navigation, a page's entrance replays when it is opened again (Next shows the hidden page again). That is intended for the prototype; the real game should animate on changes in the room view, not on page open.
+- A page's entrance replays every time it is opened. That is intended for the prototype; the real game should animate on changes in the room view, not on page open.
 - The ambience is in the gallery only. The click-through has no fire crackle.
 - The Assassin's mark and the crown use container query units (`cqw`, `cqh`) on the seat ring. They are supported in current browsers but not in old ones (Safari before 16).
 - Checked in Chromium through Playwright only. Not yet checked on a real phone, in Safari, with the on-screen keyboard open over the sticky bar, or with a screen reader.

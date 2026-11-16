@@ -8,5 +8,6 @@ pnpm dev            # in another terminal
 pnpm test:api       # runs the collection with the "local" environment
 ```
 
-There is one request today (`health`). Rooms and the game use Socket.IO, not
-HTTP, so they are tested with Vitest and Playwright instead.
+There is one request today (`health`). Rooms and the game use a WebSocket and
+one server function, not a public HTTP API, so they are tested with Vitest and
+Playwright instead.

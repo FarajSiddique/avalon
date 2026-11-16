@@ -16,8 +16,14 @@ Regenerate them with `pnpm build && pnpm screenshots`. Phone screenshots show
 the whole page, with the bar that is fixed to the bottom of the screen drawn at
 the bottom of the image.
 
-The recommendation, with the strengths and costs of each direction, is on the
-`/design` page (`src/app/design/page.tsx`).
+The current front-runner, with the strengths and costs of each direction, is on
+the `/design` page (`src/routes/design/index.tsx`).
+
+Starlit Vale is the direction the owner is leaning to, so it alone has been
+taken further: it has motion and sound at every stage of a game. All 35 moments
+are replayable at `/design/starlit/motion`, and the same motion and cues are
+wired into its click-through. Sound is off until the player turns it on. The
+sound engine is in `src/client/sound` and does not depend on the prototypes.
 
 ## What every direction provides
 
@@ -41,19 +47,22 @@ be clicked through from landing to quest result.
 
 ## How a direction is built
 
-Each direction lives in one folder, `src/app/design/<d>/`, and can be deleted
+Each direction lives in one folder, `src/routes/design/<d>/`, and can be deleted
 without touching anything else:
 
-- `layout.tsx` loads the direction's fonts with `next/font/google`, wraps the
-  screens in `<div class="theme-<d>">` and renders the shared prototype bar.
-- `theme.css` holds the tokens, scoped to `.theme-<d>`, in three layers:
+- `route.tsx` is the layout: it wraps the screens in `<div class="theme-<d>">`
+  and renders the shared prototype bar. `index.tsx`, `lobby.tsx`,
+  `role.$role.tsx` and `table.$step.tsx` are the screens.
+- `-fonts.css` loads the direction's fonts from Fontsource packages
+  (self-hosted, open-licensed) and names them for the theme.
+- `-theme.css` holds the tokens, scoped to `.theme-<d>`, in three layers:
   primitives (`--<d>-<hue>-<step>`), the semantic contract shared by all
   directions (`--canvas`, `--ink`, `--accent`, `--good`, `--evil`, ... see
-  `src/app/globals.css`), and component tokens. Components use Tailwind
+  `src/styles.css`), and component tokens. Components use Tailwind
   utilities generated from the semantic layer (`bg-canvas`, `text-ink`,
   `border-line`, `font-display`) or `var(--token)`. No raw colour values in
   components.
-- `_components/` holds the direction's own components and artwork.
+- `-components/` holds the direction's own components and artwork.
 
 Shared between directions (and kept for the real game): the view types in
 `src/shared/views.ts`, the press-and-hold privacy behaviour in
@@ -76,7 +85,7 @@ Shared between directions (and kept for the real game): the view types in
 - All motion stops under `prefers-reduced-motion: reduce`.
 - Artwork is original CSS and inline SVG written for this repo. The
   inspiration images are mood references only and are not in the repo.
-- Fonts are open-licensed and loaded with `next/font`.
+- Fonts are open-licensed and self-hosted with Fontsource packages.
 
 ## Known gaps shared by all three
 

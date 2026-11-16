@@ -1,7 +1,8 @@
 # Avalon
 
 The Resistance: Avalon for 5 to 10 players, played together in one room with
-everyone on their own phone. One Next.js app with a built-in Socket.IO server.
+everyone on their own phone. One TanStack Start app on a Cloudflare Worker, with
+one Durable Object per game room.
 
 Status: foundation. Rooms, joining, presence and reconnecting work. The game
 itself is next. Three design directions are available to compare at `/design`.
@@ -12,7 +13,7 @@ Needs Node 24 or newer and pnpm.
 
 ```bash
 pnpm install
-pnpm dev          # http://localhost:3000
+pnpm dev          # http://localhost:3000, app and rooms in Cloudflare's local runtime
 ```
 
 To check everything the way CI does:
@@ -20,7 +21,7 @@ To check everything the way CI does:
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm exec playwright install chromium   # first time only
-pnpm test:e2e
+pnpm test:e2e && pnpm test:restart
 ```
 
 ## Where things are

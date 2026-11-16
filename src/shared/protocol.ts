@@ -1,23 +1,24 @@
 /**
- * The Socket.IO contract. Both the server and the browser import this file,
- * so event names and payloads cannot drift apart.
+ * The contract between the browser and a room. Both sides import this file,
+ * so request names and payloads cannot drift apart.
+ *
+ * Transport: one WebSocket per tab to `/api/socket/CODE`, which is that
+ * room's Durable Object. Messages are JSON.
  *
  * Rules:
- * - Every client request has an acknowledgement that returns a `Result`.
- * - The server pushes exactly one kind of state message: `room:state`, a full
+ * - Every client request carries an id and is answered by one `ack` with a
+ *   `Result`.
+ * - The room pushes exactly one kind of state message: `state`, a full
  *   `RoomView` built for the receiving player. There are no partial updates.
+ * - Creating a room is the one thing that is not a socket request, because
+ *   the room does not exist yet. It is a server function (src/functions).
+ *
+ * This file has no runtime dependencies, so the browser bundle stays small.
+ * The matching validators live in schemas.ts and run on the server.
  */
 
-import { z } from "zod";
-import {
-  NAME_MAX_LENGTH,
-  NAME_PATTERN,
-  ROOM_CODE_PATTERN,
-  normalizeName,
-  normalizeRoomCode,
-} from "./constants";
-import { OPTIONAL_ROLES } from "./roles";
-import type { RoomCode, RoomView } from "./views";
+import type { OptionalRole } from "./roles";
+import type { PlayerId, QuestCard, RoomCode, RoomView, Vote } from "./views";
 
 export type ErrorCode =
   | "INVALID_PAYLOAD"
@@ -30,7 +31,9 @@ export type ErrorCode =
   | "NOT_HOST"
   | "NOT_ALLOWED"
   | "GAME_NOT_STARTABLE"
-  | "RATE_LIMITED";
+  | "RATE_LIMITED"
+  /** Made up by the client when the socket is down or the room never answers. */
+  | "OFFLINE";
 
 export interface ProtocolError {
   code: ErrorCode;
@@ -40,95 +43,91 @@ export interface ProtocolError {
 export type Result<T> =
   { ok: true; data: T } | { ok: false; error: ProtocolError };
 
-export type Ack<T> = (result: Result<T>) => void;
-
 /** Returned by create, join and resume. The token is this player's seat key. */
 export interface SeatGrant {
   code: RoomCode;
   token: string;
 }
 
-const nameSchema = z
-  .string()
-  .transform(normalizeName)
-  .pipe(z.string().min(1).max(NAME_MAX_LENGTH).regex(NAME_PATTERN));
+export interface CreateRoomInput {
+  name: string;
+}
 
-const roomCodeSchema = z
-  .string()
-  .transform(normalizeRoomCode)
-  .pipe(z.string().regex(ROOM_CODE_PATTERN));
+export interface JoinRoomInput {
+  name: string;
+}
 
-const playerIdSchema = z.string().min(1).max(64);
+export interface ResumeInput {
+  token: string;
+}
 
-export const createRoomSchema = z.object({ name: nameSchema });
-export const joinRoomSchema = z.object({
-  code: roomCodeSchema,
-  name: nameSchema,
-});
-export const resumeSchema = z.object({ token: z.string().min(1).max(200) });
+export interface SettingsInput {
+  optionalRoles: OptionalRole[];
+  ladyOfTheLake: boolean;
+}
 
-export const settingsSchema = z.object({
-  optionalRoles: z
-    .array(z.enum(OPTIONAL_ROLES))
-    .max(OPTIONAL_ROLES.length)
-    .refine((roles) => new Set(roles).size === roles.length),
-  ladyOfTheLake: z.boolean(),
-});
-
-export const gameActionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("confirm_role") }),
-  z.object({
-    type: z.literal("draft_team"),
-    playerIds: z.array(playerIdSchema).max(5),
-  }),
-  z.object({
-    type: z.literal("propose_team"),
-    playerIds: z.array(playerIdSchema).min(2).max(5),
-  }),
-  z.object({ type: z.literal("vote"), vote: z.enum(["approve", "reject"]) }),
-  z.object({
-    type: z.literal("play_card"),
-    card: z.enum(["success", "fail"]),
-  }),
-  z.object({ type: z.literal("lady_examine"), targetId: playerIdSchema }),
-  z.object({ type: z.literal("assassinate"), targetId: playerIdSchema }),
-]);
-
-export type CreateRoomInput = z.input<typeof createRoomSchema>;
-export type JoinRoomInput = z.input<typeof joinRoomSchema>;
-export type ResumeInput = z.input<typeof resumeSchema>;
-export type SettingsInput = z.input<typeof settingsSchema>;
-export type GameAction = z.infer<typeof gameActionSchema>;
-
-export type RoomClosedReason = "expired" | "kicked" | "left";
+/** Every move a player can make during a game. */
+export type GameAction =
+  | { type: "confirm_role" }
+  | { type: "draft_team"; playerIds: PlayerId[] }
+  | { type: "propose_team"; playerIds: PlayerId[] }
+  | { type: "vote"; vote: Vote }
+  | { type: "play_card"; card: QuestCard }
+  | { type: "lady_examine"; targetId: PlayerId }
+  | { type: "assassinate"; targetId: PlayerId };
 
 /**
- * Events marked "next run" are part of the contract but have no server
- * handler yet. See the phased plan in docs/architecture.md.
+ * Every request a socket can send to its room, with its payload and the data
+ * in a successful answer. Requests marked "next run" are part of the contract
+ * but the room does not handle them yet (see docs/architecture.md).
  */
-export interface ClientToServerEvents {
-  "room:create": (input: CreateRoomInput, ack: Ack<SeatGrant>) => void;
-  "room:join": (input: JoinRoomInput, ack: Ack<SeatGrant>) => void;
-  "room:resume": (input: ResumeInput, ack: Ack<SeatGrant>) => void;
+export interface RoomRequests {
+  "room:join": { input: JoinRoomInput; output: SeatGrant };
+  "room:resume": { input: ResumeInput; output: SeatGrant };
+  /** Next run. Watch the table without a seat (the shared screen). */
+  "room:watch": { input: null; output: null };
   /** Next run. */
-  "room:leave": (ack: Ack<null>) => void;
+  "room:leave": { input: null; output: null };
   /** Next run. */
-  "lobby:ready": (input: { ready: boolean }, ack: Ack<null>) => void;
+  "lobby:ready": { input: { ready: boolean }; output: null };
   /** Next run. Host only. */
-  "lobby:settings": (input: SettingsInput, ack: Ack<null>) => void;
+  "lobby:settings": { input: SettingsInput; output: null };
   /** Next run. Host only. */
-  "lobby:kick": (input: { playerId: string }, ack: Ack<null>) => void;
+  "lobby:kick": { input: { playerId: string }; output: null };
   /** Next run. Host only. */
-  "lobby:start": (ack: Ack<null>) => void;
-  /** Next run. Every in-game move goes through this one event. */
-  "game:action": (action: GameAction, ack: Ack<null>) => void;
+  "lobby:start": { input: null; output: null };
+  /** Next run. Every in-game move goes through this one request. */
+  "game:action": { input: GameAction; output: null };
   /** Next run. Host only. End the game and return everyone to the lobby. */
-  "room:reset": (ack: Ack<null>) => void;
+  "room:reset": { input: null; output: null };
 }
 
-export interface ServerToClientEvents {
-  "room:state": (view: RoomView) => void;
-  "room:closed": (payload: { reason: RoomClosedReason }) => void;
+export type RoomEvent = keyof RoomRequests;
+
+export type RoomClosedReason = "not_found" | "expired" | "kicked" | "left";
+
+/** Browser to room. */
+export interface ClientMessage {
+  id: number;
+  event: RoomEvent;
+  payload: unknown;
 }
 
+/** Room to browser. */
+export type ServerMessage =
+  | { type: "ack"; id: number; result: Result<unknown> }
+  | { type: "state"; view: RoomView }
+  | { type: "closed"; reason: RoomClosedReason };
+
+/** The WebSocket for room CODE is at `${SOCKET_PATH}/CODE`. */
 export const SOCKET_PATH = "/api/socket";
+
+/** Heartbeat. The room answers without waking up. */
+export const PING = "ping";
+export const PONG = "pong";
+
+/** Largest client message the room will read, in characters. */
+export const MAX_MESSAGE_LENGTH = 4096;
+
+/** WebSocket close code used when the room does not exist or has ended. */
+export const CLOSE_ROOM_GONE = 4004;

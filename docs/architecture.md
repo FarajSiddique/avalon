@@ -792,8 +792,19 @@ decisions were treated as input.
 
 Each phase ends with `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`,
 `pnpm test:e2e` and `pnpm test:restart` passing, and one commit or more.
-Phases are in dependency order. Nothing in them needs a new decision except
-the open point listed under [Owner decisions](#owner-decisions).
+Phases are in dependency order. Nothing in them needs a new decision.
+
+Two pieces of work come before Phase 0, and both have step-by-step plans an
+agent session can follow:
+
+| Order | Work                                                          | Plan                                             |
+| ----- | ------------------------------------------------------------- | ------------------------------------------------ |
+| 1     | Code standards: oxlint, folder layout, pre-commit hook        | `docs/plans/01-standards-and-ci-cd.md`, Part A   |
+| 2     | CI/CD: a preview for every pull request, deploy on merge      | `docs/plans/01-standards-and-ci-cd.md`, Part B   |
+| 3     | Phase 0                                                       | `docs/plans/02-phase-0-starlit-design-system.md` |
+| 4     | TypeScript 7 and type-aware lint, before Phase 1 if it passes | `docs/plans/01-standards-and-ci-cd.md`, Part C   |
+
+Status is tracked in the owner's Notion page "Avalon: Developer Roadmap".
 
 In every phase that touches the room object: the three rules in
 [The room object](#the-room-object) hold. New state goes in `RoomState` and is
@@ -801,23 +812,26 @@ saved; nothing is kept only in a field; anything timed is an alarm.
 
 ### Phase 0: adopt the chosen design direction
 
-- Move the winner's tokens from `src/routes/design/<d>/-theme.css` to `:root`
-  in `src/styles.css`, and its font stylesheet to the root route.
-- Move its components from `src/routes/design/<d>/-components` to
-  `src/components/`, keeping the ones the real screens need. Replace
-  `ProtoLink` with the router's typed `Link`.
-- Delete `src/routes/design/`, `src/design/`, the other two specs and their
-  screenshots, the unused font packages, the `screenshots` Playwright project
-  and `e2e/design.shots.ts`. Keep the winner's spec as `docs/design-system.md`
-  and rewrite `.claude/rules/design-system.md` from it.
-- Restyle `/` and the `/room/$code` placeholder with the real components.
-- Render the large drawings in the browser only, and `/room/$code` in the
-  browser only, as settled under
+The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
+
+- Starlit Vale's tokens, component classes, motion and fonts move from
+  `src/routes/design/starlit` to `src/styles`, on `:root`.
+- Its primitives and drawings move to `src/components/ui` and
+  `src/components/art`. Its lobby, role and table components stay in the
+  prototype until the phase that builds each screen moves them.
+- Ember & Rune and Lavender Vigil are deleted, with their specs, screenshots
+  and fonts.
+- **The Starlit prototype and its motion gallery stay** at `/design/starlit`
+  as the reference for screens that are not built yet (owner's decision, 16
+  November 2026). They import the moved code, so there is one copy of
+  everything. They are deleted when Phase 4 ends.
+- `/` and the `/room/$code` placeholder are restyled with the real components.
+- The large drawings render in the browser only, and `/room/$code` renders in
+  the browser only, as settled under
   [Measured CPU time on the live Worker](#measured-cpu-time-on-the-live-worker).
-- Done when: `/` and `/room/$code` look like the chosen direction at 390px
-  and 1440px (screenshots), the existing e2e tests still pass, and after a
-  deploy (ask the owner first) the 90th percentile CPU time for both is under
-  10 ms.
+- Done when: `/` and `/room/$code` look like Starlit Vale at 390px and 1440px
+  (screenshots), the existing e2e tests still pass, and on the live Worker the
+  90th percentile CPU time for both is under 10 ms.
 
 ### Phase 1: the lobby
 
@@ -829,7 +843,9 @@ saved; nothing is kept only in a field; anything timed is an alarm.
   `settingsBlockers` in `src/server/game/setup.ts`, added to `startBlockers`
   in `projectView`. A per-socket message budget kept in the socket's
   attachment.
-- Client: the real lobby screen from the prototype, driven by `LobbyView`:
+- Client: the real lobby screen, driven by `LobbyView`. Move the prototype's
+  lobby components from `src/routes/design/starlit/-components/lobby` to
+  `src/components/lobby` and make the prototype import them from there:
   code with copy and share, player list, ready toggle, host settings, start
   button with blocker messages (`startBlockerMessages`).
 - Tests: unit tests for every rule and refusal; e2e with five contexts that
@@ -855,7 +871,9 @@ saved; nothing is kept only in a field; anything timed is an alarm.
 ### Phase 3: the game screens
 
 - Role reveal, then the table for `team_building`, `team_vote` and `quest`,
-  from the prototype components, driven by `GameView` and sending
+  from the prototype components (moved from the prototype's `role` and `table`
+  folders to `src/components/role` and `src/components/table`), driven by
+  `GameView` and sending
   `game:action`. Vote and quest reveal sequences triggered by view changes,
   with the motion and sound from the chosen direction's spec. A "my role"
   control that uses `useHoldToReveal`. Away markers on seats. Quest cards
@@ -872,6 +890,9 @@ saved; nothing is kept only in a field; anything timed is an alarm.
   every role revealed, play again.
 - Tests: engine cases for each ending; e2e reaching both a Good and an Evil
   win.
+- Last: delete the Starlit prototype (`src/routes/design`, `src/design`,
+  `e2e/design.shots.ts`, `docs/design/screenshots/starlit`). Every screen it
+  showed now exists for real.
 
 ### Phase 5: the Lady of the Lake (required)
 
@@ -948,4 +969,13 @@ Answered on 15 and 16 November 2026:
 | Design direction                                                         | Starlit Vale, with its motion and sound. Final.   |
 | First deploy to Cloudflare                                               | Approved and done. Later deploys: ask first.      |
 
-Nothing is open. Phase 0 can start.
+Also answered on 16 November 2026:
+
+| Question                           | Answer                                                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| Linter and formatter               | oxlint replaces ESLint. Prettier stays.                                                   |
+| Starlit prototype during the build | Kept as a reference until Phase 4 ends. The other two directions go in Phase 0.           |
+| Deploys                            | Automatic on merge to `main`, with a preview for every pull request. Merging is approval. |
+| Roadmap                            | Tracked in Notion. The repo stays the source for how things are built.                    |
+
+Nothing is open.

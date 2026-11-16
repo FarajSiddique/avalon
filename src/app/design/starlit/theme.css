@@ -1,0 +1,1407 @@
+/*
+ * Starlit Vale: a painted storybook night.
+ *
+ * Three token layers, all scoped to .theme-starlit:
+ *   1. primitives  --starlit-<hue>-<step>   raw values, never used by components
+ *   2. semantic    --canvas, --ink, ...     the contract from src/app/globals.css
+ *   3. component   --panel-*, --seat-*, --art-*, ...
+ *
+ * Component classes (.sl-*) live in the `components` cascade layer so the
+ * Tailwind utilities in the .tsx files can still adjust them.
+ */
+
+.theme-starlit {
+  /* ------------------------------------------------------- 1. primitives */
+
+  /* Night: the sky from zenith to horizon */
+  --starlit-night-950: #060a1c;
+  --starlit-night-900: #0a1030;
+  --starlit-night-700: #14215a;
+  --starlit-night-600: #1b2d6e;
+
+  /* Indigo: panels and their edges */
+  --starlit-indigo-900: #070b22;
+  --starlit-indigo-800: #19235a;
+  --starlit-indigo-700: #222e70;
+  --starlit-indigo-600: #33418c;
+  --starlit-indigo-400: #7f8fdc;
+  --starlit-indigo-300: #b4bce0;
+
+  /* Starlight */
+  --starlit-cream-50: #fffaf0;
+  --starlit-cream-100: #f7f0dc;
+  --starlit-ice-200: #bcd0ff;
+
+  /* Campfire */
+  --starlit-amber-300: #ffd27f;
+  --starlit-amber-400: #f7b955;
+  --starlit-amber-500: #f2933a;
+  --starlit-amber-950: #2b1703;
+  --starlit-gold-300: #ffe08a;
+
+  /* Cloud edges */
+  --starlit-pink-300: #f4a9c8;
+  --starlit-pink-400: #e58bb4;
+  --starlit-pink-600: #a8628f;
+
+  /* Meaning */
+  --starlit-teal-300: #6fdcec;
+  --starlit-coral-400: #ff8a80;
+  --starlit-green-400: #86dd8f;
+
+  /* The vale: hills from far to near, then the grass by the fire */
+  --starlit-vale-400: #344e9c;
+  --starlit-vale-500: #2c4592;
+  --starlit-vale-600: #233a80;
+  --starlit-vale-700: #1a2d68;
+  --starlit-vale-800: #13224f;
+  --starlit-vale-900: #0e2440;
+  --starlit-vale-950: #081a2c;
+  --starlit-grass-700: #1c4648;
+  --starlit-grass-500: #3d6b47;
+  --starlit-grass-300: #8aa04e;
+  --starlit-river-400: #3d5fb0;
+
+  /* Camp objects */
+  --starlit-ink-950: #050816;
+  --starlit-canvas-200: #d8d0ea;
+  --starlit-canvas-400: #8f8cc0;
+  --starlit-rose-500: #c0709b;
+  --starlit-plum-800: #2a1f3f;
+  --starlit-plum-600: #4a3a63;
+  --starlit-stone-500: #4a5590;
+  --starlit-stone-700: #2f3a72;
+  --starlit-steel-200: #cfd8f2;
+  --starlit-cloud-700: #1f2b66;
+  --starlit-cloud-600: #2a3877;
+  --starlit-cloud-500: #3b4c93;
+  --starlit-cloud-400: #5265b4;
+
+  /* --------------------------------------------------------- 2. semantic */
+
+  --canvas: var(--starlit-night-900);
+  --surface: var(--starlit-indigo-800);
+  --well: var(--starlit-indigo-900);
+
+  --ink: var(--starlit-cream-100);
+  --ink-muted: var(--starlit-indigo-300);
+
+  --line: var(--starlit-indigo-600);
+  --line-strong: var(--starlit-indigo-400);
+  --focus: var(--starlit-cream-50);
+
+  --accent: var(--starlit-amber-400);
+  --accent-strong: var(--starlit-amber-300);
+  --on-accent: var(--starlit-amber-950);
+  --accent-cool: var(--starlit-pink-300);
+
+  --good: var(--starlit-teal-300);
+  --evil: var(--starlit-coral-400);
+  --success: var(--starlit-green-400);
+  --fail: var(--starlit-coral-400);
+  --warning: var(--starlit-gold-300);
+
+  --display-font: var(--font-fraunces), ui-serif, Georgia, serif;
+  --body-font:
+    var(--font-nunito-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --corner-sm: 10px;
+  --corner-md: 16px;
+  --corner-lg: 24px;
+
+  /* -------------------------------------------------------- 3. component */
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-control: 250ms;
+  --dur-reveal: 420ms;
+
+  /* Panels: indigo, a little see-through, solid enough for text */
+  --surface-raised: var(--starlit-indigo-700);
+  --panel-bg: color-mix(in srgb, var(--surface) 92%, transparent);
+  --panel-border: var(--line);
+  --panel-highlight: color-mix(in srgb, var(--ink) 7%, transparent);
+  --panel-shadow: 0 18px 44px -24px var(--starlit-night-950);
+  --chart-bg: color-mix(in srgb, var(--well) 90%, transparent);
+  --bar-bg: var(--canvas);
+
+  /* Light sources are the only things that glow */
+  --glow-fire: 0 0 28px color-mix(in srgb, var(--accent) 45%, transparent);
+  --glow-star:
+    0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 0 22px color-mix(in srgb, var(--accent) 55%, transparent);
+
+  /* Controls */
+  --button-height: 52px;
+  --button-radius: 999px;
+  --input-height: 54px;
+
+  /* Seats */
+  --seat-size: 52px;
+  --seat-cell: 86px;
+  --seat-bg: var(--surface);
+  --seat-border: var(--line-strong);
+  --seat-lit-bg: var(--accent);
+  --ring-height: 284px;
+
+  /* The role card */
+  --skycard-height: 432px;
+
+  /* Quest moons */
+  --moon-size: 46px;
+
+  /* Artwork */
+  --art-sky-top: var(--starlit-night-950);
+  --art-sky-mid: var(--starlit-night-900);
+  --art-sky-low: var(--starlit-night-700);
+  --art-sky-horizon: var(--starlit-night-600);
+  --art-star: var(--starlit-cream-100);
+  --art-star-blue: var(--starlit-ice-200);
+  --art-star-pink: var(--starlit-pink-300);
+  --art-star-amber: var(--starlit-amber-300);
+  --art-moon: var(--starlit-cream-100);
+  --art-cloud: var(--starlit-cloud-600);
+  --art-cloud-light: var(--starlit-cloud-500);
+  --art-cloud-deep: var(--starlit-cloud-700);
+  --art-cloud-bright: var(--starlit-cloud-400);
+  --art-cloud-edge: var(--starlit-pink-400);
+  --art-cloud-edge-dim: var(--starlit-pink-600);
+  --art-hill-0: var(--starlit-vale-400);
+  --art-hill-1: var(--starlit-vale-500);
+  --art-hill-2: var(--starlit-vale-600);
+  --art-hill-3: var(--starlit-vale-700);
+  --art-hill-4: var(--starlit-vale-800);
+  --art-ground: var(--starlit-vale-900);
+  --art-ground-dark: var(--starlit-vale-950);
+  --art-ground-lit-1: var(--starlit-grass-700);
+  --art-ground-lit-2: var(--starlit-grass-500);
+  --art-ground-lit-3: var(--starlit-grass-300);
+  --art-river: var(--starlit-river-400);
+  --art-outline: var(--starlit-ink-950);
+  --art-tree: var(--starlit-vale-950);
+  --art-tree-light: var(--starlit-grass-700);
+  --art-trunk: var(--starlit-plum-800);
+  --art-tent: var(--starlit-canvas-200);
+  --art-tent-shade: var(--starlit-canvas-400);
+  --art-tent-stripe: var(--starlit-rose-500);
+  --art-tent-dark: var(--starlit-plum-800);
+  --art-log: var(--starlit-plum-800);
+  --art-log-end: var(--starlit-plum-600);
+  --art-stone: var(--starlit-stone-500);
+  --art-stone-shade: var(--starlit-stone-700);
+  --art-steel: var(--starlit-steel-200);
+  --art-gold: var(--starlit-amber-400);
+  --art-banner: var(--starlit-indigo-600);
+  --art-fire-outer: var(--starlit-amber-500);
+  --art-fire-mid: var(--starlit-amber-300);
+  --art-fire-core: var(--starlit-cream-50);
+  --art-fire-glow: var(--starlit-amber-400);
+  --art-window: var(--starlit-amber-300);
+
+  color-scheme: dark;
+}
+
+/* Wide screens: the table is a shared screen, so seats and the ring grow. */
+@media (min-width: 1024px) {
+  .theme-starlit {
+    --seat-size: 68px;
+    --seat-cell: 136px;
+    --ring-height: clamp(340px, calc(100vh - 524px), 470px);
+    --moon-size: 44px;
+    --skycard-height: 560px;
+  }
+}
+
+/* Fraunces: the soft, un-wonky cut reads as a storybook hand. */
+.theme-starlit .font-display {
+  font-variation-settings:
+    "SOFT" 100,
+    "WONK" 0;
+  font-optical-sizing: auto;
+}
+
+@layer components {
+  /* ------------------------------------------------------------ the sky */
+
+  .sl-sky {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        120% 55% at 50% 104%,
+        var(--art-sky-horizon) 0%,
+        transparent 72%
+      ),
+      linear-gradient(
+        180deg,
+        var(--art-sky-top) 0%,
+        var(--art-sky-mid) 42%,
+        var(--art-sky-low) 100%
+      );
+  }
+
+  .sl-sky__stars {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .sl-sky__horizon {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    width: 100%;
+    height: clamp(150px, 24vh, 240px);
+  }
+
+  .sl-twinkle {
+    animation: sl-twinkle var(--twinkle-dur, 5s) ease-in-out
+      var(--twinkle-delay, 0s) infinite;
+  }
+
+  .sl-shooting-star {
+    position: absolute;
+    top: 14%;
+    left: 72%;
+    width: 140px;
+    height: 2px;
+    border-radius: 2px;
+    opacity: 0;
+    background: linear-gradient(90deg, var(--art-star), transparent);
+    transform-origin: 0 50%;
+    animation: sl-shoot 19s ease-out 5s infinite;
+  }
+
+  .sl-drift {
+    animation: sl-drift 110s ease-in-out infinite alternate;
+  }
+
+  .sl-drift--slow {
+    animation-duration: 160s;
+    animation-direction: alternate-reverse;
+  }
+
+  /* ----------------------------------------------------------- the fire */
+
+  .sl-fire-glow {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: sl-breathe 3.4s ease-in-out infinite alternate;
+  }
+
+  .sl-flame {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: sl-flicker 1.3s ease-in-out infinite alternate;
+  }
+
+  .sl-flame--inner {
+    animation-duration: 0.9s;
+    animation-direction: alternate-reverse;
+  }
+
+  .sl-spark {
+    opacity: 0;
+    transform-box: fill-box;
+    animation: sl-spark 3.2s ease-out infinite;
+  }
+
+  .sl-pennant {
+    transform-box: fill-box;
+    transform-origin: 0 50%;
+    animation: sl-pennant 4.5s ease-in-out infinite alternate;
+  }
+
+  /* -------------------------------------------------------------- panels */
+
+  .sl-panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--corner-lg);
+    box-shadow:
+      inset 0 0 0 1px var(--panel-highlight),
+      var(--panel-shadow);
+  }
+
+  .sl-chart {
+    background: var(--chart-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--corner-lg);
+    box-shadow: inset 0 0 0 1px var(--panel-highlight);
+  }
+
+  .sl-eyebrow {
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-cool);
+  }
+
+  /* ------------------------------------------------------------- buttons */
+
+  .sl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--button-height);
+    padding: 0 1.5rem;
+    border: 1.5px solid transparent;
+    border-radius: var(--button-radius);
+    font-family: var(--body-font);
+    font-size: 1.0625rem;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      background-color var(--dur-control) var(--ease-out),
+      border-color var(--dur-control) var(--ease-out),
+      color var(--dur-control) var(--ease-out),
+      box-shadow var(--dur-control) var(--ease-out),
+      transform var(--dur-control) var(--ease-out);
+  }
+
+  .sl-btn:active {
+    transform: scale(0.98);
+  }
+
+  .sl-btn--primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: var(--glow-fire);
+  }
+
+  .sl-btn--primary:hover {
+    background: var(--accent-strong);
+  }
+
+  .sl-btn--ghost {
+    background: var(--surface);
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+
+  .sl-btn--ghost:hover {
+    background: var(--surface-raised);
+    border-color: var(--ink);
+  }
+
+  .sl-btn--ghost[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--success) 16%, var(--surface));
+    border-color: var(--success);
+  }
+
+  .sl-btn:disabled,
+  .sl-btn[aria-disabled="true"] {
+    background: var(--well);
+    border-color: var(--line);
+    border-style: dashed;
+    color: var(--ink-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Prototype helpers: deliberately plain, but still a 44px target. */
+  .sl-plain {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--button-radius);
+    background: var(--surface);
+    color: var(--ink-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      color var(--dur-control) var(--ease-out),
+      border-color var(--dur-control) var(--ease-out);
+  }
+
+  .sl-plain:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+
+  /* -------------------------------------------------------------- fields */
+
+  .sl-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .sl-input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: var(--input-height);
+    padding: 0 1.125rem;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--corner-md);
+    background: var(--well);
+    color: var(--ink);
+    font-family: var(--body-font);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    transition:
+      border-color var(--dur-control) var(--ease-out),
+      box-shadow var(--dur-control) var(--ease-out);
+  }
+
+  .sl-input::placeholder {
+    color: var(--ink-muted);
+    font-weight: 400;
+    opacity: 1;
+  }
+
+  .sl-input:hover {
+    border-color: var(--ink);
+  }
+
+  .sl-input:focus-visible {
+    border-color: var(--accent);
+  }
+
+  .sl-input--code {
+    font-family: var(--display-font);
+    font-size: 1.375rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .sl-input--code::placeholder {
+    letter-spacing: 0.3em;
+  }
+
+  /* ------------------------------------------------------------ switches */
+
+  .sl-switch {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.875rem;
+    min-height: 60px;
+    padding: 0.625rem 0.25rem;
+    border-radius: var(--corner-md);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .sl-switch__track {
+    position: relative;
+    flex: none;
+    width: 54px;
+    height: 32px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--well);
+    transition:
+      background-color var(--dur-control) var(--ease-out),
+      border-color var(--dur-control) var(--ease-out);
+  }
+
+  .sl-switch__thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    display: grid;
+    width: 23px;
+    height: 23px;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--ink-muted);
+    color: var(--well);
+    transition:
+      transform var(--dur-control) var(--ease-out),
+      background-color var(--dur-control) var(--ease-out);
+  }
+
+  .sl-switch__thumb svg {
+    opacity: 0;
+    transition: opacity var(--dur-control) var(--ease-out);
+  }
+
+  .sl-switch[aria-checked="true"] .sl-switch__track {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+
+  .sl-switch[aria-checked="true"] .sl-switch__thumb {
+    background: var(--on-accent);
+    color: var(--accent-strong);
+    transform: translateX(22px);
+  }
+
+  .sl-switch[aria-checked="true"] .sl-switch__thumb svg {
+    opacity: 1;
+  }
+
+  /* --------------------------------------------------------------- chips */
+
+  .sl-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.125rem 0.625rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------ the sticky bar */
+
+  .sl-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin-top: auto;
+    padding: 0.875rem 1rem calc(0.875rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--bar-bg);
+    box-shadow: 0 -14px 24px -16px var(--starlit-night-950);
+  }
+
+  @media (min-width: 1024px) {
+    .sl-bar {
+      position: static;
+      margin-top: 0;
+      padding: 0;
+      border-top: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+
+  /* --------------------------------------------------------------- seats */
+
+  .sl-ring {
+    position: relative;
+    height: var(--ring-height);
+  }
+
+  .sl-ring__lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .sl-ring__lines--desktop {
+    display: none;
+  }
+
+  .sl-ring__line {
+    fill: none;
+    stroke: var(--line-strong);
+    stroke-width: 1;
+    stroke-dasharray: 2 5;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.75;
+  }
+
+  .sl-ring__line--team {
+    stroke: var(--accent-strong);
+    stroke-width: 1.5;
+    stroke-dasharray: none;
+    opacity: 0.9;
+  }
+
+  .sl-ring__fire {
+    display: none;
+  }
+
+  .sl-seat {
+    position: absolute;
+    top: var(--my);
+    left: var(--mx);
+    width: min(var(--seat-cell), calc(100% / var(--per-row, 4)));
+    transform: translate(-50%, calc(var(--seat-size) / -2));
+  }
+
+  .sl-seat__body {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border-radius: var(--corner-md);
+    text-align: center;
+  }
+
+  button.sl-seat__body {
+    cursor: pointer;
+  }
+
+  /* Name, tags and status sit on a small plate so ring lines never cross text. */
+  .sl-seat__text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1px 5px 2px;
+    border-radius: var(--corner-sm);
+    background: var(--well);
+  }
+
+  .sl-seat__star {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    width: var(--seat-size);
+    height: var(--seat-size);
+    place-items: center;
+  }
+
+  /* Four rays that only a lit (chosen) star has: a shape, not just a colour. */
+  .sl-seat__star::before {
+    content: "";
+    position: absolute;
+    inset: -11px;
+    z-index: -1;
+    background: var(--accent-strong);
+    clip-path: polygon(
+      50% 0,
+      55% 45%,
+      100% 50%,
+      55% 55%,
+      50% 100%,
+      45% 55%,
+      0 50%,
+      45% 45%
+    );
+    opacity: 0;
+    transform: scale(0.5) rotate(-20deg);
+    transition:
+      opacity var(--dur-control) var(--ease-out),
+      transform var(--dur-control) var(--ease-out);
+  }
+
+  .sl-seat__disc {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    border: 1.5px solid var(--seat-border);
+    border-radius: 999px;
+    background: var(--seat-bg);
+    color: var(--ink);
+    font-family: var(--display-font);
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1;
+    transition:
+      background-color var(--dur-control) var(--ease-out),
+      border-color var(--dur-control) var(--ease-out),
+      color var(--dur-control) var(--ease-out),
+      box-shadow var(--dur-control) var(--ease-out);
+  }
+
+  button.sl-seat__body:hover .sl-seat__disc {
+    border-color: var(--ink);
+    background: var(--surface-raised);
+  }
+
+  .sl-seat[data-lit="true"] .sl-seat__star::before {
+    opacity: 1;
+    transform: none;
+  }
+
+  .sl-seat[data-lit="true"] .sl-seat__disc,
+  .sl-seat[data-lit="true"] button.sl-seat__body:hover .sl-seat__disc {
+    border-color: var(--accent-strong);
+    background: var(--seat-lit-bg);
+    color: var(--on-accent);
+    box-shadow: var(--glow-star);
+  }
+
+  .sl-seat__crown {
+    position: absolute;
+    top: -17px;
+    left: 50%;
+    color: var(--accent-strong);
+    transform: translateX(-50%);
+  }
+
+  .sl-seat__name {
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+
+  .sl-seat__tags {
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    color: var(--accent-cool);
+  }
+
+  .sl-seat__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 1024px) {
+    .sl-ring__lines--mobile {
+      display: none;
+    }
+
+    .sl-ring__lines--desktop {
+      display: block;
+    }
+
+    .sl-ring__fire {
+      position: absolute;
+      top: 49%;
+      left: 50%;
+      display: block;
+      width: 180px;
+      transform: translate(-50%, -50%);
+    }
+
+    .sl-seat {
+      top: var(--dy);
+      left: var(--dx);
+    }
+
+    .sl-seat[data-side="right"],
+    .sl-seat[data-side="left"] {
+      width: max-content;
+    }
+
+    .sl-seat[data-side="right"] {
+      transform: translate(
+        calc(var(--seat-size) / -2),
+        calc(var(--seat-size) / -2)
+      );
+    }
+
+    .sl-seat[data-side="left"] {
+      transform: translate(
+        calc(-100% + var(--seat-size) / 2),
+        calc(var(--seat-size) / -2)
+      );
+    }
+
+    .sl-seat[data-side="right"] .sl-seat__body,
+    .sl-seat[data-side="left"] .sl-seat__body {
+      flex-direction: row;
+      gap: 12px;
+    }
+
+    .sl-seat[data-side="left"] .sl-seat__body {
+      flex-direction: row-reverse;
+    }
+
+    .sl-seat[data-side="right"] .sl-seat__text {
+      align-items: flex-start;
+    }
+
+    .sl-seat[data-side="left"] .sl-seat__text {
+      align-items: flex-end;
+    }
+
+    .sl-seat__disc {
+      font-size: 1.75rem;
+    }
+
+    .sl-seat__name {
+      font-size: 1.125rem;
+    }
+
+    .sl-seat__tags {
+      font-size: 0.8125rem;
+    }
+
+    .sl-seat__status {
+      font-size: 0.875rem;
+    }
+  }
+
+  /* --------------------------------------------------------- quest moons */
+
+  .sl-track {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .sl-track__quest {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    text-align: center;
+  }
+
+  /* The fine line that joins one quest to the next. */
+  .sl-track__quest + .sl-track__quest::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--moon-size) / 2);
+    right: calc(50% + var(--moon-size) / 2 + 3px);
+    left: calc(-50% + var(--moon-size) / 2 + 3px);
+    border-top: 1px dashed var(--line-strong);
+  }
+
+  .sl-moon {
+    position: relative;
+    display: grid;
+    flex: none;
+    width: var(--moon-size);
+    height: var(--moon-size);
+    place-items: center;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--well);
+    color: var(--ink-muted);
+    font-family: var(--display-font);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .sl-moon[data-status="current"] {
+    border-color: var(--accent-strong);
+    border-width: 2px;
+    background: var(--surface-raised);
+    color: var(--ink);
+    box-shadow: var(--glow-star);
+  }
+
+  .sl-moon[data-status="success"] {
+    border-color: var(--success);
+    background: var(--success);
+    color: var(--on-accent);
+  }
+
+  .sl-moon[data-status="fail"] {
+    border-color: var(--fail);
+    border-width: 2px;
+    color: var(--fail);
+  }
+
+  .sl-moon__badge {
+    position: absolute;
+    right: -7px;
+    bottom: -5px;
+    display: grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    border: 1.5px solid currentColor;
+    border-radius: 999px;
+    background: var(--well);
+  }
+
+  .sl-moon[data-status="success"] .sl-moon__badge {
+    color: var(--success);
+  }
+
+  .sl-track__detail {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .sl-track {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.125rem;
+    }
+
+    .sl-track__quest {
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 0.875rem;
+      text-align: left;
+    }
+
+    .sl-track__quest + .sl-track__quest::before {
+      top: calc(-1.125rem + 2px);
+      right: auto;
+      bottom: auto;
+      left: calc(var(--moon-size) / 2);
+      height: calc(1.125rem - 4px);
+      border-top: 0;
+      border-left: 1px dashed var(--line-strong);
+    }
+
+    .sl-track__detail {
+      display: block;
+    }
+  }
+
+  /* Rejected-vote pips */
+  .sl-pip {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--well);
+  }
+
+  .sl-pip[data-on="true"] {
+    border-color: var(--warning);
+    background: var(--warning);
+    /* A filled pip is also a different shape: a four-point star. */
+    border-radius: 0;
+    clip-path: polygon(
+      50% 0,
+      64% 36%,
+      100% 50%,
+      64% 64%,
+      50% 100%,
+      36% 64%,
+      0 50%,
+      36% 36%
+    );
+    transform: scale(1.35);
+  }
+
+  /* ------------------------------------------------- votes and quest cards */
+
+  .sl-choice {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 68px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    border: 2px solid var(--choice);
+    border-radius: var(--corner-lg);
+    background: color-mix(in srgb, var(--choice) 14%, var(--surface));
+    color: var(--ink);
+    font-family: var(--display-font);
+    font-size: 1.375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color var(--dur-control) var(--ease-out),
+      transform var(--dur-control) var(--ease-out);
+  }
+
+  .sl-choice svg {
+    color: var(--choice);
+  }
+
+  .sl-choice:hover {
+    background: color-mix(in srgb, var(--choice) 26%, var(--surface));
+  }
+
+  .sl-choice:active {
+    transform: scale(0.98);
+  }
+
+  .sl-choice--approve {
+    --choice: var(--success);
+  }
+
+  .sl-choice--reject {
+    --choice: var(--fail);
+  }
+
+  .sl-card {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 116px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.75rem 0.5rem;
+    border: 2px solid var(--choice);
+    border-radius: var(--corner-lg);
+    background: color-mix(in srgb, var(--choice) 14%, var(--surface));
+    color: var(--ink);
+    text-align: center;
+    transition:
+      background-color var(--dur-control) var(--ease-out),
+      transform var(--dur-control) var(--ease-out);
+  }
+
+  .sl-card svg {
+    color: var(--choice);
+  }
+
+  button.sl-card {
+    cursor: pointer;
+  }
+
+  button.sl-card:hover {
+    background: color-mix(in srgb, var(--choice) 26%, var(--surface));
+  }
+
+  button.sl-card:active {
+    transform: scale(0.98);
+  }
+
+  .sl-card--success {
+    --choice: var(--success);
+  }
+
+  .sl-card--fail {
+    --choice: var(--fail);
+  }
+
+  button.sl-card:disabled,
+  button.sl-card:disabled:hover {
+    border-style: dashed;
+    border-color: var(--line-strong);
+    background: var(--well);
+    color: var(--ink-muted);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  button.sl-card:disabled svg {
+    color: var(--ink-muted);
+  }
+
+  .sl-card__title {
+    font-family: var(--display-font);
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .sl-card--small {
+    min-height: 92px;
+  }
+
+  .sl-card--small .sl-card__title {
+    font-size: 1.1875rem;
+  }
+
+  @media (min-width: 1024px) {
+    .sl-card {
+      min-height: 100px;
+    }
+  }
+
+  .sl-rise {
+    animation: sl-rise var(--dur-control) var(--ease-out) both;
+  }
+
+  .sl-rise--2 {
+    animation-delay: 120ms;
+  }
+
+  .sl-rise--3 {
+    animation-delay: 240ms;
+  }
+
+  /* ---------------------------------------------------- the role sky card */
+
+  .sl-skycard {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-height: var(--skycard-height);
+    overflow: hidden;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--corner-lg);
+    background: var(--well);
+    color: var(--ink);
+    text-align: center;
+    cursor: pointer;
+    transition:
+      border-color var(--dur-control) var(--ease-out),
+      box-shadow var(--dur-control) var(--ease-out);
+  }
+
+  .sl-skycard[aria-pressed="true"] {
+    border-color: var(--accent-strong);
+    box-shadow: var(--glow-star);
+  }
+
+  .sl-skycard__stars,
+  .sl-skycard__bank {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .sl-skycard__bank {
+    transition:
+      transform var(--dur-reveal) var(--ease-out),
+      opacity var(--dur-reveal) var(--ease-out);
+  }
+
+  .sl-skycard[aria-pressed="true"] .sl-skycard__bank--left {
+    opacity: 0;
+    transform: translateX(-78%);
+  }
+
+  .sl-skycard[aria-pressed="true"] .sl-skycard__bank--right {
+    opacity: 0;
+    transform: translateX(78%);
+  }
+
+  .sl-skycard__hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    width: min(100% - 2.5rem, 300px);
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--corner-lg);
+    background: var(--well);
+    transform: translate(-50%, -50%);
+  }
+
+  .sl-skycard__face {
+    position: relative;
+    display: flex;
+    min-height: var(--skycard-height);
+    flex-direction: column;
+    align-items: center;
+    padding: 0.875rem 1rem 1rem;
+    animation: sl-rise var(--dur-control) var(--ease-out) 90ms both;
+  }
+
+  .sl-constellation__line {
+    fill: none;
+    stroke: var(--constellation, var(--ink));
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    animation: sl-draw 700ms var(--ease-out) 120ms both;
+  }
+
+  .sl-knowledge {
+    display: block;
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--corner-md);
+    background: var(--surface);
+    text-align: left;
+  }
+
+  /* -------------------------------------------------------- table layout */
+
+  .sl-table {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    padding: 1.125rem 1rem 0;
+  }
+
+  .sl-table__head {
+    order: -2;
+  }
+
+  .sl-table__step--lead {
+    order: -1;
+  }
+
+  .sl-table__history {
+    order: 1;
+  }
+
+  .sl-table > .sl-bar {
+    order: 2;
+    margin-inline: -1rem;
+  }
+
+  @media (min-width: 1024px) {
+    .sl-table {
+      display: grid;
+      grid-template-columns: 308px minmax(0, 1fr) 340px;
+      grid-template-rows: auto auto auto 1fr;
+      align-items: start;
+      gap: 1rem 1.5rem;
+      max-width: 1560px;
+      margin-inline: auto;
+      padding: 1.5rem 2rem 1.5rem;
+    }
+
+    .sl-table__head,
+    .sl-table__step--lead {
+      order: 0;
+    }
+
+    .sl-table__side {
+      grid-row: 1 / -1;
+      grid-column: 1;
+    }
+
+    .sl-table__head,
+    .sl-table__ring,
+    .sl-table__step,
+    .sl-table > .sl-bar {
+      grid-column: 2;
+    }
+
+    .sl-table > .sl-bar {
+      margin-inline: 0;
+    }
+
+    .sl-table__history {
+      grid-row: 1 / -1;
+      grid-column: 3;
+    }
+  }
+
+  /* ------------------------------------------------------------- landing */
+
+  .sl-wordmark {
+    font-family: var(--display-font);
+    font-size: clamp(4.25rem, 19vw, 9.5rem);
+    font-weight: 500;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .sl-code {
+    font-family: var(--display-font);
+    font-size: clamp(3.25rem, 15vw, 4.75rem);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.18em;
+    /* Pull back the trailing letter-space so the code sits optically centred. */
+    margin-right: -0.18em;
+    color: var(--ink);
+  }
+}
+
+/* ------------------------------------------------------------- keyframes */
+
+@keyframes sl-twinkle {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes sl-shoot {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(154deg) scaleX(0.2);
+  }
+  1.5% {
+    opacity: 1;
+  }
+  6% {
+    opacity: 0;
+    transform: translate(-300px, 146px) rotate(154deg) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-300px, 146px) rotate(154deg) scaleX(1);
+  }
+}
+
+@keyframes sl-drift {
+  to {
+    transform: translateX(46px);
+  }
+}
+
+@keyframes sl-breathe {
+  from {
+    opacity: 0.72;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes sl-flicker {
+  from {
+    transform: scale(1, 1) skewX(0deg);
+  }
+  to {
+    transform: scale(0.94, 1.08) skewX(-3deg);
+  }
+}
+
+@keyframes sl-spark {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--spark-x, 8px), -70px);
+  }
+}
+
+@keyframes sl-pennant {
+  from {
+    transform: skewY(-4deg);
+  }
+  to {
+    transform: skewY(5deg);
+  }
+}
+
+@keyframes sl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes sl-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+/*
+ * globals.css already cuts every animation and transition to nothing under
+ * reduced motion. The loops below are switched off outright so nothing is
+ * left mid-cycle, and the purely decorative movers are removed.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .sl-twinkle,
+  .sl-drift,
+  .sl-fire-glow,
+  .sl-flame,
+  .sl-pennant {
+    animation: none;
+  }
+
+  .sl-shooting-star,
+  .sl-spark {
+    display: none;
+  }
+}

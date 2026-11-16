@@ -2,8 +2,8 @@
 
 Status: decided at checkpoint 1 (November 2026). The next run builds the full
 game from the plan at the end of this document without reopening these
-decisions. Open points that need the owner's answer are listed in
-[Questions for the owner](#questions-for-the-owner).
+decisions. Answered and open points are listed in
+[Owner decisions](#owner-decisions).
 
 ## Decisions at a glance
 
@@ -113,7 +113,82 @@ because Next.js itself has no upgrade API.
 - **Cost.** Vercel Hobby is free but limited to non-commercial use. Redis is
   extra (free tiers exist).
 
+### Option D: Cloudflare Workers and Durable Objects
+
+Added on 15 November 2026 after the owner asked about Cloudflare. Option B
+already covered PartyServer as a separate service next to Vercel. This is the
+all-Cloudflare version: one Worker serves the Next.js app and also exports a
+Durable Object class, and each room is one Durable Object.
+
+- **Server-authoritative hidden information.** A Durable Object is a small
+  single-threaded server with its own storage, addressed by name (the room
+  code). One object per room is exactly this game's shape: one authority per
+  room, nothing shared between rooms.
+- **Per-player filtering.** The room object holds every player's WebSocket
+  and sends each one its own view. `projectView` is used unchanged.
+- **Reconnection.** Sockets stay connected while the object sleeps
+  ("hibernation"). The client library `partysocket` reconnects and buffers
+  messages. Resuming a seat with the token is the same as today.
+- **Room state storage.** The object's memory is wiped whenever it
+  hibernates (after about 10 seconds idle), so the room must be written to
+  the object's built-in SQLite storage after every change and loaded when it
+  wakes. `GameState` is plain JSON, so this is one write per action. Timers
+  (host hand-over, expiry) become Durable Object alarms.
+- **Deploys.** Since 30 October 2026 a deploy no longer drops hibernating
+  sockets, and the room is in storage anyway. Games survive deploys. This
+  removes Option A's biggest weakness.
+- **Cost.** The free plan covers this game (100,000 requests a day; 20
+  incoming WebSocket messages count as one request; sleeping time is not
+  billed). Paid starts at 5 USD a month. There is no always-on process to
+  pay for while nobody plays.
+
+What it costs:
+
+- **Socket.IO does not run on Workers.** The transport becomes plain
+  WebSockets (with `partyserver` and `partysocket`, or by hand).
+  Acknowledgements become a small request and reply envelope that we write.
+- **Next.js on Workers goes through an adapter, and that is the risk.**
+  Cloudflare now recommends `vinext` (a reimplementation of the Next.js API
+  on Vite), which is in beta and says its Cache Components support is
+  incomplete. The older OpenNext adapter supports Next.js 16 but has open
+  bugs with `cacheComponents: true`, including on 16.4. This app can turn
+  Cache Components off (it does not need them), but it would no longer be
+  running on stock Next.js, and `next/font` and image handling work
+  differently there.
+- **Local development changes.** The room object runs in Cloudflare's local
+  runtime, not in Node. Whether a Durable Object in a custom worker entry
+  runs under each dev flow could not be confirmed from the docs.
+- **Free-plan CPU is 10 ms per request.** Fine for the room object. Not yet
+  measured for server-rendering this app's pages.
+
+Cloudflare Containers (generally available, paid plan only) could run the
+existing Node server, but containers sleep, lose their disk and are reached
+through a Durable Object anyway. That is Option A with more parts, so it is
+not considered further.
+
+**Assessment.** Durable Objects are the best serverless fit for this game,
+better than Vercel's WebSockets (Option C), and arguably a better long-term
+home than Option A: free when idle, nothing to keep alive, games survive
+deploys. The unknown is not the real-time part; it is running this Next.js
+16.4 app on Workers through a beta or buggy adapter.
+
+**What this means for the plan.** The game engine, `projectView`, the view
+and protocol types and every screen are the same in Options A and D. Only
+the transport and the store differ (`server.ts`, `attach.ts`,
+`room-store.ts`, `src/client/socket.ts`). So:
+
+1. Build the game on Option A, which is proven in this repo.
+2. In Phase 1, keep the client behind one small interface
+   (`request(event, payload)` returning a `Result`, and `onState`), so
+   nothing above it knows about Socket.IO.
+3. If Cloudflare is wanted, run a short trial before or after the game is
+   built: deploy this app to Workers with the room as a Durable Object and
+   see whether the adapter holds. That needs a Cloudflare account and the
+   owner's approval.
+
 ### Comparison
+
+Options A to C (Option D is assessed in its own section above).
 
 |                                   | A: custom server, one service     | B: Vercel + PartyServer             | B: Vercel + Ably                         | C: Vercel WebSockets + Redis               |
 | --------------------------------- | --------------------------------- | ----------------------------------- | ---------------------------------------- | ------------------------------------------ |
@@ -184,6 +259,16 @@ protocol types and every screen stay as they are.
   <https://docs.railway.com/reference/deployments>
 - Fly.io pricing and autostop: <https://docs.fly.io/about/pricing>,
   <https://docs.fly.io/reference/fly-proxy-autostop-autostart>
+- Next.js on Cloudflare Workers:
+  <https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/>,
+  <https://github.com/cloudflare/vinext>, <https://opennext.js.org/cloudflare>
+- Durable Objects WebSockets, lifecycle, deploys and pricing:
+  <https://developers.cloudflare.com/durable-objects/best-practices/websockets/>,
+  <https://developers.cloudflare.com/changelog/post/2026-10-30-durable-objects-deferred-code-updates/>,
+  <https://developers.cloudflare.com/durable-objects/platform/pricing/>
+- PartyServer and partysocket:
+  <https://github.com/cloudflare/partykit/tree/main/packages/partyserver>
+- Cloudflare Containers: <https://developers.cloudflare.com/containers/faq/>
 
 Not confirmed from a primary source: whether Railway's app sleeping closes
 open WebSockets, and whether an idle open socket counts as load for Fly.io's
@@ -496,20 +581,21 @@ Defined in `src/shared/protocol.ts`, typed on both ends. Every request has an
 acknowledgement of type `Result<T>` (`{ ok: true, data }` or
 `{ ok: false, error: { code, message } }`).
 
-| Event            | Direction        | Payload                            | Who           | Status                            |
-| ---------------- | ---------------- | ---------------------------------- | ------------- | --------------------------------- |
-| `room:create`    | client to server | `{ name }`                         | anyone        | Implemented                       |
-| `room:join`      | client to server | `{ code, name }`                   | anyone        | Implemented                       |
-| `room:resume`    | client to server | `{ token }`                        | seat holder   | Implemented                       |
-| `room:leave`     | client to server | none                               | seated, lobby | Next run                          |
-| `lobby:ready`    | client to server | `{ ready }`                        | seated        | Next run                          |
-| `lobby:settings` | client to server | `{ optionalRoles, ladyOfTheLake }` | host          | Next run                          |
-| `lobby:kick`     | client to server | `{ playerId }`                     | host          | Next run                          |
-| `lobby:start`    | client to server | none                               | host          | Next run                          |
-| `game:action`    | client to server | `GameAction` (see below)           | depends       | Next run                          |
-| `room:reset`     | client to server | none                               | host          | Next run                          |
-| `room:state`     | server to client | `RoomView`                         | one player    | Implemented                       |
-| `room:closed`    | server to client | `{ reason }`                       | one player    | Implemented (type), sent next run |
+| Event            | Direction        | Payload                            | Who              | Status                            |
+| ---------------- | ---------------- | ---------------------------------- | ---------------- | --------------------------------- |
+| `room:create`    | client to server | `{ name }`                         | anyone           | Implemented                       |
+| `room:join`      | client to server | `{ code, name }`                   | anyone           | Implemented                       |
+| `room:resume`    | client to server | `{ token }`                        | seat holder      | Implemented                       |
+| `room:leave`     | client to server | none                               | seated, lobby    | Next run                          |
+| `lobby:ready`    | client to server | `{ ready }`                        | seated           | Next run                          |
+| `lobby:settings` | client to server | `{ optionalRoles, ladyOfTheLake }` | host             | Next run                          |
+| `lobby:kick`     | client to server | `{ playerId }`                     | host             | Next run                          |
+| `lobby:start`    | client to server | none                               | host             | Next run                          |
+| `game:action`    | client to server | `GameAction` (see below)           | depends          | Next run                          |
+| `room:reset`     | client to server | none                               | host             | Next run                          |
+| `room:watch`     | client to server | `{ code }`                         | anyone (no seat) | Next run                          |
+| `room:state`     | server to client | `RoomView`                         | one player       | Implemented                       |
+| `room:closed`    | server to client | `{ reason }`                       | one player       | Implemented (type), sent next run |
 
 `GameAction` is one of: `confirm_role`, `draft_team { playerIds }`,
 `propose_team { playerIds }`, `vote { vote }`, `play_card { card }`,
@@ -614,8 +700,8 @@ decisions were treated as input.
 
 Each phase ends with `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`
 and `pnpm test:e2e` passing, and one commit or more. Phases are in dependency
-order. Nothing in them needs a new decision except the answers listed under
-[Questions for the owner](#questions-for-the-owner).
+order. Nothing in them needs a new decision except the open points listed under
+[Owner decisions](#owner-decisions).
 
 ### Phase 0: adopt the chosen design direction
 
@@ -679,33 +765,79 @@ order. Nothing in them needs a new decision except the answers listed under
 - Tests: engine cases for each ending; e2e reaching both a Good and an Evil
   win.
 
-### Phase 5: resilience and polish
+### Phase 5: the Lady of the Lake (required)
+
+- Engine: the `lady` phase after quests 2, 3 and 4 when the rule is on, the
+  `lady_examine` action, the token passing to the examined player, and the
+  rule that a past holder cannot be examined. The first holder is the player
+  to the first leader's right.
+- View: `ladyHolderId` is public. The result goes only to the holder, in
+  `you.ladyResults`. Everyone sees who examined whom, never the answer.
+- Screens: the holder picks a player; the answer is shown with
+  `useHoldToReveal`; everyone else sees a waiting state. A marker on the
+  holder's seat. The lobby switch already exists.
+- Tests: engine cases (order, eligibility, exactly three uses), a leak test
+  that no other viewer's view contains the result, and one e2e game with the
+  rule on.
+
+### Phase 6: the shared table screen (required)
+
+A laptop or TV that shows the table to the whole room. It has no seat and
+sees nothing secret.
+
+- Protocol: a new `room:watch { code }` event. The socket joins the channel
+  `watch:CODE` and takes no seat. At most four watchers per room.
+- View: a new `WatchView` (`stage: "watch"`) in `src/shared/views.ts`, built
+  by a new `projectWatchView(room)` next to `projectView`. It carries only
+  public facts: players, settings, quests, score, leader, rejected-team
+  count, finished votes, who has voted or played so far, the Lady's holder,
+  and at the end the roles. It has no `you`, no knowledge, no unrevealed
+  vote and no quest card. To keep the two views honest, `PhaseView` is split
+  into a public part that both use and the private fields that only
+  `GameView` adds (`youConfirmed`, `yourVote`, `onTeam`, `yourCard`).
+- Delivery: `publish(room)` also emits the one watch view to `watch:CODE`.
+  This is the only view sent to more than one socket, and it is safe to do
+  so because it contains nothing private. Update the rule in `CLAUDE.md` to
+  say: only the output of `projectView` and `projectWatchView` may be
+  emitted.
+- Route: `/room/[code]/watch`, linked from the lobby ("Show the table on a
+  big screen"). Desktop-first layout from the prototype's 1440px table. No
+  controls. This is where the full reveal animations and sound play (see the
+  chosen direction's spec); phones stay quieter.
+- Tests: a leak test that the serialized watch view never contains a role
+  before `game_over`, a vote before the reveal, or any card; an e2e with a
+  watcher context beside the player contexts.
+
+### Phase 7: resilience and polish
 
 - Mid-game reconnect e2e (close a context during a vote, reopen, vote).
 - Offline and reconnecting banners, error messages from failed
   acknowledgements, empty and loading states.
 - Hardening: `maxHttpBufferSize`, an `Origin` check on the socket handshake
-  in production, rate limits on create and join.
+  in production, rate limits on create, join and watch.
 - Accessibility pass (keyboard, screen reader labels, reduced motion) and a
   performance check on a mid-range phone profile.
 
-### Phase 6 (optional, in this order)
+### Phase 8 (optional, in this order)
 
-1. **Lady of the Lake**: engine phase, `lady_examine`, screen.
-2. **Shared table screen**: a view without a seat. New `room:watch { code }`
-   event, a `WatchView` type with only public fields, and `/room/[code]/watch`
-   for a laptop or TV.
-3. **Restart snapshot**: write rooms to a volume on `SIGTERM`, load on boot.
-4. **Deploy**: Railway service with the settings above. Needs approval.
+1. **Restart snapshot**: write rooms to a volume on `SIGTERM`, load on boot.
+2. **Deploy**: one service with the settings above. Needs approval.
 
-## Questions for the owner
+## Owner decisions
 
-1. **Which design direction?** See `/design` and `docs/design/`.
-2. **Hosting.** The comparison picks one always-on service (Railway) over
-   Vercel, even though Vercel can now hold WebSockets. Confirm, or say that
-   being on Vercel matters more than the simpler design (then Option C).
-3. **Room codes of 4 letters** instead of 6 characters. Confirm.
-4. **Host leaves.** The room survives and the host role passes on after 60
-   seconds, instead of the room being destroyed. Confirm.
-5. **Shared table screen and Lady of the Lake** are optional in the plan.
-   Say whether either should be in the next run's required scope.
+Answered on 15 November 2026:
+
+| Question                                                                 | Answer                                          |
+| ------------------------------------------------------------------------ | ----------------------------------------------- |
+| Room codes of 4 letters instead of 6 characters                          | Confirmed.                                      |
+| The room survives the host leaving; host role passes on after 60 seconds | Confirmed.                                      |
+| Shared table screen and Lady of the Lake                                 | Both required in the next run (Phases 5 and 6). |
+
+Still open:
+
+1. **Which design direction?** The owner is leaning towards Starlit Vale and
+   asked for motion and sound examples first. See `/design/starlit/motion`.
+2. **Hosting.** See [Option D](#option-d-cloudflare-workers-and-durable-objects)
+   for Cloudflare. The choice between one always-on Node service and
+   Cloudflare changes two files and the transport, so it should be made
+   before Phase 1.

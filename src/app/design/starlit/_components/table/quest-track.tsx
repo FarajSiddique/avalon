@@ -25,8 +25,23 @@ function failsText(count: number): string {
  * The five quests as five moons joined by a fine line. The number in each
  * moon is the team size. A finished quest gets a tick or a cross on its rim
  * and the word Success or Failed; the current one glows.
+ *
+ * `settled` is the quest that has just finished: its moon takes its outcome
+ * (at `--settle-at` on a parent) and the next moon starts to glow.
  */
-export function QuestTrack({ view }: { view: GameView }) {
+export function QuestTrack({
+  view,
+  settled,
+}: {
+  view: GameView;
+  settled?: number;
+}) {
+  // The words for a quest that has just settled (and the one now current)
+  // arrive with its moon, so they never give the result away early.
+  const news = (index: number) =>
+    settled !== undefined && (index === settled || index === settled + 1)
+      ? "sl-moon-news sl-seq"
+      : "";
   return (
     <section aria-label="Quest track">
       <ol className="sl-track">
@@ -36,15 +51,18 @@ export function QuestTrack({ view }: { view: GameView }) {
             className="sl-track__quest"
             aria-current={quest.status === "current" ? "step" : undefined}
           >
-            <span className="sl-moon" data-status={quest.status}>
+            <span
+              className={`sl-moon ${settled === index ? "sl-moon--settle sl-seq" : ""} ${settled !== undefined && settled + 1 === index ? "sl-moon--next sl-seq" : ""}`}
+              data-status={quest.status}
+            >
               <span aria-hidden="true">{quest.teamSize}</span>
               {quest.status === "success" && (
-                <span className="sl-moon__badge">
+                <span className="sl-moon__badge sl-seq">
                   <IconCheck size={12} />
                 </span>
               )}
               {quest.status === "fail" && (
-                <span className="sl-moon__badge">
+                <span className="sl-moon__badge sl-seq">
                   <IconCross size={12} />
                 </span>
               )}
@@ -55,7 +73,7 @@ export function QuestTrack({ view }: { view: GameView }) {
                 <span className="sr-only">, {quest.teamSize} players.</span>
               </span>
               <span
-                className={`text-[0.8125rem] leading-tight font-extrabold lg:block lg:text-[0.9375rem] ${quest.status === "upcoming" ? "hidden" : "block"} ${STATUS_TONE[quest.status]}`}
+                className={`text-[0.8125rem] leading-tight font-extrabold lg:block lg:text-[0.9375rem] ${quest.status === "upcoming" ? "hidden" : "block"} ${STATUS_TONE[quest.status]} ${news(index)}`}
               >
                 {STATUS_LABEL[quest.status]}
               </span>
@@ -64,7 +82,9 @@ export function QuestTrack({ view }: { view: GameView }) {
                   2 fails needed
                 </span>
               )}
-              <span className="sl-track__detail text-ink-muted mt-0.5 text-base leading-snug">
+              <span
+                className={`sl-track__detail text-ink-muted mt-0.5 text-base leading-snug ${news(index)}`}
+              >
                 {quest.teamSize} players
                 {quest.team
                   ? `: ${joinNames(playerNames(view, quest.team))}.`

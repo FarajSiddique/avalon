@@ -1,21 +1,36 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { play } from "@/client/sound";
 import { designPaths } from "@/design/directions";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import { IconArrowRight, IconCheck, IconRing } from "../icons";
+import { SoundLink } from "../sound-link";
 import { HostSettings } from "./host-settings";
 import { PlayerList } from "./player-list";
 import { RoomCode } from "./room-code";
 
 const paths = designPaths("starlit");
 
+/**
+ * The moment the last blocker clears, the table plays one chord. Only on the
+ * change: opening a lobby that can already start stays quiet.
+ */
+function useEveryoneReadyChord(canStart: boolean): void {
+  const was = useRef(canStart);
+  useEffect(() => {
+    if (canStart && !was.current) play("all-ready");
+    was.current = canStart;
+  }, [canStart]);
+}
+
 /** The lobby as the host sees it. */
 export function LobbyScreen() {
   const lobby = useMockLobby();
   const { view, canStart } = lobby;
   const reasons = startBlockerMessages(view);
+  useEveryoneReadyChord(canStart);
 
   return (
     <main className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col gap-4 px-4 pt-6 lg:grid lg:flex-none lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)_minmax(0,27rem)] lg:grid-rows-[auto_auto_auto_1fr] lg:items-start lg:gap-6 lg:px-8 lg:pt-10 lg:pb-12">
@@ -34,7 +49,11 @@ export function LobbyScreen() {
       </div>
 
       <div className="lg:col-start-2 lg:row-span-3 lg:row-start-2">
-        <PlayerList view={view} onToggleReady={lobby.toggleReady} />
+        <PlayerList
+          view={view}
+          onToggleReady={lobby.toggleReady}
+          allReady={canStart}
+        />
       </div>
 
       <div className="lg:col-start-3 lg:row-span-3 lg:row-start-2">
@@ -49,7 +68,7 @@ export function LobbyScreen() {
         <div className="lg:border-line lg:bg-surface flex flex-col gap-2.5 lg:rounded-lg lg:border lg:p-5">
           <div role="status" aria-live="polite">
             {canStart ? (
-              <p className="text-success flex items-center gap-2 text-base font-bold">
+              <p className="text-success sl-rise sl-seq flex items-center gap-2 text-base font-bold">
                 <IconCheck size={18} />
                 Everyone is here and ready.
               </p>
@@ -68,13 +87,14 @@ export function LobbyScreen() {
             )}
           </div>
           {canStart ? (
-            <Link
+            <SoundLink
               href={paths.role("merlin")}
-              className="sl-btn sl-btn--primary w-full"
+              cue="start"
+              className="sl-btn sl-btn--primary sl-wake sl-seq w-full"
             >
               Start the game
               <IconArrowRight size={18} />
-            </Link>
+            </SoundLink>
           ) : (
             <button
               type="button"

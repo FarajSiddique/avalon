@@ -111,10 +111,16 @@
 
   /* -------------------------------------------------------- 3. component */
 
-  /* Motion */
+  /* Motion (see motion.css and the Motion section of docs/design/starlit.md) */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Even in and out: for things that travel (clouds parting, the crown). */
+  --ease-travel: cubic-bezier(0.4, 0, 0.2, 1);
   --dur-control: 250ms;
   --dur-reveal: 420ms;
+  --dur-part: 560ms;
+  --dur-close: 280ms;
 
   /* Panels: indigo, a little see-through, solid enough for text */
   --surface-raised: var(--starlit-indigo-700);
@@ -345,6 +351,7 @@
   /* ------------------------------------------------------------- buttons */
 
   .sl-btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -592,6 +599,8 @@
   .sl-ring {
     position: relative;
     height: var(--ring-height);
+    /* Lets motion inside the ring measure in ring units (cqw, cqh). */
+    container-type: size;
   }
 
   .sl-ring__lines {
@@ -709,7 +718,8 @@
       background-color var(--dur-control) var(--ease-out),
       border-color var(--dur-control) var(--ease-out),
       color var(--dur-control) var(--ease-out),
-      box-shadow var(--dur-control) var(--ease-out);
+      box-shadow var(--dur-control) var(--ease-out),
+      opacity var(--dur-reveal) var(--ease-out);
   }
 
   button.sl-seat__body:hover .sl-seat__disc {
@@ -1104,15 +1114,7 @@
   }
 
   .sl-rise {
-    animation: sl-rise var(--dur-control) var(--ease-out) both;
-  }
-
-  .sl-rise--2 {
-    animation-delay: 120ms;
-  }
-
-  .sl-rise--3 {
-    animation-delay: 240ms;
+    animation: sl-rise var(--dur-control) var(--ease-out) var(--at, 0ms) both;
   }
 
   /* ---------------------------------------------------- the role sky card */
@@ -1147,10 +1149,20 @@
     height: 100%;
   }
 
-  .sl-skycard__bank {
+  /* Closing is quick (it is the private state); parting is slow and soft. */
+  .sl-skycard__bank,
+  .sl-skycard__layer {
     transition:
-      transform var(--dur-reveal) var(--ease-out),
-      opacity var(--dur-reveal) var(--ease-out);
+      transform var(--dur-close) var(--ease-in),
+      opacity var(--dur-close) var(--ease-in);
+  }
+
+  .sl-skycard[aria-pressed="true"] .sl-skycard__bank,
+  .sl-skycard[aria-pressed="true"] .sl-skycard__layer {
+    transition:
+      transform var(--dur-part) var(--ease-travel),
+      opacity calc(var(--dur-part) * 0.6) var(--ease-out)
+        calc(var(--dur-part) * 0.35);
   }
 
   .sl-skycard[aria-pressed="true"] .sl-skycard__bank--left {
@@ -1161,6 +1173,15 @@
   .sl-skycard[aria-pressed="true"] .sl-skycard__bank--right {
     opacity: 0;
     transform: translateX(78%);
+  }
+
+  /* The three layers of each bank drift apart: near cloud moves furthest. */
+  .sl-skycard[aria-pressed="true"] .sl-skycard__layer--middle {
+    transform: translateX(-26px);
+  }
+
+  .sl-skycard[aria-pressed="true"] .sl-skycard__layer--front {
+    transform: translateX(-60px);
   }
 
   .sl-skycard__hint {
@@ -1195,7 +1216,7 @@
     stroke-width: 1.25;
     stroke-linecap: round;
     stroke-dasharray: 1;
-    animation: sl-draw 700ms var(--ease-out) 120ms both;
+    animation: sl-draw 260ms var(--ease-out) var(--at, 120ms) both;
   }
 
   .sl-knowledge {
@@ -1388,10 +1409,19 @@
 
 /*
  * globals.css already cuts every animation and transition to nothing under
- * reduced motion. The loops below are switched off outright so nothing is
- * left mid-cycle, and the purely decorative movers are removed.
+ * reduced motion, but not their delays, and the sequences here are timed
+ * with delays. Zero them so every screen is at its end state at once. The
+ * loops below are switched off outright so nothing is left mid-cycle, and
+ * the purely decorative movers are removed.
  */
 @media (prefers-reduced-motion: reduce) {
+  .theme-starlit *,
+  .theme-starlit *::before,
+  .theme-starlit *::after {
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
+  }
+
   .sl-twinkle,
   .sl-drift,
   .sl-fire-glow,

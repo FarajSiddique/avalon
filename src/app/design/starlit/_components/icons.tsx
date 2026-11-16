@@ -217,3 +217,23 @@ export function IconHold(props: IconProps) {
     </Icon>
   );
 }
+
+/** Sound on: a small horn with two arcs of sound. */
+export function IconSound(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 9.6h3.2L12 5.6v12.8l-4.8-4H4z" />
+      <path d="M15.4 9.2a4 4 0 0 1 0 5.6M18 6.8a7.4 7.4 0 0 1 0 10.4" />
+    </Icon>
+  );
+}
+
+/** Sound off: the horn with a cross beside it. */
+export function IconSoundOff(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 9.6h3.2L12 5.6v12.8l-4.8-4H4z" />
+      <path d="M15.6 9.6l4.8 4.8M20.4 9.6l-4.8 4.8" />
+    </Icon>
+  );
+}

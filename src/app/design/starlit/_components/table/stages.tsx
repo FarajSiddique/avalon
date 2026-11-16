@@ -1,7 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { play, type CueHandle, type CueName } from "@/client/sound";
 import { designPaths, type TableStep } from "@/design/directions";
 import {
   playerName,
@@ -21,6 +27,8 @@ import {
   IconSun,
 } from "../icons";
 import { joinNames, numberWord } from "../names";
+import { SoundLink } from "../sound-link";
+import { REVEAL_TIMELINE, RESULT_TIMELINE, ms } from "./result-timeline";
 import { SeatRing, type SeatStatus } from "./seat-ring";
 import { tallyOf } from "./vote-history";
 
@@ -33,12 +41,41 @@ type Phase<Name extends GameView["phase"]["name"]> = Extract<
 
 /* ----------------------------------------------------------- small pieces */
 
-function Ring({ children }: { children: ReactNode }) {
+function Ring({
+  children,
+  timing,
+}: {
+  children: ReactNode;
+  /** CSS custom properties that time the ring's motion. */
+  timing?: Record<string, string>;
+}) {
   return (
-    <section className="sl-table__ring sl-chart px-1 pt-3 pb-2 lg:px-4 lg:pb-1">
+    <section
+      className="sl-table__ring sl-chart px-1 pt-3 pb-2 lg:px-4 lg:pb-1"
+      style={timing as CSSProperties | undefined}
+    >
       {children}
     </section>
   );
+}
+
+/**
+ * Play cues as a step opens, on the audio clock. They stop if the step is
+ * left (Next hides the old page, which runs this clean-up) or skipped.
+ */
+function useOpeningCues(
+  cues: readonly { cue: CueName; at: number }[],
+): React.RefObject<CueHandle[]> {
+  const handles = useRef<CueHandle[]>([]);
+  useEffect(() => {
+    handles.current = cues.map(({ cue, at }) =>
+      play(cue, { delay: at / 1000 }),
+    );
+    return () => handles.current.forEach((handle) => handle.stop());
+    // The cues are fixed for each step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return handles;
 }
 
 /**
@@ -74,15 +111,24 @@ function ActionBar({ children }: { children: ReactNode }) {
 function ContinueLink({
   to,
   children,
+  cue = "tap",
+  wake = false,
 }: {
   to: TableStep;
   children: ReactNode;
+  cue?: CueName;
+  /** Bloom once as it appears: "you can go on now". */
+  wake?: boolean;
 }) {
   return (
-    <Link href={paths.table(to)} className="sl-btn sl-btn--primary w-full">
+    <SoundLink
+      href={paths.table(to)}
+      cue={cue}
+      className={`sl-btn sl-btn--primary w-full ${wake ? "sl-wake sl-seq" : ""}`}
+    >
       {children}
       <IconArrowRight size={18} />
-    </Link>
+    </SoundLink>
   );
 }
 
@@ -93,6 +139,27 @@ function Count({ children }: { children: ReactNode }) {
       aria-live="polite"
       className="text-center text-base font-bold"
     >
+      {children}
+    </p>
+  );
+}
+
+/** "Your vote is locked" and "Your card is played": the lock closes as it rises. */
+export function LockedNote({
+  children,
+  at = 0,
+}: {
+  children: ReactNode;
+  at?: number;
+}) {
+  return (
+    <p
+      role="status"
+      aria-live="polite"
+      className="bg-well border-line sl-rise sl-lock sl-seq flex items-center justify-center gap-2 rounded-md border px-4 py-3 text-[1.0625rem] font-bold"
+      style={{ "--at": ms(at) } as CSSProperties}
+    >
+      <IconLock size={20} className="text-accent" />
       {children}
     </p>
   );
@@ -113,6 +180,20 @@ function ProposeStage({
   phase: Phase<"team_building">;
 }) {
   const draft = useTeamDraft(phase.teamSize, phase.draftIds);
+  useOpeningCues([{ cue: "crown", at: 250 }]);
+  const toggle = (id: PlayerId) => {
+    const count = draft.draftIds.length;
+    if (draft.isPicked(id)) {
+      play("unpick");
+    } else if (count < phase.teamSize) {
+      // Each pick is one note higher; the last one resolves into a chord.
+      play("pick", { index: count });
+      if (count + 1 === phase.teamSize) {
+        play("team-complete", { delay: 0.2 });
+      }
+    }
+    draft.toggle(id);
+  };
   const status = Object.fromEntries(
     draft.draftIds.map((id): [PlayerId, SeatStatus] => [id, "chosen"]),
   );
@@ -128,7 +209,8 @@ function ProposeStage({
           leaderId={view.leaderId}
           litIds={draft.draftIds}
           status={status}
-          onToggle={draft.toggle}
+          onToggle={toggle}
+          crown="arrive"
         />
       </Ring>
       <StepPanel>
@@ -146,10 +228,18 @@ function ProposeStage({
       </StepPanel>
       <ActionBar>
         <Count>
-          {draft.draftIds.length} of {phase.teamSize} chosen
+          <span
+            key={draft.draftIds.length}
+            className="sl-pop sl-seq inline-block"
+          >
+            {draft.draftIds.length}
+          </span>{" "}
+          of {phase.teamSize} chosen
         </Count>
         {draft.complete ? (
-          <ContinueLink to="vote">Propose team</ContinueLink>
+          <ContinueLink to="vote" cue="propose" wake>
+            Propose team
+          </ContinueLink>
         ) : (
           <button
             type="button"
@@ -217,12 +307,7 @@ function VoteStage({
         </Count>
         {vote ? (
           <>
-            <p
-              role="status"
-              aria-live="polite"
-              className="bg-well border-line flex items-center justify-center gap-2 rounded-md border px-4 py-3 text-[1.0625rem] font-bold"
-            >
-              <IconLock size={20} className="text-accent" />
+            <LockedNote>
               Your vote is locked:
               <span
                 className={`inline-flex items-center gap-1 ${vote === "approve" ? "text-success" : "text-fail"}`}
@@ -234,7 +319,7 @@ function VoteStage({
                 )}
                 {vote === "approve" ? "Approve" : "Reject"}
               </span>
-            </p>
+            </LockedNote>
             <ContinueLink to="reveal">Continue</ContinueLink>
           </>
         ) : (
@@ -242,7 +327,11 @@ function VoteStage({
             <button
               type="button"
               className="sl-choice sl-choice--approve"
-              onClick={() => setVote("approve")}
+              onClick={() => {
+                // One sound for both votes: a neighbour can hear the phone.
+                play("vote-lock");
+                setVote("approve");
+              }}
             >
               <IconApprove size={28} />
               Approve
@@ -250,7 +339,10 @@ function VoteStage({
             <button
               type="button"
               className="sl-choice sl-choice--reject"
-              onClick={() => setVote("reject")}
+              onClick={() => {
+                play("vote-lock");
+                setVote("reject");
+              }}
             >
               <IconReject size={28} />
               Reject
@@ -266,6 +358,15 @@ function VoteStage({
 
 function RevealStage({ view }: { view: GameView }) {
   const tally = tallyOf(voteReveal);
+  // A held breath, every vote turning at once, then the verdict.
+  useOpeningCues([
+    { cue: "suspense", at: 0 },
+    { cue: "votes-turn", at: REVEAL_TIMELINE.turn },
+    {
+      cue: voteReveal.approved ? "approved" : "rejected",
+      at: REVEAL_TIMELINE.tally,
+    },
+  ]);
   const status = Object.fromEntries(
     Object.entries(voteReveal.votes).map(
       ([id, vote]): [PlayerId, SeatStatus] => [id, vote],
@@ -274,7 +375,7 @@ function RevealStage({ view }: { view: GameView }) {
 
   return (
     <>
-      <Ring>
+      <Ring timing={{ "--turn-at": ms(REVEAL_TIMELINE.turn) }}>
         <SeatRing
           label="Seats, with every player's vote."
           players={view.players}
@@ -282,12 +383,14 @@ function RevealStage({ view }: { view: GameView }) {
           leaderId={view.leaderId}
           litIds={voteReveal.team}
           status={status}
+          turnFrom="voted"
         />
       </Ring>
       <ActionBar>
         <div
           role="status"
-          className="sl-rise flex flex-col items-center gap-1 text-center"
+          className="sl-rise sl-tally sl-seq flex flex-col items-center gap-1 text-center"
+          style={{ "--at": ms(REVEAL_TIMELINE.tally) } as CSSProperties}
         >
           <p
             className={`font-display flex items-center gap-2.5 text-[2rem] leading-tight font-medium ${voteReveal.approved ? "text-success" : "text-fail"}`}
@@ -313,6 +416,24 @@ function RevealStage({ view }: { view: GameView }) {
 
 /* ------------------------------------------------------------------ quest */
 
+/**
+ * The moment after playing: both cards turn face down together, slide into
+ * one, and that one card goes up to the fire. Both cards do the same thing,
+ * so the motion does not say which was played. Decorative only.
+ */
+export function PlayedCards() {
+  return (
+    <span className="sl-cardfly" aria-hidden="true">
+      <span className="sl-cardfly__card sl-cardfly__card--left sl-seq">
+        <IconStar size={30} />
+      </span>
+      <span className="sl-cardfly__card sl-cardfly__card--right sl-seq">
+        <IconStar size={30} />
+      </span>
+    </span>
+  );
+}
+
 function QuestStage({
   view,
   phase,
@@ -322,6 +443,15 @@ function QuestStage({
 }) {
   // Only that a card was played is kept, never which one.
   const [played, setPlayed] = useState(phase.yourCard !== null);
+  // True only when the card was played here, so the hand-off animates.
+  const [justPlayed, setJustPlayed] = useState(false);
+  useOpeningCues([{ cue: "deal", at: 80 }]);
+  const playCard = () => {
+    // One sound for both cards: a neighbour can hear the phone.
+    play("card-play");
+    setPlayed(true);
+    setJustPlayed(true);
+  };
   const playedIds =
     played && !phase.playedIds.includes(view.you.id)
       ? [...phase.playedIds, view.you.id]
@@ -361,31 +491,29 @@ function QuestStage({
         </Count>
         {played ? (
           <>
-            <p
-              role="status"
-              aria-live="polite"
-              className="bg-well border-line flex items-center justify-center gap-2 rounded-md border px-4 py-3 text-[1.0625rem] font-bold"
-            >
-              <IconLock size={20} className="text-accent" />
-              Your card is played and locked.
-            </p>
+            <div className="relative">
+              <LockedNote at={justPlayed ? 520 : 0}>
+                Your card is played and locked.
+              </LockedNote>
+              {justPlayed && <PlayedCards />}
+            </div>
             <ContinueLink to="result">Continue</ContinueLink>
           </>
         ) : (
           <div className="flex items-stretch gap-3">
             <button
               type="button"
-              className="sl-card sl-card--success"
-              onClick={() => setPlayed(true)}
+              className="sl-card sl-card--success sl-deal sl-seq"
+              onClick={playCard}
             >
               <IconSun size={34} />
               <span className="sl-card__title">Success</span>
             </button>
             <button
               type="button"
-              className="sl-card sl-card--fail"
+              className="sl-card sl-card--fail sl-deal sl-deal--2 sl-seq"
               disabled={mustSucceed}
-              onClick={() => setPlayed(true)}
+              onClick={playCard}
             >
               <IconCrackedMoon size={34} />
               <span className="sl-card__title">Fail</span>
@@ -404,42 +532,120 @@ function QuestStage({
 
 /* ----------------------------------------------------------------- result */
 
+/**
+ * The quest's cards, already shuffled by the server. They arrive face down,
+ * slide over each other, and turn one at a time on RESULT_TIMELINE; the
+ * last one lifts and waits before it turns (the held breath). At rest they
+ * are simply the three faces.
+ */
+export function QuestDeck({
+  cards,
+  listRef,
+}: {
+  cards: readonly QuestCard[];
+  listRef?: React.Ref<HTMLUListElement>;
+}) {
+  const timeline = RESULT_TIMELINE;
+  return (
+    <ul
+      ref={listRef}
+      className="sl-deck flex gap-2.5 lg:flex-[1.15]"
+      aria-label="The quest cards, shuffled"
+    >
+      {cards.map((card, index) => {
+        const face = CARD[card];
+        const last = index === cards.length - 1;
+        return (
+          <li
+            key={index}
+            className={`sl-card sl-card--small sl-qcard sl-seq ${face.className} ${last ? "sl-qcard--last" : ""}`}
+            style={
+              {
+                "--turn-at": ms(timeline.turns[index] ?? 0),
+                "--breath-at": ms(timeline.breath),
+              } as CSSProperties
+            }
+          >
+            <span className="sl-qcard__face sl-seq">
+              <face.icon size={30} />
+              <span className="sl-card__title">{face.label}</span>
+            </span>
+            <span className="sl-qcard__back sl-seq" aria-hidden="true">
+              <IconStar size={26} />
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * Skip a long opening sequence with one tap anywhere on the table: every
+ * animation jumps to its end and the cues still to come are cancelled.
+ */
+function useTapToSkip(
+  anchor: React.RefObject<HTMLElement | null>,
+  handles: React.RefObject<CueHandle[]>,
+  lasts: number,
+): void {
+  useEffect(() => {
+    const table = anchor.current?.closest<HTMLElement>(".sl-table");
+    if (!table) return;
+    const skip = () => {
+      table.dataset.skip = "true";
+      handles.current.forEach((handle) => handle.stop());
+    };
+    table.addEventListener("pointerdown", skip, { once: true });
+    const done = window.setTimeout(
+      () => table.removeEventListener("pointerdown", skip),
+      lasts,
+    );
+    return () => {
+      window.clearTimeout(done);
+      table.removeEventListener("pointerdown", skip);
+      delete table.dataset.skip;
+    };
+  }, [anchor, handles, lasts]);
+}
+
 function ResultStage({ view }: { view: GameView }) {
   const failed = questReveal.outcome === "fail";
   const next = view.quests[view.questIndex];
   const fails = questReveal.failCount;
+  const timeline = RESULT_TIMELINE;
+  const cards = useRef<HTMLUListElement>(null);
+  const handles = useOpeningCues([
+    { cue: "shuffle", at: timeline.shuffle },
+    ...questReveal.cards.map((card, index) => ({
+      cue: card === "fail" ? ("card-fail" as const) : ("card-success" as const),
+      at: timeline.turns[index] ?? timeline.turns[0],
+    })),
+    { cue: failed ? "quest-fail" : "quest-success", at: timeline.outcome },
+    { cue: "score", at: timeline.score },
+    { cue: "crown-pass", at: timeline.crown },
+  ]);
+  useTapToSkip(cards, handles, timeline.end);
 
   return (
     <>
-      <Ring>
+      <Ring timing={{ "--crown-at": ms(timeline.crown) }}>
         <SeatRing
           label="Seats. Lit stars went on the quest."
           players={view.players}
           youId={view.you.id}
           leaderId={view.leaderId}
           litIds={questReveal.team}
+          crown={voteReveal.leaderId}
         />
       </Ring>
       <StepPanel lead>
         <div className="lg:flex lg:items-center lg:gap-6">
-          <ul
-            className="flex gap-2.5 lg:flex-[1.15]"
-            aria-label="The quest cards, shuffled"
+          <QuestDeck cards={questReveal.cards} listRef={cards} />
+          <div
+            className="sl-rise sl-seq lg:flex-1"
+            style={{ "--at": ms(timeline.outcome) } as CSSProperties}
           >
-            {questReveal.cards.map((card, index) => {
-              const face = CARD[card];
-              return (
-                <li
-                  key={index}
-                  className={`sl-card sl-card--small sl-rise ${face.className} ${index === 1 ? "sl-rise--2" : ""} ${index === 2 ? "sl-rise--3" : ""}`}
-                >
-                  <face.icon size={30} />
-                  <span className="sl-card__title">{face.label}</span>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="lg:flex-1">
             <p
               className={`font-display mt-4 flex items-center justify-center gap-2.5 text-[2rem] leading-tight font-medium lg:mt-0 lg:justify-start ${failed ? "text-fail" : "text-success"}`}
             >
@@ -457,7 +663,10 @@ function ResultStage({ view }: { view: GameView }) {
           </div>
         </div>
         {next && (
-          <p className="bg-well border-line mt-3 flex items-start gap-2.5 rounded-md border px-4 py-3 text-base leading-snug">
+          <p
+            className="bg-well border-line sl-rise sl-seq mt-3 flex items-start gap-2.5 rounded-md border px-4 py-3 text-base leading-snug"
+            style={{ "--at": ms(timeline.crown) } as CSSProperties}
+          >
             <IconStar size={18} className="text-accent mt-0.5" />
             <span>
               <strong className="font-extrabold">

@@ -2,8 +2,30 @@ import { MAX_REJECTIONS, QUESTS_TO_WIN } from "@/shared/constants";
 import type { GameView } from "@/shared/views";
 import { IconDagger, IconShield } from "../icons";
 
+/**
+ * A score that has just gone up: the old number rolls up and away and the
+ * new one rolls in under it (at `--score-at` on a parent).
+ */
+function Score({ value, bumped }: { value: number; bumped: boolean }) {
+  if (!bumped) return <>{value}</>;
+  return (
+    <span className="sl-swap sl-swap--roll">
+      <span className="sl-swap__old sl-seq" aria-hidden="true">
+        {value - 1}
+      </span>
+      <span className="sl-swap__new sl-seq">{value}</span>
+    </span>
+  );
+}
+
 /** Quests won by each side, and how many teams in a row have been rejected. */
-export function Scoreboard({ view }: { view: GameView }) {
+export function Scoreboard({
+  view,
+  bumped,
+}: {
+  view: GameView;
+  bumped?: "good" | "evil";
+}) {
   const pips = Array.from({ length: MAX_REJECTIONS }, (_, index) => index);
   return (
     <section
@@ -15,14 +37,14 @@ export function Scoreboard({ view }: { view: GameView }) {
           <IconShield size={20} />
           Good
           <span className="font-display text-ink text-2xl leading-none font-semibold">
-            {view.score.good}
+            <Score value={view.score.good} bumped={bumped === "good"} />
           </span>
         </p>
         <p className="text-evil flex items-center gap-1.5 text-base font-extrabold">
           <IconDagger size={20} />
           Evil
           <span className="font-display text-ink text-2xl leading-none font-semibold">
-            {view.score.evil}
+            <Score value={view.score.evil} bumped={bumped === "evil"} />
           </span>
         </p>
         <p className="text-ink-muted hidden text-base lg:ml-auto lg:block">

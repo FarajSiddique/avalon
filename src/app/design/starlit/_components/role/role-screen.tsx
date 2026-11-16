@@ -7,6 +7,7 @@ import { AlignmentTag } from "../alignment-tag";
 import { Constellation, constellationFor } from "../art/constellation";
 import { IconArrowRight, IconEyeOff } from "../icons";
 import { joinNames } from "../names";
+import { SoundLink } from "../sound-link";
 import { SkyCard } from "./sky-card";
 
 const paths = designPaths("starlit");
@@ -88,7 +89,7 @@ export function RoleScreen({ variant }: { variant: RoleVariant }) {
         </p>
       </header>
 
-      <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1">
+      <div className="sl-arrive sl-seq lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <SkyCard>
           <Constellation
             figure={figure}
@@ -143,13 +144,14 @@ export function RoleScreen({ variant }: { variant: RoleVariant }) {
               ))}
             </span>
           </p>
-          <Link
+          <SoundLink
             href={paths.table("propose")}
+            cue="confirm"
             className="sl-btn sl-btn--primary w-full"
           >
             I have seen my role
             <IconArrowRight size={18} />
-          </Link>
+          </SoundLink>
         </div>
       </div>
 

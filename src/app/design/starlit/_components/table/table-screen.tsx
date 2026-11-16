@@ -5,10 +5,12 @@ import {
   questReveal,
   tableViews,
 } from "@/design/mock";
+import type { CSSProperties } from "react";
 import type { GameView } from "@/shared/views";
 import { FreshOnReturn } from "../fresh-on-return";
 import { joinNames, numberWord } from "../names";
 import { QuestTrack } from "./quest-track";
+import { RESULT_TIMELINE, ms } from "./result-timeline";
 import { Scoreboard } from "./scoreboard";
 import { TableStage } from "./stages";
 import { VoteHistory } from "./vote-history";
@@ -71,9 +73,21 @@ function headingFor(step: TableStep, view: GameView): Heading {
 export function TableScreen({ step }: { step: TableStep }) {
   const view = tableViews[step];
   const heading = headingFor(step, view);
+  // The quest result settles the quest's moon and the score as it opens.
+  const result = step === "result";
 
   return (
-    <main className="sl-table">
+    <main
+      className="sl-table"
+      style={
+        result
+          ? ({
+              "--settle-at": ms(RESULT_TIMELINE.outcome),
+              "--score-at": ms(RESULT_TIMELINE.score),
+            } as CSSProperties)
+          : undefined
+      }
+    >
       <header className="sl-table__head lg:text-center">
         <p className="sl-eyebrow">
           Quest {heading.quest} · {TABLE_STEP_LABELS[step]}
@@ -87,9 +101,21 @@ export function TableScreen({ step }: { step: TableStep }) {
       </header>
 
       <aside className="sl-table__side sl-panel flex flex-col gap-4 p-4 lg:gap-5 lg:p-5">
-        <Scoreboard view={view} />
+        <Scoreboard
+          view={view}
+          bumped={
+            result
+              ? questReveal.outcome === "fail"
+                ? "evil"
+                : "good"
+              : undefined
+          }
+        />
         <div className="border-line border-t border-dashed" />
-        <QuestTrack view={view} />
+        <QuestTrack
+          view={view}
+          settled={result ? questReveal.questIndex : undefined}
+        />
       </aside>
 
       <FreshOnReturn>

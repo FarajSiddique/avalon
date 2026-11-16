@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import type { Alignment, Role } from "@/shared/roles";
 import { GlowGradient } from "./campfire";
 import { sparklePath } from "./seeded";
@@ -109,9 +109,41 @@ export function constellationFor(role: Role, alignment: Alignment): Figure {
   return FIGURES[role] ?? (alignment === "good" ? SHIELD : THORN);
 }
 
+/** Milliseconds: when the drawing starts, and the gap between lines. */
+const DRAW_START = 160;
+const LINE_GAP = 120;
+const LINE_DRAW = 240;
+
 /**
- * A role's constellation. The lines draw themselves when it appears (each
- * path has pathLength 1, so one dash is the whole line).
+ * When each line starts and each star lights. The lines draw one after
+ * another in the figure's order, and a star lights as the first line
+ * reaches it, so the figure is traced star by star. The brightest star
+ * lights last, as the full stop.
+ */
+function timeline(figure: Figure): { lines: number[]; stars: number[] } {
+  const stars = figure.stars.map(() => Number.POSITIVE_INFINITY);
+  const lines = figure.lines.map(([from, to], index) => {
+    const start = DRAW_START + index * LINE_GAP;
+    stars[from] = Math.min(stars[from] ?? start, start);
+    stars[to] = Math.min(stars[to] ?? start, start + LINE_DRAW - 40);
+    return start;
+  });
+  const end = DRAW_START + figure.lines.length * LINE_GAP + LINE_DRAW;
+  stars[figure.bright] = end;
+  return {
+    lines,
+    stars: stars.map((ms) => (Number.isFinite(ms) ? ms : DRAW_START)),
+  };
+}
+
+function delay(ms: number | undefined): CSSProperties {
+  return { "--at": `${ms ?? 0}ms` } as CSSProperties;
+}
+
+/**
+ * A role's constellation. It draws itself when it appears: each line in
+ * turn (each path has pathLength 1, so one dash is the whole line), each
+ * star lighting as a line reaches it, the brightest last with its glow.
  */
 export function Constellation({
   figure,
@@ -124,6 +156,7 @@ export function Constellation({
 }) {
   const id = useId();
   const bright = figure.stars[figure.bright];
+  const times = timeline(figure);
   return (
     <svg
       viewBox="0 0 200 130"
@@ -134,14 +167,15 @@ export function Constellation({
       <defs>
         <GlowGradient id={`${id}-glow`} color={color} />
       </defs>
-      {figure.lines.map(([from, to]) => {
+      {figure.lines.map(([from, to], index) => {
         const a = figure.stars[from];
         const b = figure.stars[to];
         if (!a || !b) return null;
         return (
           <path
             key={`${from}-${to}`}
-            className="sl-constellation__line"
+            className="sl-constellation__line sl-seq"
+            style={delay(times.lines[index])}
             pathLength={1}
             d={`M${a[0]} ${a[1]}L${b[0]} ${b[1]}`}
             opacity={0.8}
@@ -150,6 +184,8 @@ export function Constellation({
       })}
       {bright && (
         <circle
+          className="sl-constellation__glow sl-seq"
+          style={delay(times.stars[figure.bright])}
           cx={bright[0]}
           cy={bright[1]}
           r={26}
@@ -158,14 +194,23 @@ export function Constellation({
       )}
       {figure.stars.map(([x, y], index) =>
         index === figure.bright ? (
-          <path
-            key={index}
-            d={sparklePath(13)}
-            transform={`translate(${x} ${y})`}
-            fill={color}
-          />
+          <g key={index} transform={`translate(${x} ${y})`}>
+            <path
+              className="sl-constellation__star sl-constellation__star--bright sl-seq"
+              style={delay(times.stars[index])}
+              d={sparklePath(13)}
+              fill={color}
+            />
+          </g>
         ) : (
-          <circle key={index} cx={x} cy={y} r={3.4} fill="var(--art-star)" />
+          <g key={index} transform={`translate(${x} ${y})`}>
+            <circle
+              className="sl-constellation__star sl-seq"
+              style={delay(times.stars[index])}
+              r={3.4}
+              fill="var(--art-star)"
+            />
+          </g>
         ),
       )}
     </svg>

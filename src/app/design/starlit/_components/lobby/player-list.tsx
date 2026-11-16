@@ -1,13 +1,15 @@
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
+import { play } from "@/client/sound";
 import { MAX_PLAYERS } from "@/shared/constants";
 import type { LobbyView, SeatView } from "@/shared/views";
 import { IconCheck, IconCrown, IconMoon, IconRing } from "../icons";
 import { initialOf } from "../names";
 
+/** Keyed by state where it is used, so a change pops in instead of snapping. */
 function PlayerState({ player }: { player: SeatView }) {
   if (!player.connected) {
     return (
-      <span className="text-ink-muted inline-flex items-center gap-1.5 text-base font-bold">
+      <span className="text-ink-muted sl-pop sl-seq inline-flex items-center gap-1.5 text-base font-bold">
         <IconMoon size={18} />
         Away
       </span>
@@ -15,27 +17,37 @@ function PlayerState({ player }: { player: SeatView }) {
   }
   if (!player.ready) {
     return (
-      <span className="text-warning inline-flex items-center gap-1.5 text-base font-bold">
+      <span className="text-warning sl-pop sl-seq inline-flex items-center gap-1.5 text-base font-bold">
         <IconRing size={18} />
         Not ready
       </span>
     );
   }
   return (
-    <span className="text-success inline-flex items-center gap-1.5 text-base font-bold">
+    <span className="text-success sl-pop sl-seq sl-tick inline-flex items-center gap-1.5 text-base font-bold">
       <IconCheck size={18} />
       Ready
     </span>
   );
 }
 
-/** Everyone in the room, with host, you, and ready, not ready or away. */
+function stateKey(player: SeatView): string {
+  if (!player.connected) return "away";
+  return player.ready ? "ready" : "waiting";
+}
+
+/**
+ * Everyone in the room, with host, you, and ready, not ready or away. When
+ * `allReady` turns on, the stars by each name flare one after another.
+ */
 export function PlayerList({
   view,
   onToggleReady,
+  allReady = false,
 }: {
   view: LobbyView;
   onToggleReady: () => void;
+  allReady?: boolean;
 }) {
   const you = view.players.find((player) => player.id === view.you.id);
   const youReady = you?.ready ?? false;
@@ -52,8 +64,8 @@ export function PlayerList({
         </p>
       </div>
 
-      <ul className="mt-3">
-        {view.players.map((player) => {
+      <ul className="mt-3" data-all-ready={allReady}>
+        {view.players.map((player, index) => {
           const isYou = player.id === view.you.id;
           return (
             <li
@@ -62,7 +74,8 @@ export function PlayerList({
             >
               <span
                 aria-hidden="true"
-                className={`font-display grid size-11 flex-none place-items-center rounded-full border-[1.5px] text-xl font-semibold ${
+                style={{ "--i": index } as CSSProperties}
+                className={`sl-avatar sl-seq font-display grid size-11 flex-none place-items-center rounded-full border-[1.5px] text-xl font-semibold ${
                   player.connected
                     ? "border-line-strong bg-well text-ink"
                     : "border-line bg-well text-ink-muted border-dashed"
@@ -80,7 +93,7 @@ export function PlayerList({
                   </span>
                 )}
               </span>
-              <PlayerState player={player} />
+              <PlayerState key={stateKey(player)} player={player} />
             </li>
           );
         })}
@@ -89,10 +102,17 @@ export function PlayerList({
       <button
         type="button"
         aria-pressed={youReady}
-        onClick={onToggleReady}
+        onClick={() => {
+          play(youReady ? "unready" : "ready");
+          onToggleReady();
+        }}
         className="sl-btn sl-btn--ghost mt-4 w-full"
       >
-        {youReady ? <IconCheck size={18} /> : <IconRing size={18} />}
+        {youReady ? (
+          <IconCheck size={18} className="sl-pop sl-seq" />
+        ) : (
+          <IconRing size={18} />
+        )}
         I&apos;m ready
       </button>
     </section>

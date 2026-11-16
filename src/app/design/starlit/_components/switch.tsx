@@ -1,4 +1,7 @@
+"use client";
+
 import { useId, type ReactNode } from "react";
+import { play } from "@/client/sound";
 import { IconStar } from "./icons";
 
 /**
@@ -27,7 +30,10 @@ export function Switch({
       aria-checked={checked}
       aria-labelledby={`${id}-label`}
       aria-describedby={`${id}-description`}
-      onClick={onToggle}
+      onClick={() => {
+        play(checked ? "toggle-off" : "toggle-on");
+        onToggle();
+      }}
       className="sl-switch"
     >
       <span className="min-w-0 flex-1">

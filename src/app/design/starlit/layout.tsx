@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Fraunces, Nunito_Sans } from "next/font/google";
 import { DesignNav } from "@/design/design-nav";
 import { NightSky } from "./_components/art/night-sky";
+import { SoundToggle } from "./_components/sound-toggle";
 import "./theme.css";
+import "./motion.css";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -31,6 +33,7 @@ export default function StarlitLayout({
       <DesignNav direction="starlit" />
       <NightSky />
       {children}
+      <SoundToggle />
     </div>
   );
 }

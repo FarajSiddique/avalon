@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { play, type CueHandle } from "@/client/sound";
 import { useHoldToReveal } from "@/client/use-hold-to-reveal";
 import { Billow, type Lobe } from "../art/cloud";
 import { makeStars, round, seededRandom } from "../art/seeded";
@@ -53,35 +54,71 @@ function CloudBank({ side }: { side: "left" | "right" }) {
           side === "right" ? "translate(400 -52) scale(-1 1)" : undefined
         }
       >
-        <Billow
-          lobes={BACK}
-          body="var(--art-cloud-deep)"
-          rim="var(--art-cloud-edge-dim)"
-          rimShift={[3, -3]}
-          edgeShift={[4, 3]}
-          fillTo={140}
-          marks={false}
-        />
-        <Billow
-          lobes={MIDDLE}
-          rimShift={[2.5, -3]}
-          edge="var(--art-cloud-light)"
-          edgeShift={[3, 1]}
-          fillTo={80}
-          marks={false}
-        />
-        <Billow
-          lobes={FRONT}
-          body="var(--art-cloud-light)"
-          rim="var(--art-cloud-bright)"
-          rimShift={[2.5, -3]}
-          edge="var(--art-cloud-bright)"
-          edgeShift={[3, 1]}
-          fillTo={20}
-          marks={false}
-        />
+        <g className="sl-skycard__layer sl-skycard__layer--back">
+          <Billow
+            lobes={BACK}
+            body="var(--art-cloud-deep)"
+            rim="var(--art-cloud-edge-dim)"
+            rimShift={[3, -3]}
+            edgeShift={[4, 3]}
+            fillTo={140}
+            marks={false}
+          />
+        </g>
+        <g className="sl-skycard__layer sl-skycard__layer--middle">
+          <Billow
+            lobes={MIDDLE}
+            rimShift={[2.5, -3]}
+            edge="var(--art-cloud-light)"
+            edgeShift={[3, 1]}
+            fillTo={80}
+            marks={false}
+          />
+        </g>
+        <g className="sl-skycard__layer sl-skycard__layer--front">
+          <Billow
+            lobes={FRONT}
+            body="var(--art-cloud-light)"
+            rim="var(--art-cloud-bright)"
+            rimShift={[2.5, -3]}
+            edge="var(--art-cloud-bright)"
+            edgeShift={[3, 1]}
+            fillTo={20}
+            marks={false}
+          />
+        </g>
       </g>
     </svg>
+  );
+}
+
+/**
+ * Sound for the card. Opening plays the clouds and the constellation (the
+ * same for every role, so a neighbour learns nothing); letting go stops the
+ * constellation and plays the clouds closing.
+ */
+function useCardSound(open: boolean): void {
+  // Start from the first value, so mounting already open makes no sound.
+  const wasOpen = useRef(open);
+  const stars = useRef<CueHandle | null>(null);
+  useEffect(() => {
+    if (open === wasOpen.current) return;
+    wasOpen.current = open;
+    if (open) {
+      play("clouds-part");
+      stars.current = play("constellation");
+    } else {
+      stars.current?.stop();
+      stars.current = null;
+      play("clouds-close");
+    }
+  }, [open]);
+  useEffect(
+    () => () => {
+      // Hidden or gone: never leave the stars ringing.
+      stars.current?.stop();
+    },
+    [],
   );
 }
 
@@ -89,14 +126,25 @@ function CloudBank({ side }: { side: "left" | "right" }) {
  * The private card: a patch of sky under cloud. Press and hold and the
  * clouds part; let go and they close again. The secret content is not in
  * the page at all until the card is held.
+ *
+ * `forceOpen` is for the motion gallery, which plays a hold on its own.
  */
-export function SkyCard({ children }: { children: ReactNode }) {
-  const { revealed, holdProps } = useHoldToReveal();
+export function SkyCard({
+  children,
+  forceOpen = false,
+}: {
+  children: ReactNode;
+  forceOpen?: boolean;
+}) {
+  const hold = useHoldToReveal();
+  const revealed = hold.revealed || forceOpen;
+  useCardSound(revealed);
 
   return (
     <button
       type="button"
-      {...holdProps}
+      {...hold.holdProps}
+      aria-pressed={revealed}
       className="sl-skycard"
       aria-label={
         revealed ? undefined : "Your role. Press and hold to part the clouds."

@@ -1,0 +1,695 @@
+/*
+ * Lavender Vigil: a 16-bit camp at dusk.
+ *
+ * Three token layers, all scoped to .theme-lavender:
+ *   1. primitives  --lavender-<hue>-<step>   raw colours, used nowhere else
+ *   2. semantic    --canvas, --ink, ...      the contract from globals.css
+ *   3. component   --px, --frame-*, --art-*  what the components read
+ *
+ * Component classes live in the `components` cascade layer so Tailwind
+ * utilities on the same element still win.
+ */
+@layer theme, base, components, utilities;
+
+.theme-lavender {
+  /* ---------------------------------------------------------- 1. primitives */
+  --lavender-plum-950: #140c1f;
+  --lavender-plum-900: #1e1330;
+  --lavender-plum-800: #2a1b42;
+  --lavender-plum-700: #3b2760;
+  --lavender-heather-600: #5a3f8f;
+  --lavender-heather-500: #8363c2;
+  --lavender-heather-400: #a184d9;
+  --lavender-heather-300: #c6b2ee;
+  --lavender-cream-100: #f8efd8;
+  --lavender-fire-500: #f28b3c;
+  --lavender-fire-300: #ffd36b;
+  --lavender-ember-900: #2b1408;
+  --lavender-ember-700: #74401f;
+  --lavender-steel-300: #a9c8f5;
+  --lavender-steel-500: #5d83c0;
+  --lavender-crimson-400: #f6788a;
+  --lavender-crimson-600: #b5304a;
+  --lavender-pine-400: #74d49a;
+  --lavender-pine-700: #1f4a40;
+  --lavender-pink-400: #f29bb0;
+
+  /* ------------------------------------------------------------ 2. semantic */
+  --canvas: var(--lavender-plum-900);
+  --surface: var(--lavender-plum-800);
+  --well: var(--lavender-plum-950);
+
+  --ink: var(--lavender-cream-100);
+  --ink-muted: var(--lavender-heather-300);
+
+  --line: var(--lavender-plum-700);
+  --line-strong: var(--lavender-heather-500);
+  --focus: var(--lavender-fire-300);
+
+  --accent: var(--lavender-fire-500);
+  --accent-strong: var(--lavender-fire-300);
+  --on-accent: var(--lavender-ember-900);
+  --accent-cool: var(--lavender-steel-300);
+
+  --good: var(--lavender-steel-300);
+  --evil: var(--lavender-crimson-400);
+  --success: var(--lavender-pine-400);
+  --fail: var(--lavender-crimson-400);
+  --warning: var(--lavender-fire-300);
+
+  --display-font: var(--font-lavender-display), "Courier New", monospace;
+  --body-font: var(--font-lavender-body), "Courier New", monospace;
+
+  /* Pixels have no curves. */
+  --corner-sm: 0px;
+  --corner-md: 0px;
+  --corner-lg: 0px;
+
+  /* ----------------------------------------------------------- 3. component */
+
+  /* One art pixel. Every sprite, border and offset is a whole multiple. */
+  --px: 3px;
+
+  /* Type scale. VT323 has a small x-height, so body starts at 22px. */
+  --text-body: 22px;
+  --text-small: 20px;
+  --text-label: 12px;
+  --text-heading: 16px;
+  --text-title: 24px;
+
+  /* Surfaces */
+  --surface-raised: var(--lavender-plum-700);
+  --surface-sunk: var(--well);
+
+  /* Stepped frame (see .lv-frame) */
+  --frame-color: var(--line-strong);
+  --frame-outline: var(--well);
+  --frame-drop: var(--well);
+
+  /* Buttons */
+  --button-face: var(--surface-raised);
+  --button-ink: var(--ink);
+  --button-light: var(--lavender-heather-500);
+  --button-shade: var(--lavender-plum-800);
+  --button-primary-face: var(--accent);
+  --button-primary-ink: var(--on-accent);
+  --button-primary-light: var(--accent-strong);
+  --button-primary-shade: var(--lavender-ember-700);
+  --button-approve-face: var(--success);
+  --button-approve-shade: var(--lavender-pine-700);
+  --button-reject-face: var(--fail);
+  --button-reject-shade: var(--lavender-crimson-600);
+  --button-min-height: 48px;
+
+  /* Seats and the quest track */
+  --seat-face: var(--surface);
+  --seat-face-team: var(--surface-raised);
+  --seat-frame: var(--line);
+  --seat-frame-team: var(--accent);
+  --track-upcoming: var(--surface);
+  --track-current: var(--accent);
+  --track-success: var(--success);
+  --track-fail: var(--fail);
+
+  /* Artwork. Sprites read these, never the primitives. */
+  --art-outline: var(--lavender-plum-950);
+  --art-steel: var(--lavender-steel-300);
+  --art-steel-shade: var(--lavender-steel-500);
+  --art-steel-light: var(--lavender-cream-100);
+  --art-trim: var(--lavender-fire-300);
+  --art-flame-core: var(--lavender-cream-100);
+  --art-flame: var(--lavender-fire-300);
+  --art-flame-outer: var(--lavender-fire-500);
+  --art-flame-base: var(--lavender-crimson-600);
+  --art-wood: var(--lavender-ember-700);
+  --art-wood-shade: var(--lavender-ember-900);
+  --art-stone: var(--lavender-heather-400);
+  --art-stone-shade: var(--lavender-heather-600);
+  --art-moon: var(--lavender-cream-100);
+  --art-moon-shade: var(--lavender-fire-300);
+  --art-star: var(--lavender-cream-100);
+  --art-star-dim: var(--lavender-heather-400);
+  --art-sky-1: var(--lavender-plum-900);
+  --art-sky-2: var(--lavender-plum-800);
+  --art-sky-3: var(--lavender-plum-700);
+  --art-sky-4: var(--lavender-heather-600);
+  --art-sky-5: var(--lavender-heather-500);
+  --art-sky-6: var(--lavender-pink-400);
+  --art-sky-7: var(--lavender-fire-500);
+  --art-sky-8: var(--lavender-fire-300);
+  --art-hill-far: var(--lavender-plum-700);
+  --art-hill-near: var(--lavender-plum-800);
+  --art-castle: var(--lavender-plum-950);
+  --art-castle-lit: var(--lavender-plum-700);
+  --art-window: var(--lavender-fire-300);
+  --art-pine: var(--lavender-pine-700);
+  --art-pine-shade: var(--lavender-plum-950);
+  --art-field-far: var(--lavender-heather-500);
+  --art-field: var(--lavender-heather-600);
+  --art-field-near: var(--lavender-plum-700);
+  --art-field-dark: var(--lavender-plum-800);
+  --art-sprig: var(--lavender-heather-400);
+  --art-sprig-tip: var(--lavender-heather-300);
+  --art-grass: var(--lavender-pine-700);
+  --art-grass-lit: var(--lavender-pine-400);
+  --art-glow: var(--lavender-ember-700);
+  --art-tent: var(--lavender-heather-300);
+  --art-tent-shade: var(--lavender-heather-500);
+  --art-evil-eye: var(--lavender-crimson-400);
+
+  /* Plumes tell seats apart. Crimson and steel are never used: they mean
+     Evil and Good. */
+  --plume-1: var(--lavender-fire-500);
+  --plume-1-tip: var(--lavender-fire-300);
+  --plume-2: var(--lavender-fire-300);
+  --plume-2-tip: var(--lavender-cream-100);
+  --plume-3: var(--lavender-pink-400);
+  --plume-3-tip: var(--lavender-cream-100);
+  --plume-4: var(--lavender-pine-400);
+  --plume-4-tip: var(--lavender-fire-300);
+  --plume-5: var(--lavender-heather-300);
+  --plume-5-tip: var(--lavender-cream-100);
+  --plume-6: var(--lavender-cream-100);
+  --plume-6-tip: var(--lavender-heather-400);
+  --plume-7: var(--lavender-heather-400);
+  --plume-7-tip: var(--lavender-pink-400);
+
+  /* Motion. Everything steps; nothing eases. */
+  --tick: 160ms;
+  --fire-loop: 480ms;
+  --blink-loop: 1000ms;
+  --twinkle-loop: 2400ms;
+
+  font-size: var(--text-body);
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 1024px) {
+  .theme-lavender {
+    --px: 4px;
+    --text-heading: 16px;
+    --text-title: 32px;
+  }
+}
+
+/*
+ * On a phone the action bar is fixed to the bottom edge. Keep anything the
+ * browser scrolls to (a focused control, an anchor) clear of it.
+ */
+@media (max-width: 1023px) {
+  html:has(.theme-lavender) {
+    scroll-padding-bottom: 240px;
+  }
+}
+
+/* ------------------------------------------------------------------ focus */
+
+.theme-lavender :focus-visible {
+  outline: var(--px) solid var(--focus);
+  outline-offset: var(--px);
+}
+
+@layer components {
+  /* ----------------------------------------------------------------- type */
+
+  .theme-lavender .lv-wordmark {
+    font-family: var(--display-font);
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: 0;
+    color: var(--ink);
+    text-shadow:
+      0 var(--px) 0 var(--accent),
+      0 calc(var(--px) * 2) 0 var(--well),
+      var(--px) calc(var(--px) * 2) 0 var(--well),
+      calc(var(--px) * -1) calc(var(--px) * 2) 0 var(--well);
+  }
+
+  .theme-lavender .lv-title {
+    font-family: var(--display-font);
+    font-size: var(--text-title);
+    line-height: 1.25;
+  }
+
+  .theme-lavender .lv-heading {
+    font-family: var(--display-font);
+    font-size: var(--text-heading);
+    line-height: 1.5;
+  }
+
+  .theme-lavender .lv-label {
+    font-family: var(--display-font);
+    font-size: var(--text-label);
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+
+  .theme-lavender .lv-small {
+    font-size: var(--text-small);
+    line-height: 1.2;
+  }
+
+  /* ---------------------------------------------------------------- frame */
+
+  /*
+   * A stepped pixel frame drawn with hard box-shadows, so it follows --px
+   * and the theme colours. From the inside out: one pixel of frame colour
+   * (a plus shape, which leaves the corners notched), one pixel of dark
+   * outline, then the same outline again one pixel lower as a drop shadow.
+   * Shadows take no layout space: leave 3 pixels of room around a frame.
+   */
+  .theme-lavender .lv-frame {
+    --_p: var(--px);
+    --_n: calc(var(--px) * -1);
+    --_2p: calc(var(--px) * 2);
+    --_2n: calc(var(--px) * -2);
+    --_3p: calc(var(--px) * 3);
+    box-shadow:
+      var(--_n) 0 0 0 var(--frame-color),
+      var(--_p) 0 0 0 var(--frame-color),
+      0 var(--_n) 0 0 var(--frame-color),
+      0 var(--_p) 0 0 var(--frame-color),
+      var(--_2n) 0 0 0 var(--frame-outline),
+      var(--_2p) 0 0 0 var(--frame-outline),
+      0 var(--_2n) 0 0 var(--frame-outline),
+      0 var(--_2p) 0 0 var(--frame-outline),
+      var(--_n) var(--_n) 0 0 var(--frame-outline),
+      var(--_p) var(--_n) 0 0 var(--frame-outline),
+      var(--_n) var(--_p) 0 0 var(--frame-outline),
+      var(--_p) var(--_p) 0 0 var(--frame-outline),
+      var(--_2n) var(--_p) 0 0 var(--frame-drop),
+      var(--_2p) var(--_p) 0 0 var(--frame-drop),
+      var(--_n) var(--_2p) 0 0 var(--frame-drop),
+      var(--_p) var(--_2p) 0 0 var(--frame-drop),
+      0 var(--_3p) 0 0 var(--frame-drop);
+  }
+
+  .theme-lavender .lv-panel {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  /* The speech box of a role-playing game: cream frame, name plate on top. */
+  .theme-lavender .lv-dialog {
+    --frame-color: var(--ink);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .theme-lavender .lv-nameplate {
+    font-family: var(--display-font);
+    font-size: var(--text-label);
+    line-height: 1;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--canvas);
+    padding: calc(var(--px) * 2) calc(var(--px) * 3);
+  }
+
+  .theme-lavender .lv-rule {
+    height: var(--px);
+    background: var(--line);
+  }
+
+  /* ---------------------------------------------------------------- button */
+
+  .theme-lavender .lv-button {
+    --frame-color: var(--button-face);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--px) * 3);
+    min-height: var(--button-min-height);
+    padding: calc(var(--px) * 3) calc(var(--px) * 5);
+    background: var(--button-face);
+    color: var(--button-ink);
+    font-family: var(--display-font);
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    background-image:
+      linear-gradient(var(--button-light), var(--button-light)),
+      linear-gradient(var(--button-shade), var(--button-shade));
+    background-repeat: no-repeat;
+    background-size:
+      100% var(--px),
+      100% var(--px);
+    background-position: top, bottom;
+  }
+
+  .theme-lavender .lv-button:hover {
+    filter: brightness(1.08);
+  }
+
+  .theme-lavender .lv-button:active,
+  .theme-lavender .lv-button[aria-pressed="true"] {
+    --frame-drop: transparent;
+    transform: translateY(var(--px));
+    background-position: bottom, top;
+  }
+
+  .theme-lavender .lv-button-primary {
+    --button-face: var(--button-primary-face);
+    --button-ink: var(--button-primary-ink);
+    --button-light: var(--button-primary-light);
+    --button-shade: var(--button-primary-shade);
+  }
+
+  .theme-lavender .lv-button-approve {
+    --button-face: var(--button-approve-face);
+    --button-ink: var(--on-accent);
+    --button-light: var(--lavender-cream-100);
+    --button-shade: var(--button-approve-shade);
+  }
+
+  .theme-lavender .lv-button-reject {
+    --button-face: var(--button-reject-face);
+    --button-ink: var(--on-accent);
+    --button-light: var(--lavender-pink-400);
+    --button-shade: var(--button-reject-shade);
+  }
+
+  /* Disabled: a dithered face, so it reads as "not yet" without colour. */
+  .theme-lavender .lv-button:disabled,
+  .theme-lavender .lv-button[aria-disabled="true"] {
+    --frame-color: var(--line);
+    --frame-drop: transparent;
+    cursor: not-allowed;
+    color: var(--ink-muted);
+    filter: none;
+    transform: none;
+    background-color: var(--surface);
+    background-image: conic-gradient(
+      var(--line) 25%,
+      var(--surface) 0 50%,
+      var(--line) 0 75%,
+      var(--surface) 0
+    );
+    background-repeat: repeat;
+    background-size: calc(var(--px) * 2) calc(var(--px) * 2);
+    background-position: 0 0;
+  }
+
+  .theme-lavender .lv-button-plate {
+    background: var(--surface);
+    padding: 0 calc(var(--px) * 2);
+  }
+
+  /* A plain text control, for prototype helpers and quiet links. */
+  .theme-lavender .lv-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 calc(var(--px) * 2);
+    color: var(--ink-muted);
+    font-size: var(--text-small);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+    cursor: pointer;
+  }
+
+  .theme-lavender .lv-link:hover {
+    color: var(--ink);
+  }
+
+  /* ----------------------------------------------------------------- field */
+
+  .theme-lavender .lv-input {
+    --frame-color: var(--line-strong);
+    --frame-drop: transparent;
+    width: 100%;
+    min-height: 48px;
+    padding: calc(var(--px) * 2) calc(var(--px) * 4);
+    background: var(--surface-sunk);
+    color: var(--ink);
+    font-family: var(--body-font);
+    font-size: 24px;
+    line-height: 1.2;
+    caret-color: var(--accent);
+  }
+
+  .theme-lavender .lv-input::placeholder {
+    color: var(--ink-muted);
+    opacity: 0.7;
+  }
+
+  .theme-lavender .lv-input:focus-visible {
+    --frame-color: var(--focus);
+    outline: none;
+  }
+
+  .theme-lavender .lv-input-code {
+    font-family: var(--display-font);
+    font-size: 20px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  /* ---------------------------------------------------------------- switch */
+
+  .theme-lavender .lv-switch {
+    --frame-color: var(--line-strong);
+    --frame-drop: transparent;
+    position: relative;
+    flex: none;
+    width: calc(var(--px) * 16);
+    height: calc(var(--px) * 8);
+    background: var(--surface-sunk);
+  }
+
+  .theme-lavender .lv-switch::after {
+    content: "";
+    position: absolute;
+    top: var(--px);
+    left: var(--px);
+    width: calc(var(--px) * 6);
+    height: calc(var(--px) * 6);
+    background: var(--ink-muted);
+    box-shadow: inset 0 calc(var(--px) * -1) 0 0 var(--line-strong);
+  }
+
+  .theme-lavender [aria-checked="true"] .lv-switch {
+    --frame-color: var(--accent);
+    background: var(--lavender-ember-700);
+  }
+
+  .theme-lavender [aria-checked="true"] .lv-switch::after {
+    left: calc(var(--px) * 9);
+    background: var(--accent-strong);
+    box-shadow: inset 0 calc(var(--px) * -1) 0 0 var(--accent);
+  }
+
+  /* ---------------------------------------------------------------- pieces */
+
+  /* Checker dither between two colours, one art pixel per square. */
+  .theme-lavender .lv-dither {
+    background-image: conic-gradient(
+      var(--dither-a, var(--line)) 25%,
+      var(--dither-b, transparent) 0 50%,
+      var(--dither-a, var(--line)) 0 75%,
+      var(--dither-b, transparent) 0
+    );
+    background-size: calc(var(--px) * 2) calc(var(--px) * 2);
+  }
+
+  /* The back of a face-down card: a two-pixel checker with a darker rim. */
+  .theme-lavender .lv-card-back {
+    background-color: var(--surface);
+    background-image: conic-gradient(
+      var(--surface-raised) 25%,
+      var(--surface) 0 50%,
+      var(--surface-raised) 0 75%,
+      var(--surface) 0
+    );
+    background-size: calc(var(--px) * 4) calc(var(--px) * 4);
+    background-position: center;
+  }
+
+  .theme-lavender .lv-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--px) * 1);
+    padding: var(--px) calc(var(--px) * 2);
+    font-family: var(--display-font);
+    font-size: 10px;
+    line-height: 1.2;
+    text-transform: uppercase;
+    background: var(--tag-face, var(--ink));
+    color: var(--tag-ink, var(--canvas));
+  }
+
+  .theme-lavender .lv-sprite {
+    display: block;
+    flex: none;
+    shape-rendering: crispEdges;
+  }
+
+  /* -------------------------------------------------------------- motion */
+
+  .theme-lavender .lv-blink {
+    animation: lv-blink var(--blink-loop) steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-bob {
+    animation: lv-bob 640ms steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-fire-1 {
+    animation: lv-frame-1 var(--fire-loop) steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-fire-2 {
+    visibility: hidden;
+    animation: lv-frame-2 var(--fire-loop) steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-fire-3 {
+    visibility: hidden;
+    animation: lv-frame-3 var(--fire-loop) steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-twinkle {
+    animation: lv-twinkle var(--twinkle-loop) steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-spark {
+    visibility: hidden;
+    animation: lv-spark 1920ms steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-glint {
+    visibility: hidden;
+    animation: lv-glint 6400ms steps(1, end) infinite;
+  }
+
+  .theme-lavender .lv-pop {
+    animation: lv-pop 320ms steps(2, end) 1;
+  }
+}
+
+@keyframes lv-blink {
+  0%,
+  49% {
+    visibility: visible;
+  }
+  50%,
+  100% {
+    visibility: hidden;
+  }
+}
+
+@keyframes lv-bob {
+  0%,
+  49% {
+    transform: translateY(0);
+  }
+  50%,
+  100% {
+    transform: translateY(var(--px));
+  }
+}
+
+@keyframes lv-frame-1 {
+  0%,
+  33% {
+    visibility: visible;
+  }
+  34%,
+  100% {
+    visibility: hidden;
+  }
+}
+
+@keyframes lv-frame-2 {
+  0%,
+  33% {
+    visibility: hidden;
+  }
+  34%,
+  66% {
+    visibility: visible;
+  }
+  67%,
+  100% {
+    visibility: hidden;
+  }
+}
+
+@keyframes lv-frame-3 {
+  0%,
+  66% {
+    visibility: hidden;
+  }
+  67%,
+  100% {
+    visibility: visible;
+  }
+}
+
+@keyframes lv-twinkle {
+  0%,
+  69% {
+    opacity: 1;
+  }
+  70%,
+  84% {
+    opacity: 0;
+  }
+  85%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes lv-spark {
+  0%,
+  24% {
+    visibility: visible;
+    transform: translateY(0);
+  }
+  25%,
+  49% {
+    visibility: visible;
+    transform: translate(1px, -2px);
+  }
+  50%,
+  74% {
+    visibility: visible;
+    transform: translate(0, -4px);
+  }
+  75%,
+  100% {
+    visibility: hidden;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lv-glint {
+  0%,
+  88% {
+    visibility: hidden;
+  }
+  89%,
+  96% {
+    visibility: visible;
+  }
+  97%,
+  100% {
+    visibility: hidden;
+  }
+}
+
+@keyframes lv-pop {
+  0% {
+    transform: translateY(calc(var(--px) * -2));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}

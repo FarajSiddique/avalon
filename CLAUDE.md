@@ -57,7 +57,7 @@ src/functions/     Server functions (createRoom)
 src/shared/        Types, constants, protocol, validators. Imported by both sides
 src/server/        Room object, room rules, view projection, game engine. Worker only
 src/client/        Browser helpers: connection, seat token, room store hook, hold-to-reveal, sound
-src/design/        Prototype-only mock data and helpers (removed after a direction is picked)
+src/design/        Prototype-only mock data and helpers (removed in Phase 0; Starlit Vale is the pick)
 e2e/               Playwright: *.e2e.ts behaviour, *.shots.ts screenshots
 scripts/           contrast.mjs, restart-check.mjs
 bruno/             Bruno collection

@@ -14,8 +14,8 @@ export const Route = createFileRoute("/design/")({
   component: DesignIndexPage,
 });
 
-/** The direction the owner is leaning to. Not final until they say so. */
-const FRONT_RUNNER: DirectionSlug = "starlit";
+/** The direction the owner picked on 16 November 2026. */
+const CHOSEN: DirectionSlug = "starlit";
 
 /** What each direction is best and worst at, from reviewing all three. */
 const VERDICTS: Record<
@@ -111,7 +111,7 @@ function PhonePreview({ slug, name }: { slug: DirectionSlug; name: string }) {
 }
 
 function DesignIndexPage() {
-  const frontRunner = DIRECTIONS.find((d) => d.slug === FRONT_RUNNER);
+  const chosen = DIRECTIONS.find((d) => d.slug === CHOSEN);
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-10">
@@ -138,12 +138,11 @@ function DesignIndexPage() {
         className="border-accent bg-surface mt-8 max-w-3xl space-y-3 rounded-lg border-l-4 p-5"
       >
         <h2 id="recommendation" className="text-xl font-semibold">
-          Front-runner: {frontRunner?.name}
+          Chosen: {chosen?.name}
         </h2>
         <p>
-          This is the direction the owner is leaning to, and the only one that
-          has been taken further: it has motion and sound at every stage of a
-          game. See all 35 moments, each replayable, in the{" "}
+          The owner picked this direction. It has motion and sound at every
+          stage of a game: see all 35 moments, each replayable, in the{" "}
           <ProtoLink
             href={STARLIT_MOTION_PATH}
             className="text-accent-strong font-semibold underline underline-offset-4"
@@ -153,18 +152,17 @@ function DesignIndexPage() {
           . Sound is off until you turn it on.
         </p>
         <p className="text-ink-muted">
-          The first review recommended Ember &amp; Rune, because it is the most
-          medieval and puts a candlelit table in every hand. That still holds if
-          the look matters more than calm, clear screens. Lavender Vigil has the
-          most charm and the slowest text to read. The choice is not final: the
-          costs of each are listed below.
+          The other two stay here for comparison until the real screens are
+          built from Starlit Vale. The first review recommended Ember &amp; Rune
+          for being the most medieval; the strengths and costs of each are
+          listed below.
         </p>
       </section>
 
       <ul className="mt-10 grid gap-6 lg:grid-cols-3">
         {DIRECTIONS.map((direction) => {
           const verdict = VERDICTS[direction.slug];
-          const isPick = direction.slug === FRONT_RUNNER;
+          const isPick = direction.slug === CHOSEN;
           return (
             <li
               key={direction.slug}
@@ -178,7 +176,7 @@ function DesignIndexPage() {
                   {isPick && (
                     <span className="text-accent-strong font-semibold">
                       {" "}
-                      · Front-runner
+                      · Chosen
                     </span>
                   )}
                 </p>

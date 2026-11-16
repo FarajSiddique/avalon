@@ -16,14 +16,15 @@ Regenerate them with `pnpm build && pnpm screenshots`. Phone screenshots show
 the whole page, with the bar that is fixed to the bottom of the screen drawn at
 the bottom of the image.
 
-The current front-runner, with the strengths and costs of each direction, is on
-the `/design` page (`src/routes/design/index.tsx`).
+**Starlit Vale was chosen on 16 November 2026.** The comparison, with the
+strengths and costs of each direction, is on the `/design` page
+(`src/routes/design/index.tsx`). The other two are kept until Phase 0 in
+`docs/architecture.md` removes them.
 
-Starlit Vale is the direction the owner is leaning to, so it alone has been
-taken further: it has motion and sound at every stage of a game. All 35 moments
-are replayable at `/design/starlit/motion`, and the same motion and cues are
-wired into its click-through. Sound is off until the player turns it on. The
-sound engine is in `src/client/sound` and does not depend on the prototypes.
+Starlit Vale has motion and sound at every stage of a game. All 35 moments are
+replayable at `/design/starlit/motion`, and the same motion and cues are wired
+into its click-through. Sound is off until the player turns it on. The sound
+engine is in `src/client/sound` and does not depend on the prototypes.
 
 ## What every direction provides
 

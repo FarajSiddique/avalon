@@ -9,14 +9,19 @@ paths:
 
 # Design System
 
-**Status: a design direction has not been picked yet.** Three candidate directions
-are built as prototypes under `/design`. Their specs are in `docs/design/`, and the
-contract they all follow is `docs/design/README.md`. When one is picked, its tokens
-move to `:root`, the other two are deleted, and this file is rewritten from the
-winner's spec (Phase 0 in `docs/architecture.md`). The old navy and gold, Inter and
-shadcn/ui system is gone; do not bring it back.
+**Status: Starlit Vale is the chosen direction** (picked by the owner on 16
+November 2026), with its motion and sound. Its spec is `docs/design/starlit.md` and
+its prototype is under `/design/starlit`. The real screens are not built from it
+yet: Phase 0 in `docs/architecture.md` moves its tokens to `:root`, deletes the
+other two directions and rewrites this file from the spec. Until then, new UI work
+follows the Starlit spec. The old navy and gold, Inter and shadcn/ui system is
+gone; do not bring it back.
 
-## What is already fixed, whichever direction wins
+Large drawings (night sky, camp scene, seat ring) render in the browser only, not
+on the Worker: server-rendering them costs about twice the free plan's CPU limit
+(measured, see Deployment in `docs/architecture.md`).
+
+## What is fixed
 
 ### Tokens
 

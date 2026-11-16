@@ -5,7 +5,10 @@ everyone on their own phone. One TanStack Start app on a Cloudflare Worker, with
 one Durable Object per game room.
 
 Status: foundation. Rooms, joining, presence and reconnecting work. The game
-itself is next. Three design directions are available to compare at `/design`.
+itself is next. Three design directions were compared at `/design`, and Starlit
+Vale was chosen.
+
+Live: <https://avalon.hong-ladder.workers.dev>
 
 ## Run it
 

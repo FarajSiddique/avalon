@@ -165,10 +165,10 @@ What it costs:
 - **Nothing may live only in memory.** Every change is saved, each socket
   remembers its seat in its attachment, and anything that must happen later
   is an alarm. This is a discipline, kept by review and by the restart check.
-- **Free-plan CPU is 10 ms per request.** Fine for the room object. Not yet
-  measured for server-rendering the art-heavy pages. If a page exceeds it,
-  that route can be rendered in the browser instead, or the 5 USD plan
-  removes the limit.
+- **Free-plan CPU is 10 ms per request.** Fine for the room object and the
+  plain pages. Server-rendering the art-heavy Starlit screens measured about
+  twice that on the live Worker, so the game screens must render in the
+  browser. See the measurements under [Deployment](#deployment).
 
 Cloudflare Containers (generally available, paid plan only) could have run
 the Option A server unchanged, but containers sleep, lose their disk and are
@@ -696,16 +696,52 @@ newer client against an older room fails politely.
 
 ## Deployment
 
-Nothing was deployed in this checkpoint. Deploying needs the owner's approval
-and a Cloudflare account.
+First deployed on 16 November 2026, with the owner's approval, to the owner's
+Cloudflare account: <https://avalon.hong-ladder.workers.dev>. Every later
+deploy still needs the owner's go-ahead.
 
-| Step            | What                                                                                                                                      |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Account         | A Cloudflare account. The free plan is enough to start.                                                                                   |
-| Deploy          | `pnpm run deploy` (builds, then `wrangler deploy`). The first deploy creates the Worker and the `RoomObject` class from `wrangler.jsonc`. |
-| Address         | `avalon.<account>.workers.dev` by default. A custom domain is optional.                                                                   |
-| Secrets         | None. There are no environment variables.                                                                                                 |
-| After deploying | Play one game on two phones. Check the Worker's CPU time for the landing and prototype pages against the free plan's 10 ms.               |
+| Step    | What                                                                                                                                      |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Account | The owner's Cloudflare account, signed in with `wrangler login`.                                                                          |
+| Deploy  | `pnpm run deploy` (builds, then `wrangler deploy`). The first deploy created the Worker and the `RoomObject` class from `wrangler.jsonc`. |
+| Address | `avalon.hong-ladder.workers.dev`. A custom domain is optional.                                                                            |
+| Secrets | None. There are no environment variables.                                                                                                 |
+| Check   | `E2E_BASE_URL=https://avalon.hong-ladder.workers.dev pnpm test:e2e` runs the browser tests against the live site.                         |
+
+### Measured CPU time on the live Worker
+
+Measured on 16 November 2026 with `wrangler tail avalon --format json` while
+requesting each address 30 times (the tail samples, so counts are a little
+under 30). The free plan allows 10 ms of CPU per request. Cloudflare's limits
+page says there is some flexibility for a Worker that runs over infrequently,
+and that one that runs over consistently is stopped with error 1102.
+
+| Request                              | Median | 90th percentile | Slowest | Over 10 ms |
+| ------------------------------------ | ------ | --------------- | ------- | ---------- |
+| `/` (plain landing)                  | 3 ms   | 6 ms            | 13 ms   | 1 of 26    |
+| `/room/<code>` (plain room screen)   | 3 ms   | 5 ms            | 6 ms    | 0 of 23    |
+| `/design/starlit` (landing with art) | 21 ms  | 37 ms           | 40 ms   | 25 of 27   |
+| `/design/starlit/table/result`       | 23 ms  | 42 ms           | 43 ms   | 25 of 25   |
+| Room socket messages and room object | 0 ms   | 2 ms            | 2 ms    | none       |
+
+Every request still returned 200, and none was reported as `exceededCpu`. That
+is the flexibility, not a guarantee.
+
+What this means: the real-time side and the plain pages are far inside the free
+plan. Server-rendering Starlit Vale's art is consistently over it. Starlit Vale
+is the chosen direction, so this is settled as follows, and Phase 0 carries it
+out:
+
+- The Worker sends a light page: the layout, the text and the form. The night
+  sky, the camp scene, the seat ring and the other large drawings are rendered
+  in the browser only (a client-only wrapper around those components, with a
+  plain background colour until they appear).
+- `/room/$code` gains nothing from server rendering, because everything on it
+  comes from the socket. It is rendered in the browser.
+- Phase 0 is not done until the 90th percentile for `/` and `/room/<code>` on
+  the live Worker is under 10 ms, measured the same way.
+- If that cannot be reached, the fallback is the Workers Paid plan (5 USD a
+  month), which needs the owner's approval.
 
 Changing the Durable Object class (renaming or deleting it) needs a new entry
 under `migrations` in `wrangler.jsonc`. Changing `RoomState` in a way old
@@ -775,8 +811,13 @@ saved; nothing is kept only in a field; anything timed is an alarm.
   and `e2e/design.shots.ts`. Keep the winner's spec as `docs/design-system.md`
   and rewrite `.claude/rules/design-system.md` from it.
 - Restyle `/` and the `/room/$code` placeholder with the real components.
+- Render the large drawings in the browser only, and `/room/$code` in the
+  browser only, as settled under
+  [Measured CPU time on the live Worker](#measured-cpu-time-on-the-live-worker).
 - Done when: `/` and `/room/$code` look like the chosen direction at 390px
-  and 1440px (screenshots), and the existing e2e tests still pass.
+  and 1440px (screenshots), the existing e2e tests still pass, and after a
+  deploy (ask the owner first) the 90th percentile CPU time for both is under
+  10 ms.
 
 ### Phase 1: the lobby
 
@@ -887,14 +928,15 @@ sees nothing secret.
 - Accessibility pass (keyboard, screen reader labels, reduced motion) and a
   performance check on a mid-range phone profile.
 
-### Phase 8: deploy (needs approval)
+### Phase 8: deploy the finished game (needs approval)
 
-- `pnpm run deploy` to a Cloudflare account, then the checks listed under
-  [Deployment](#deployment).
+- `pnpm run deploy`, then run the browser tests against the live site, measure
+  CPU time as under [Deployment](#deployment), and play one whole game on two
+  phones.
 
 ## Owner decisions
 
-Answered on 15 November 2026:
+Answered on 15 and 16 November 2026:
 
 | Question                                                                 | Answer                                            |
 | ------------------------------------------------------------------------ | ------------------------------------------------- |
@@ -903,8 +945,7 @@ Answered on 15 November 2026:
 | Room codes of 4 letters instead of 6 characters                          | Confirmed.                                        |
 | The room survives the host leaving; host role passes on after 60 seconds | Confirmed.                                        |
 | Shared table screen and Lady of the Lake                                 | Both required in the next run (Phases 5 and 6).   |
+| Design direction                                                         | Starlit Vale, with its motion and sound. Final.   |
+| First deploy to Cloudflare                                               | Approved and done. Later deploys: ask first.      |
 
-Still open:
-
-1. **Which design direction?** The owner is leaning towards Starlit Vale and
-   asked for motion and sound examples first. See `/design/starlit/motion`.
+Nothing is open. Phase 0 can start.

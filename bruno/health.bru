@@ -1,0 +1,32 @@
+meta {
+  name: Health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/health
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq ok
+}
+
+tests {
+  test("is answered at request time, not cached", function () {
+    const cacheControl = res.getHeader("cache-control") || "";
+    expect(cacheControl).to.not.contain("s-maxage");
+  });
+}
+
+docs {
+  Liveness check, answered by the Worker.
+
+  The app has no other public HTTP API. Creating a room is a server function,
+  and everything else goes over the room's WebSocket at /api/socket/CODE (see
+  docs/architecture.md, "Protocol"). Those flows are covered by `pnpm test`,
+  `pnpm test:e2e` and `pnpm test:restart`.
+}

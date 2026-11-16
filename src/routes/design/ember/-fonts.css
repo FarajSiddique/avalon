@@ -1,0 +1,12 @@
+/*
+ * Fonts for Ember & Rune, self-hosted from Fontsource (SIL Open Font License).
+ * Display: Cinzel, weights 400 to 900. Body: EB Garamond, 400 to 800, with italic.
+ */
+@import "@fontsource-variable/cinzel/wght.css";
+@import "@fontsource-variable/eb-garamond/wght.css";
+@import "@fontsource-variable/eb-garamond/wght-italic.css";
+
+.theme-ember {
+  --font-cinzel: "Cinzel Variable";
+  --font-garamond: "EB Garamond Variable";
+}

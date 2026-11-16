@@ -1,0 +1,1124 @@
+/*
+ * Starlit Vale: motion.
+ *
+ * Rules every animation here follows:
+ *   - Only transform (and the individual translate / scale / rotate
+ *     properties), opacity and SVG stroke are animated.
+ *   - An element's normal style is its END state. Keyframes describe where
+ *     it comes from, so a skipped, still or reduced-motion scene simply
+ *     shows the end. Elements that leave (a "Voted" chip turning over, a
+ *     card back) are hidden in their normal style.
+ *   - Sequences are timed with custom properties set by the components
+ *     (--at, --turn-at, --settle-at, --score-at, --crown-at), so sound and
+ *     motion read the same numbers.
+ *   - `.sl-seq` marks a timed element. Inside [data-skip="true"] (a tap on a
+ *     long sequence) or [data-still="true"] (a gallery scene at rest) they
+ *     all jump to the end.
+ */
+
+@layer components {
+  /* ------------------------------------------------------ skip and still */
+
+  :is([data-skip="true"], [data-still="true"]) .sl-seq,
+  :is([data-skip="true"], [data-still="true"]) .sl-seq::before,
+  :is([data-skip="true"], [data-still="true"]) .sl-seq::after,
+  :is([data-skip="true"], [data-still="true"]) .sl-seat__star::after {
+    animation: none !important;
+  }
+
+  /* ------------------------------------------------------- small pieces */
+
+  .sl-pop {
+    animation: sl-pop var(--dur-control) var(--ease-spring) var(--at, 0ms)
+      backwards;
+  }
+
+  /* The sound switch: under the prototype bar on a phone, inside it on
+     wider screens, where the bar is empty on the right. */
+  .sl-soundtoggle {
+    position: absolute;
+    top: calc(2.75rem + 0.625rem);
+    right: 1rem;
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 32px;
+    padding: 0 0.75rem 0 0.625rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--well);
+    color: var(--ink);
+    font-family: var(--body-font);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      border-color var(--dur-control) var(--ease-out),
+      background-color var(--dur-control) var(--ease-out);
+  }
+
+  /* A 44px tall touch target around the 32px pill. */
+  .sl-soundtoggle::before {
+    content: "";
+    position: absolute;
+    inset: -6px -2px;
+  }
+
+  .sl-soundtoggle:hover {
+    border-color: var(--ink);
+    background: var(--surface);
+  }
+
+  .sl-soundtoggle__state {
+    min-width: 1.6em;
+    color: var(--ink-muted);
+  }
+
+  .sl-soundtoggle[aria-pressed="true"] {
+    border-color: var(--accent);
+  }
+
+  .sl-soundtoggle[aria-pressed="true"] svg,
+  .sl-soundtoggle[aria-pressed="true"] .sl-soundtoggle__state {
+    color: var(--accent);
+  }
+
+  @media (min-width: 640px) {
+    .sl-soundtoggle {
+      position: fixed;
+      top: 6px;
+      right: 0.75rem;
+      z-index: 60;
+    }
+  }
+
+  /* ------------------------------------------------- the primary button */
+
+  /* Firelight on press: a ring closes in while held and opens back out as
+     it fades when the finger lifts. It never grows past the button's own
+     box (a scaled-up ring would make a full-width button scroll sideways). */
+  .sl-btn--primary::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    box-shadow:
+      0 0 0 2px var(--accent-strong),
+      0 0 26px 4px color-mix(in srgb, var(--accent) 60%, transparent);
+    opacity: 0;
+    transform: scale(1);
+    pointer-events: none;
+    transition:
+      opacity 450ms var(--ease-out),
+      transform 450ms var(--ease-out);
+  }
+
+  .sl-btn--primary:active::after,
+  .sl-btn--primary[data-pressed="true"]::after {
+    opacity: 0.9;
+    transform: scale(0.94);
+    transition-duration: 60ms;
+  }
+
+  .sl-btn--primary:disabled::after {
+    display: none;
+  }
+
+  /* A button that has just become possible wakes once. */
+  .sl-wake::after {
+    animation: sl-wake 900ms var(--ease-out) var(--at, 120ms) backwards;
+  }
+
+  /* ------------------------------------------------------------ landing */
+
+  .sl-title__word {
+    position: relative;
+    display: inline-block;
+    animation: sl-title-in 900ms var(--ease-out) 120ms backwards;
+  }
+
+  .sl-title__star {
+    position: absolute;
+    top: 0.04em;
+    right: -0.3em;
+    color: var(--accent-strong);
+    animation:
+      sl-star-pop 520ms var(--ease-spring) 880ms backwards,
+      sl-twinkle 4.6s ease-in-out 1.6s infinite;
+  }
+
+  .sl-title__lead {
+    --at: 360ms;
+  }
+
+  .sl-title__panel {
+    --at: 520ms;
+  }
+
+  /* --------------------------------------------------------------- lobby */
+
+  .sl-code__letter {
+    display: inline-block;
+  }
+
+  .sl-code[data-wave="true"] .sl-code__letter {
+    animation: sl-wave 440ms var(--ease-out) calc(var(--i) * 55ms) both;
+  }
+
+  .sl-avatar {
+    position: relative;
+  }
+
+  .sl-avatar::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border: 2px solid var(--success);
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  [data-all-ready="true"] .sl-avatar {
+    animation: sl-swell 520ms var(--ease-out) calc(var(--i) * 70ms) both;
+  }
+
+  [data-all-ready="true"] .sl-avatar::after {
+    animation: sl-burst 640ms var(--ease-out) calc(var(--i) * 70ms) both;
+  }
+
+  /* ---------------------------------------------------------------- role */
+
+  .sl-arrive {
+    animation: sl-arrive 600ms var(--ease-out) 80ms backwards;
+  }
+
+  .sl-constellation__star {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sl-star-in 320ms var(--ease-spring) var(--at, 0ms) backwards;
+  }
+
+  .sl-constellation__star--bright {
+    animation-duration: 640ms;
+  }
+
+  .sl-constellation__glow {
+    animation: sl-fade-in 800ms var(--ease-out) var(--at, 0ms) backwards;
+  }
+
+  /* --------------------------------------------------------------- seats */
+
+  /* A team line grows out of the star that was lit first. */
+  .sl-ring__line--team {
+    transform-box: view-box;
+    animation: sl-grow 420ms var(--ease-out) backwards;
+  }
+
+  /* A star flares as it is lit: one ring that opens and fades. */
+  .sl-seat__star::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border: 2px solid var(--accent-strong);
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sl-seat[data-lit="true"] .sl-seat__star::after {
+    animation: sl-burst 560ms var(--ease-out) both;
+  }
+
+  .sl-seat[data-away="true"] .sl-seat__disc {
+    border-style: dashed;
+    opacity: 0.5;
+  }
+
+  .sl-seat__crown--arrive {
+    animation: sl-crown-drop 600ms var(--ease-spring) var(--crown-at, 200ms)
+      backwards;
+  }
+
+  .sl-seat__crown--pass {
+    --from-x: var(--from-mx, 0);
+    --from-y: var(--from-my, 0);
+    animation: sl-crown-pass 620ms var(--ease-travel) var(--crown-at, 0ms)
+      backwards;
+  }
+
+  @media (min-width: 1024px) {
+    .sl-seat__crown--pass {
+      --from-x: var(--from-dx, 0);
+      --from-y: var(--from-dy, 0);
+    }
+  }
+
+  /* Two values in one cell: the old one leaves, the new one arrives. */
+  .sl-swap {
+    display: inline-grid;
+  }
+
+  .sl-swap > * {
+    grid-area: 1 / 1;
+    justify-self: center;
+  }
+
+  @media (min-width: 1024px) {
+    .sl-seat[data-side="right"] .sl-swap > * {
+      justify-self: start;
+    }
+
+    .sl-seat[data-side="left"] .sl-swap > * {
+      justify-self: end;
+    }
+  }
+
+  .sl-swap__old {
+    opacity: 0;
+  }
+
+  /* A status that changes pops in. */
+  .sl-swap:not(.sl-swap--flip, .sl-swap--roll) .sl-swap__new {
+    animation: sl-pop var(--dur-control) var(--ease-spring) backwards;
+  }
+
+  /* Votes revealed: every "Voted" breathes in once, then all turn at once. */
+  .sl-swap--flip .sl-swap__old {
+    animation:
+      sl-held var(--turn-at, 700ms) ease-in-out backwards,
+      sl-flip-out 160ms var(--ease-in) var(--turn-at, 700ms) both;
+  }
+
+  .sl-swap--flip .sl-swap__new {
+    animation: sl-flip-in 240ms var(--ease-out)
+      calc(var(--turn-at, 700ms) + 140ms) backwards;
+  }
+
+  /* A score goes up: the old number rolls away, the new one rolls in. */
+  .sl-swap--roll .sl-swap__old {
+    animation: sl-roll-out 260ms var(--ease-in) var(--score-at, 0ms) both;
+  }
+
+  .sl-swap--roll .sl-swap__new {
+    animation: sl-roll-in 340ms var(--ease-spring)
+      calc(var(--score-at, 0ms) + 120ms) backwards;
+  }
+
+  /* Waiting on someone: the dashed ring turns slowly and breathes. */
+  .sl-swap:is([data-status="waiting"], [data-status="choosing"])
+    .sl-swap__new
+    svg {
+    animation:
+      sl-spin 9s linear infinite,
+      sl-wait 2.4s ease-in-out infinite;
+  }
+
+  /* --------------------------------------------------------- quest track */
+
+  .sl-moon--settle {
+    animation: sl-settle 560ms var(--ease-spring) var(--settle-at, 0ms)
+      backwards;
+  }
+
+  .sl-moon--settle::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border: 2px solid var(--fail);
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    animation: sl-burst 760ms var(--ease-out) var(--settle-at, 0ms) both;
+  }
+
+  .sl-moon--settle[data-status="success"]::after {
+    border-color: var(--success);
+  }
+
+  .sl-moon--settle .sl-moon__badge {
+    animation: sl-pop 320ms var(--ease-spring)
+      calc(var(--settle-at, 0ms) + 260ms) backwards;
+  }
+
+  .sl-moon--next {
+    animation: sl-dim-in 600ms var(--ease-out)
+      calc(var(--settle-at, 0ms) + 420ms) backwards;
+  }
+
+  /* ------------------------------------------------------- votes, cards */
+
+  .sl-lock svg path {
+    animation: sl-shackle 340ms var(--ease-spring) calc(var(--at, 0ms) + 120ms)
+      backwards;
+  }
+
+  .sl-deal {
+    animation: sl-deal 380ms var(--ease-out) 60ms backwards;
+  }
+
+  .sl-deal--2 {
+    animation-delay: 150ms;
+  }
+
+  /* Both cards turn face down, become one, and that one goes to the fire. */
+  /* Starts where the cards were: the top of the locked line. */
+  .sl-cardfly {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    display: flex;
+    gap: 0.75rem;
+    height: 116px;
+    pointer-events: none;
+  }
+
+  .sl-cardfly__card {
+    display: grid;
+    flex: 1 1 0;
+    place-items: center;
+    border: 2px solid var(--line-strong);
+    border-radius: var(--corner-lg);
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--surface-raised),
+      var(--well)
+    );
+    color: var(--accent);
+    opacity: 0;
+  }
+
+  .sl-cardfly__card--left {
+    --toward: calc(50% + 0.375rem);
+    animation: sl-fly 820ms var(--ease-out) both;
+  }
+
+  .sl-cardfly__card--right {
+    --toward: calc(-50% - 0.375rem);
+    animation: sl-fly 820ms var(--ease-out) both;
+  }
+
+  /* Quest result: face-down cards, shuffled, turned one by one. */
+  .sl-qcard {
+    position: relative;
+    animation: sl-shuffle 520ms var(--ease-out) backwards;
+  }
+
+  .sl-qcard:nth-child(1) {
+    --stack-x: calc(100% + 0.625rem);
+    --swap-x: -46%;
+    --tilt: -5deg;
+  }
+
+  .sl-qcard:nth-child(2) {
+    --stack-x: 0px;
+    --swap-x: 0px;
+    --tilt: 3deg;
+    z-index: 1;
+  }
+
+  .sl-qcard:nth-child(3) {
+    --stack-x: calc(-100% - 0.625rem);
+    --swap-x: 46%;
+    --tilt: 5deg;
+  }
+
+  /* The held breath: the last card lifts while it waits to turn. */
+  .sl-qcard--last {
+    animation:
+      sl-shuffle 520ms var(--ease-out) backwards,
+      sl-breath calc(var(--turn-at) - var(--breath-at)) ease-in-out
+        var(--breath-at) backwards;
+  }
+
+  .sl-qcard__face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    animation: sl-face-in 240ms var(--ease-out) calc(var(--turn-at) + 170ms)
+      backwards;
+  }
+
+  .sl-qcard__back {
+    position: absolute;
+    inset: -2px;
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--line-strong);
+    border-radius: var(--corner-lg);
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--surface-raised),
+      var(--well)
+    );
+    color: var(--accent);
+    opacity: 0;
+    animation: sl-back-out 180ms var(--ease-in) var(--turn-at) backwards;
+  }
+
+  /* -------------------------------------------------------- the gallery */
+
+  .sl-gallery__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .sl-moment {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .sl-stage {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--corner-md);
+    background: var(--chart-bg);
+    box-shadow: inset 0 0 0 1px var(--panel-highlight);
+  }
+
+  .sl-stage[data-playing="true"][data-skippable="true"] {
+    cursor: pointer;
+  }
+
+  .sl-stage__scene {
+    position: relative;
+    display: grid;
+    height: 100%;
+    min-height: inherit;
+  }
+
+  .sl-notes {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.25rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .sl-notes dt {
+    font-weight: 800;
+    color: var(--accent-cool);
+  }
+
+  .sl-notes dd {
+    color: var(--ink);
+  }
+
+  .sl-cue {
+    display: inline-block;
+    padding: 0 0.375rem;
+    border-radius: var(--corner-sm);
+    background: var(--well);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.875rem;
+    color: var(--accent-strong);
+    white-space: nowrap;
+  }
+
+  /* A small sky for scenes that need one. */
+  .sl-minisky {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Lobby: stars light as players join and link up when all are ready. */
+  .sl-joinstar {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sl-star-in 420ms var(--ease-spring) backwards;
+  }
+
+  .sl-joinstar__flare {
+    transform-box: fill-box;
+    transform-origin: center;
+    opacity: 0;
+    animation: sl-burst 640ms var(--ease-out) both;
+  }
+
+  .sl-joinline {
+    fill: none;
+    stroke: var(--line-strong);
+    stroke-width: 1.4;
+    stroke-dasharray: 1;
+    stroke-linecap: round;
+    animation: sl-draw 380ms var(--ease-out) var(--at, 0ms) backwards;
+  }
+
+  .sl-joinline--linked {
+    stroke: var(--success);
+    stroke-width: 2;
+  }
+
+  /* Rejected-team track: a pip turns into a star. */
+  .sl-pip--advance {
+    animation: sl-pip-in 520ms var(--ease-spring) var(--at, 0ms) backwards;
+  }
+
+  /* A face-down card landing on the pile by the fire. */
+  .sl-pilecard {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    width: 46px;
+    height: 64px;
+    place-items: center;
+    margin: -32px 0 0 -23px;
+    border: 2px solid var(--line-strong);
+    border-radius: var(--corner-sm);
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--surface-raised),
+      var(--well)
+    );
+    color: var(--accent);
+    rotate: var(--tilt, 0deg);
+    translate: var(--x, 0) var(--y, 0);
+    animation: sl-land 520ms var(--ease-out) backwards;
+  }
+
+  /* The end of the game. */
+  .sl-dawn {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--accent-strong) 72%, transparent) 0%,
+      color-mix(in srgb, var(--accent-cool) 42%, transparent) 28%,
+      color-mix(in srgb, var(--accent-cool) 12%, transparent) 48%,
+      transparent 68%
+    );
+    animation: sl-dawn 1800ms var(--ease-out) backwards;
+  }
+
+  /* A falling star: a short streak, its bright head leading. */
+  .sl-fallstar {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 46px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, transparent, var(--art-star));
+    opacity: 0;
+    rotate: -25deg;
+    animation: sl-fall 1100ms var(--ease-in) var(--at, 0ms) backwards;
+  }
+
+  .sl-endstar {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .sl-eclipse .sl-endstar {
+    opacity: 0.18;
+    animation: sl-go-out 600ms var(--ease-in) var(--at, 0ms) backwards;
+  }
+
+  .sl-dawnlit .sl-endstar {
+    opacity: 0.45;
+    animation: sl-fade-down 1600ms var(--ease-out) var(--at, 0ms) backwards;
+  }
+
+  .sl-eclipse__shadow {
+    animation: sl-eclipse 1100ms var(--ease-travel) 200ms backwards;
+  }
+
+  .sl-eclipse__corona {
+    animation: sl-fade-in 700ms var(--ease-out) 1200ms backwards;
+  }
+
+  .sl-endtitle {
+    animation: sl-rise 600ms var(--ease-out) var(--at, 1200ms) backwards;
+  }
+
+  /* The Assassin's mark moves from seat to seat, then closes on one. */
+  .sl-markfield {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+    pointer-events: none;
+  }
+
+  .sl-mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    --mark-size: calc(var(--seat-size) + 16px);
+    width: var(--mark-size);
+    height: var(--mark-size);
+    margin: calc(var(--mark-size) / -2) 0 0 calc(var(--mark-size) / -2);
+    border: 2px dashed var(--evil);
+    border-radius: 999px;
+    translate: calc(var(--x) * 1cqw) calc(var(--y) * 1cqh);
+    transition: translate 320ms var(--ease-out);
+    animation: sl-spin 6s linear infinite;
+  }
+
+  .sl-mark[data-struck="true"] {
+    border-style: solid;
+    animation: sl-strike 420ms var(--ease-spring) backwards;
+    scale: 0.86;
+  }
+
+  /* Reconnecting: three stars pulse in turn, like a held breath. */
+  .sl-dots span {
+    animation: sl-wait 1.2s ease-in-out calc(var(--i) * 0.2s) infinite;
+  }
+
+  .sl-banner {
+    animation: sl-banner 320ms var(--ease-out) backwards;
+  }
+}
+
+/* ------------------------------------------------------------- keyframes */
+
+@keyframes sl-pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes sl-wake {
+  from {
+    opacity: 0.95;
+    transform: scale(0.9);
+  }
+  35% {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes sl-title-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.18em);
+  }
+}
+
+@keyframes sl-star-pop {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(-90deg);
+  }
+}
+
+@keyframes sl-wave {
+  40% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes sl-swell {
+  35% {
+    scale: 1.12;
+  }
+}
+
+@keyframes sl-burst {
+  from {
+    opacity: 0.9;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@keyframes sl-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+}
+
+@keyframes sl-star-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+@keyframes sl-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sl-dim-in {
+  from {
+    opacity: 0.35;
+  }
+}
+
+@keyframes sl-grow {
+  from {
+    transform: scale(0);
+  }
+}
+
+@keyframes sl-crown-drop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -18px) scale(0.6);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+@keyframes sl-crown-pass {
+  from {
+    transform: translate(calc(-50% + var(--from-x)), var(--from-y)) scale(1);
+  }
+  50% {
+    transform: translate(
+        calc(-50% + var(--from-x) * 0.5),
+        calc(var(--from-y) * 0.5 - 12px)
+      )
+      scale(1.2);
+  }
+  to {
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes sl-held {
+  50% {
+    scale: 1.08;
+  }
+}
+
+@keyframes sl-flip-out {
+  from {
+    opacity: 1;
+    transform: perspective(120px) rotateX(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: perspective(120px) rotateX(90deg);
+  }
+}
+
+@keyframes sl-flip-in {
+  from {
+    opacity: 0;
+    transform: perspective(120px) rotateX(-90deg);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(120px) rotateX(0deg);
+  }
+}
+
+@keyframes sl-roll-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-70%);
+  }
+}
+
+@keyframes sl-roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(70%);
+  }
+}
+
+@keyframes sl-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes sl-wait {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes sl-settle {
+  from {
+    opacity: 0.4;
+    scale: 0.55;
+  }
+}
+
+@keyframes sl-shackle {
+  from {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes sl-deal {
+  from {
+    opacity: 0;
+    transform: translateY(26px) rotate(-5deg) scale(0.94);
+  }
+}
+
+@keyframes sl-fly {
+  0% {
+    opacity: 1;
+    transform: perspective(500px) translateX(0) translateY(0) rotateY(90deg)
+      scale(1);
+  }
+  24% {
+    opacity: 1;
+    transform: perspective(500px) translateX(0) translateY(0) rotateY(0deg)
+      scale(1);
+  }
+  52% {
+    opacity: 1;
+    transform: perspective(500px) translateX(var(--toward)) translateY(0)
+      rotateY(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: perspective(500px) translateX(var(--toward)) translateY(-150px)
+      rotateY(0deg) scale(0.35);
+  }
+}
+
+@keyframes sl-shuffle {
+  0% {
+    transform: translateX(var(--stack-x)) rotate(var(--tilt));
+  }
+  40% {
+    transform: translateX(calc(var(--stack-x) + var(--swap-x)))
+      rotate(calc(var(--tilt) * -1));
+  }
+  70% {
+    transform: translateX(var(--stack-x)) rotate(0deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+}
+
+@keyframes sl-breath {
+  0% {
+    translate: 0 0;
+    scale: 1;
+  }
+  80% {
+    translate: 0 -8px;
+    scale: 1.05;
+  }
+  100% {
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes sl-back-out {
+  from {
+    opacity: 1;
+    transform: perspective(400px) rotateY(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(400px) rotateY(90deg);
+  }
+}
+
+@keyframes sl-face-in {
+  from {
+    opacity: 0;
+    transform: perspective(400px) rotateY(-90deg);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(400px) rotateY(0deg);
+  }
+}
+
+@keyframes sl-pip-in {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(-90deg);
+  }
+}
+
+@keyframes sl-land {
+  from {
+    opacity: 0;
+    translate: var(--from-x, 0) -90px;
+    rotate: calc(var(--tilt, 0deg) - 25deg);
+  }
+}
+
+@keyframes sl-dawn {
+  from {
+    opacity: 0;
+    transform: translateY(30%);
+  }
+}
+
+@keyframes sl-fall {
+  0% {
+    opacity: 0;
+    transform: translate(-17px, -36px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(76px, 163px);
+  }
+}
+
+@keyframes sl-go-out {
+  from {
+    opacity: 1;
+  }
+}
+
+@keyframes sl-fade-down {
+  from {
+    opacity: 1;
+  }
+}
+
+@keyframes sl-eclipse {
+  from {
+    transform: translateX(-80px);
+  }
+}
+
+@keyframes sl-strike {
+  from {
+    scale: 1.6;
+    opacity: 0;
+  }
+}
+
+@keyframes sl-banner {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@layer components {
+  /* The gallery's one-off shooting star (the sky's own runs on a loop). */
+  .sl-shoot-once {
+    position: absolute;
+    top: 18%;
+    left: 62%;
+    width: 140px;
+    height: 2px;
+    border-radius: 2px;
+    opacity: 0;
+    background: linear-gradient(90deg, var(--art-star), transparent);
+    transform-origin: 0 50%;
+    animation: sl-shoot-once 1100ms var(--ease-out) both;
+  }
+
+  .sl-stage-title .sl-wordmark {
+    font-size: clamp(3.25rem, 14vw, 5.5rem);
+  }
+}
+
+@keyframes sl-shoot-once {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(154deg) scaleX(0.2);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-260px, 126px) rotate(154deg) scaleX(1);
+  }
+}
+
+@layer components {
+  .sl-allpips {
+    display: inline-block;
+    animation: sl-swell 520ms var(--ease-out) 60ms both;
+  }
+}
+
+@layer components {
+  /* The Assassin's mark sits over the ring itself, not its padding. */
+  .sl-markfield--ring {
+    inset: 1.25rem 0.25rem 0.5rem;
+  }
+
+  .sl-mark {
+    --x: var(--x-m);
+    --y: var(--y-m);
+  }
+
+  @media (min-width: 1024px) {
+    .sl-markfield--ring {
+      inset: 1.25rem 0.75rem 0.5rem;
+    }
+
+    .sl-mark {
+      --x: var(--x-d);
+      --y: var(--y-d);
+    }
+
+    /* In a gallery card the quest track stays a row, as on a phone. */
+    .sl-moonrow .sl-track {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0;
+    }
+
+    .sl-moonrow .sl-track__quest {
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      text-align: center;
+    }
+
+    .sl-moonrow .sl-track__quest + .sl-track__quest::before {
+      top: calc(var(--moon-size) / 2);
+      right: calc(50% + var(--moon-size) / 2 + 3px);
+      left: calc(-50% + var(--moon-size) / 2 + 3px);
+      height: auto;
+      border-top: 1px dashed var(--line-strong);
+      border-left: 0;
+    }
+
+    .sl-moonrow .sl-track__detail {
+      display: none;
+    }
+  }
+}
+
+@layer components {
+  /* A card back is the same for every card: it must not take the face's
+     colour (.sl-card svg does), or it would give the card away. */
+  .sl-qcard .sl-qcard__back svg {
+    color: var(--accent);
+  }
+}
+
+@layer components {
+  .sl-moon-news {
+    animation: sl-fade-in 400ms var(--ease-out)
+      calc(var(--settle-at, 0ms) + 200ms) backwards;
+  }
+}

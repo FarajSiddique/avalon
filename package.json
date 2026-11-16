@@ -1,18 +1,60 @@
 {
   "name": "avalon",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "build": "vite build",
+    "start": "vite preview --port 3000",
+    "deploy": "pnpm build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "lint": "eslint",
+    "typecheck": "wrangler types && tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test --project=e2e",
+    "test:restart": "node scripts/restart-check.mjs",
+    "test:api": "cd bruno && pnpm dlx @usebruno/cli@4 run --env local",
+    "screenshots": "playwright test --project=screenshots",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@fontsource-variable/cinzel": "^5.3.0",
+    "@fontsource-variable/eb-garamond": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/nunito-sans": "^5.3.0",
+    "@fontsource/press-start-2p": "^5.3.0",
+    "@fontsource/vt323": "^5.3.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-router": "1.170.46",
+    "@tanstack/react-start": "1.169.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.18",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.26.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.15.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.0.0",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.162.0"
+  },
+  "version": "0.1.0",
   "engines": {
     "node": ">=24"
   },
-  "scripts": {
-    "dev": "pnpm --parallel -r dev",
-    "build": "pnpm -r build",
-    "test": "pnpm --filter @avalon/server test"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["@nestjs/core", "esbuild"]
-  }
+  "packageManager": "pnpm@10.34.5"
 }

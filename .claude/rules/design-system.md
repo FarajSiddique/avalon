@@ -1,68 +1,63 @@
 ---
 paths:
-  - "packages/client/src/**/*"
+  - "src/routes/**/*"
+  - "src/components/**/*"
+  - "src/design/**/*"
+  - "src/client/**/*"
+  - "src/styles.css"
 ---
 
 # Design System
 
-## Colour Palette
+**Status: Starlit Vale is the chosen direction** (picked by the owner on 16
+November 2026), with its motion and sound. Its spec is `docs/design/starlit.md` and
+its prototype is under `/design/starlit`. The real screens are not built from it
+yet: Phase 0 in `docs/architecture.md` moves its tokens to `:root`, deletes the
+other two directions and rewrites this file from the spec. Until then, new UI work
+follows the Starlit spec. The old navy and gold, Inter and shadcn/ui system is
+gone; do not bring it back.
 
-| Token | Hex | Usage |
-|---|---|---|
-| `bg-base` | `#0D1220` | Page background |
-| `bg-surface` | `#1A2438` | Panel/card background |
-| `bg-card` | `#141B2D` | Nested card background |
-| `gold` | `#C8A84B` | Primary accent, logo, headings |
-| `gold-light` | `#E8CC7A` | Highlighted text, room codes |
-| `text-primary` | `#F5EFE8` | Main body text |
-| `text-secondary` | `#8A9CB8` | Muted/supporting text |
-| `border` | `#2B3D60` | Subtle borders |
-| `good` | `#4A8FE3` | Good alignment (blue) |
-| `evil` | `#C73838` | Evil alignment (red) |
-| `evil-special` | `#A050E0` | Morgana / Oberon (purple) |
-| `success` | `#30D984` | Ready states, quest success |
-| `warning` | `#F2A52E` | Not ready, status warnings |
+Large drawings (night sky, camp scene, seat ring) render in the browser only, not
+on the Worker: server-rendering them costs about twice the free plan's CPU limit
+(measured, see Deployment in `docs/architecture.md`).
 
-Never hardcode hex values — always use the CSS variable tokens defined in `globals.css`.
+## What is fixed
 
-## Typography
+### Tokens
 
-- **Font:** Inter (Regular, Medium, Semi Bold, Bold, Extra Bold)
-- **Scale:** 44px (role name) → 38px (game title) → 22px (logo) → 16px (CTA) → 14px (body) → 12px (supporting) → 11px (labels/caps)
-- **Caps labels:** 8–14% letter spacing
+Components never use raw colour values. They use the Tailwind utilities generated
+from the semantic tokens in `src/styles.css`, or `var(--token)`.
 
-## Component Rules
+| Token                                        | Utility examples                         | Use                                    |
+| -------------------------------------------- | ---------------------------------------- | -------------------------------------- |
+| `--canvas`                                   | `bg-canvas`                              | Page background                        |
+| `--surface`                                  | `bg-surface`                             | Panels and cards                       |
+| `--well`                                     | `bg-well`                                | Inputs and inset areas                 |
+| `--ink`, `--ink-muted`                       | `text-ink`, `text-ink-muted`             | Text                                   |
+| `--line`, `--line-strong`                    | `border-line`, `border-line-strong`      | Borders and dividers                   |
+| `--focus`                                    | `outline-focus`                          | Focus ring                             |
+| `--accent`, `--accent-strong`, `--on-accent` | `bg-accent`, `text-on-accent`            | Primary actions (the firelight colour) |
+| `--accent-cool`                              | `text-accent-cool`                       | The cool counterpart to the accent     |
+| `--good`, `--evil`                           | `text-good`, `text-evil`                 | Alignment                              |
+| `--success`, `--fail`, `--warning`           | `text-success`, `text-fail`              | Quest results, ready and away states   |
+| `--display-font`, `--body-font`              | `font-display`, `font-body`              | Type                                   |
+| `--corner-sm`, `-md`, `-lg`                  | `rounded-sm`, `rounded-md`, `rounded-lg` | Radii                                  |
 
-- **shadcn/ui** for standard interactive UI: Button, Card, Switch, Badge, Avatar, Separator
-- **Custom Tailwind** for all game-specific visuals: role cards, glow effects, phase indicators, decorative dividers
-- Role cards use coloured borders + inner glow to signal alignment immediately
-- All hidden-information screens must show a privacy banner
+Tokens have three layers: primitives (raw values), the semantic contract above, and
+component tokens. A theme sets the semantic layer.
 
-## Design Language
+### Rules
 
-- Dark navy backgrounds with gold accents — Arthurian / medieval dark fantasy
-- Good = Blue; Evil = Red; Morgana/Oberon = Purple; Neutral UI = Gold/Navy
-- No light mode
-
-## Figma File
-
-`https://www.figma.com/design/XLtDnvcmHHXwx1VKYGTT5T`
-
-| Screen | Status |
-|---|---|
-| Lobby — Join Room | ✅ Done |
-| Role Reveal — Merlin | ✅ Done |
-| Role Reveal — Percival | ✅ Done |
-| Role Reveal — Loyal Servant | ✅ Done |
-| Role Reveal — Assassin | ✅ Done |
-| Role Reveal — Minion of Mordred | ✅ Done |
-| Role Reveal — Mordred | ✅ Done |
-| Role Reveal — Morgana | ✅ Done |
-| Role Reveal — Oberon | ✅ Done |
-| Team Building | ⬜ Not started |
-| Team Vote | ⬜ Not started |
-| Quest Phase | ⬜ Not started |
-| Quest Result | ⬜ Not started |
-| Assassination Phase | ⬜ Not started |
-| Game End — Good Wins | ⬜ Not started |
-| Game End — Evil Wins | ⬜ Not started |
+- Mobile first. No horizontal scrolling at 390px. Primary actions in the thumb zone.
+  Touch targets at least 44 by 44 px. Check every screen at 390px and 1440px.
+- Night-time only. There is no light mode.
+- Text contrast at least 4.5:1 (3:1 for large text and UI shapes). Measure with
+  `node scripts/contrast.mjs "label=#fg:#bg"`.
+- Meaning never depends on colour alone: Good and Evil, Approve and Reject, Success
+  and Fail each have a shape or icon and a text label.
+- Every screen that shows secret information hides it until the player presses and
+  holds (`useHoldToReveal` in `src/client/use-hold-to-reveal.ts`) and says so.
+- All motion stops under `prefers-reduced-motion: reduce`.
+- Fonts are open-licensed and self-hosted with Fontsource packages. Artwork is original CSS and
+  inline SVG, or open-licensed with the licence noted in the spec. No emoji as icons.
+- No UI kit. Components are hand-built on the tokens with native elements.

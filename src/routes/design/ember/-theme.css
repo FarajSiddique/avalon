@@ -1,0 +1,1226 @@
+/*
+ * Ember & Rune: a candlelit oak table at night.
+ *
+ * Three token layers, all scoped to .theme-ember:
+ *   1. primitives  --ember-<hue>-<step>   the only place raw colours live
+ *   2. semantic    --canvas, --ink, ...   the contract from globals.css
+ *   3. component   --seat-size, --paper   what the components read
+ * Below the tokens: textures, frames and keyframes for this direction.
+ * Raw rgb() values appear again only inside shadows and texture overlays
+ * (smoke, glow, grain), where a token per alpha step would add nothing.
+ */
+
+/*
+ * Do not add a "@layer theme, base, components, utilities;" statement here.
+ * With the Tailwind Turbopack loader it makes the dev server rebuild this
+ * file on every request (an endless Fast Refresh reload). The order is
+ * already set by globals.css, which always loads first.
+ */
+
+.theme-ember {
+  /* ------------------------------------------------------------ primitives */
+
+  /* Charred umber with a hint of plum: the room beyond the candlelight. */
+  --ember-char-950: #0b0607;
+  --ember-char-900: #140c0e;
+  --ember-char-800: #1d1114;
+  --ember-char-700: #29181b;
+
+  /* Dark oak: the table and everything carved from it. */
+  --ember-oak-900: #20130d;
+  --ember-oak-800: #2b1a12;
+  --ember-oak-700: #3a2418;
+  --ember-oak-600: #5c3b24;
+  --ember-oak-500: #7d5431;
+  --ember-oak-400: #a57645;
+  --ember-oak-300: #c4975f;
+
+  /* Aged parchment and the ink written on it. */
+  --ember-parchment-100: #f3e6c8;
+  --ember-parchment-200: #ecdbb2;
+  --ember-parchment-300: #dcc596;
+  --ember-parchment-400: #c4aa80;
+  --ember-ink-900: #2a180d;
+  --ember-ink-700: #5a3d22;
+
+  /* Ember orange and candle gold. */
+  --ember-flame-300: #ffb066;
+  --ember-flame-400: #f79646;
+  --ember-flame-500: #ee8233;
+  --ember-flame-600: #d0661f;
+  --ember-flame-800: #7a3410;
+  --ember-gold-200: #ffdf9a;
+  --ember-gold-300: #ffc978;
+  --ember-gold-400: #f4c462;
+  --ember-gold-600: #b8862f;
+
+  /* Arcane blue: the cool counterweight, used for Good. */
+  --ember-arcane-200: #c3e2fa;
+  --ember-arcane-300: #8cc4f2;
+  --ember-arcane-500: #3f8fd0;
+  --ember-arcane-700: #1b4a78;
+  --ember-arcane-900: #10283f;
+
+  /* Oxblood and crimson: Evil, Fail, and sealing wax. */
+  --ember-blood-300: #f88d84;
+  --ember-blood-500: #c9352f;
+  --ember-blood-600: #a3261f;
+  --ember-blood-700: #8a1c20;
+  --ember-blood-900: #3d0f12;
+
+  /* Laurel green: a quest that succeeded, a team approved. */
+  --ember-laurel-300: #a9cf82;
+  --ember-laurel-500: #5f8f3d;
+  --ember-laurel-700: #26501a;
+  --ember-laurel-900: #17290f;
+
+  /* Violet kept in the shadows. */
+  --ember-plum-900: #1a0e1c;
+  --ember-plum-700: #33203a;
+
+  /* -------------------------------------------------------------- semantic */
+
+  --canvas: var(--ember-char-900);
+  --surface: var(--ember-oak-800);
+  --well: var(--ember-char-950);
+
+  --ink: var(--ember-parchment-100);
+  --ink-muted: var(--ember-parchment-400);
+
+  --line: var(--ember-oak-600);
+  --line-strong: var(--ember-oak-400);
+  --focus: var(--ember-gold-200);
+
+  --accent: var(--ember-flame-500);
+  --accent-strong: var(--ember-gold-300);
+  --on-accent: var(--ember-char-950);
+  --accent-cool: var(--ember-arcane-300);
+
+  --good: var(--ember-arcane-300);
+  --evil: var(--ember-blood-300);
+  --success: var(--ember-laurel-300);
+  --fail: var(--ember-blood-300);
+  --warning: var(--ember-gold-400);
+
+  --display-font: var(--font-cinzel), "Trajan Pro", Georgia, serif;
+  --body-font: var(--font-garamond), "Iowan Old Style", Georgia, serif;
+
+  --corner-sm: 2px;
+  --corner-md: 4px;
+  --corner-lg: 6px;
+
+  /* ------------------------------------------------------------- component */
+
+  /* Paper: text written on parchment is dark ink, not --ink. */
+  --paper: var(--ember-parchment-200);
+  --paper-light: var(--ember-parchment-100);
+  --paper-shade: var(--ember-parchment-300);
+  --paper-ink: var(--ember-ink-900);
+  --paper-ink-muted: var(--ember-ink-700);
+  --paper-good: var(--ember-arcane-700);
+  --paper-evil: var(--ember-blood-700);
+  --paper-success: var(--ember-laurel-700);
+  --paper-fail: var(--ember-blood-700);
+
+  /* Raised oak (hover, selected rows). */
+  --surface-raised: var(--ember-oak-700);
+  --frame-outer: var(--ember-char-950);
+  --frame-inner: var(--ember-oak-500);
+  --frame-gilt: var(--ember-gold-600);
+
+  /* Rune circle. */
+  --rune-line: var(--ember-flame-400);
+  --rune-line-hot: var(--ember-gold-300);
+  --rune-glow: rgb(238 130 51 / 0.55);
+  --rune-size: 188px;
+
+  /* Seats. */
+  --seat-size: 52px;
+  --seat-metal: var(--ember-oak-400);
+  --seat-metal-bright: var(--ember-gold-300);
+  --seat-field: var(--ember-char-800);
+  --seat-you: var(--ember-gold-300);
+  --seat-team: var(--ember-flame-500);
+
+  /* Wax seals. */
+  --wax-ember: var(--ember-blood-600);
+  --wax-ember-light: var(--ember-blood-500);
+  --wax-ember-dark: var(--ember-blood-900);
+  --wax-ink: var(--ember-parchment-100);
+
+  /* Votes and quest cards reuse the game meaning tokens. */
+  --vote-approve: var(--success);
+  --vote-reject: var(--fail);
+
+  /* Buttons. */
+  --btn-height: 52px;
+  --btn-primary-top: var(--ember-gold-300);
+  --btn-primary-mid: var(--ember-flame-500);
+  --btn-primary-low: var(--ember-flame-600);
+  --btn-primary-edge: var(--ember-flame-800);
+
+  /* Motion. */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 180ms;
+  --dur-base: 260ms;
+  --dur-turn: 420ms;
+
+  /* Textures (original SVG noise, inlined). */
+  --grain-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='480'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.42 0.011' numOctaves='4' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.03 0 0 0 0 0.012 0 0 0 0 0.008 1.25 0 0 0 -0.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  --grain-wood-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='520'%3E%3Cfilter id='l' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.28 0.008' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.66 0 0 0 0 0.36 0.34 0 0 0 -0.13'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23l)'/%3E%3C/svg%3E");
+  --grain-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' seed='23' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.22 0 0 0 0 0.1 0.6 0 0 0 -0.22'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+@media (min-width: 1024px) {
+  .theme-ember {
+    --seat-size: 84px;
+    --rune-size: 296px;
+  }
+}
+
+@layer components {
+  /* ------------------------------------------------------------- the room */
+
+  /* The whole screen is the tabletop: dark planks, one pool of candlelight
+     from above, violet in the corners. */
+  .theme-ember.ember-room {
+    background-color: var(--canvas);
+    background-image:
+      radial-gradient(
+        120% 70% at 50% -8%,
+        rgb(247 150 70 / 0.2),
+        rgb(247 150 70 / 0.05) 45%,
+        transparent 70%
+      ),
+      radial-gradient(
+        140% 100% at 50% 40%,
+        transparent 45%,
+        rgb(26 14 28 / 0.85) 100%
+      ),
+      var(--grain-wood),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent 126px,
+        rgb(0 0 0 / 0.55) 126px,
+        rgb(0 0 0 / 0.55) 128px,
+        rgb(255 190 120 / 0.035) 128px,
+        transparent 131px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        rgb(255 160 80 / 0.03) 0,
+        rgb(255 160 80 / 0.03) 128px,
+        transparent 128px,
+        transparent 256px,
+        rgb(0 0 0 / 0.14) 256px,
+        rgb(0 0 0 / 0.14) 384px
+      );
+  }
+
+  /* --------------------------------------------------------- oak surfaces */
+
+  .theme-ember .ember-oak {
+    background-color: var(--surface);
+    background-image:
+      var(--grain-wood-light), var(--grain-wood),
+      linear-gradient(180deg, rgb(255 180 110 / 0.06), transparent 40%);
+  }
+
+  /* A carved panel: dark outer line, bevel, then a thin gilt inner line. */
+  .theme-ember .ember-frame {
+    position: relative;
+    border: 1px solid var(--frame-outer);
+    border-radius: var(--corner-md);
+    background-color: var(--surface);
+    background-image:
+      var(--grain-wood-light), var(--grain-wood),
+      linear-gradient(180deg, rgb(255 180 110 / 0.07), transparent 38%);
+    box-shadow:
+      inset 0 0 0 1px var(--frame-inner),
+      inset 0 0 0 4px var(--surface),
+      inset 0 0 0 5px rgb(184 134 47 / 0.55),
+      inset 0 18px 30px -18px rgb(255 190 120 / 0.12),
+      inset 0 -24px 34px -18px rgb(0 0 0 / 0.55),
+      0 14px 28px -10px rgb(0 0 0 / 0.8),
+      0 2px 0 rgb(0 0 0 / 0.6);
+  }
+
+  /* The same panel, but only on a wide screen. On a phone its content sits
+     straight on the table. */
+  @media (min-width: 1024px) {
+    .theme-ember .ember-frame-lg {
+      position: relative;
+      border: 1px solid var(--frame-outer);
+      border-radius: var(--corner-md);
+      background-color: var(--surface);
+      background-image:
+        var(--grain-wood-light), var(--grain-wood),
+        linear-gradient(180deg, rgb(255 180 110 / 0.07), transparent 38%);
+      box-shadow:
+        inset 0 0 0 1px var(--frame-inner),
+        inset 0 0 0 4px var(--surface),
+        inset 0 0 0 5px rgb(184 134 47 / 0.55),
+        inset 0 18px 30px -18px rgb(255 190 120 / 0.12),
+        inset 0 -24px 34px -18px rgb(0 0 0 / 0.55),
+        0 14px 28px -10px rgb(0 0 0 / 0.8),
+        0 2px 0 rgb(0 0 0 / 0.6);
+    }
+  }
+
+  /* A recess cut into the wood. */
+  .theme-ember .ember-well {
+    border: 1px solid var(--frame-outer);
+    border-radius: var(--corner-sm);
+    background-color: var(--well);
+    box-shadow:
+      inset 0 2px 6px rgb(0 0 0 / 0.9),
+      inset 0 0 0 1px rgb(92 59 36 / 0.5),
+      0 1px 0 rgb(255 190 120 / 0.08);
+  }
+
+  /* Display type, carved into the surface. */
+  .theme-ember .ember-carved {
+    font-family: var(--display-font);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-shadow:
+      0 1px 0 rgb(0 0 0 / 0.85),
+      0 -1px 0 rgb(255 200 140 / 0.08);
+  }
+
+  .theme-ember .ember-label {
+    font-family: var(--display-font);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .theme-ember .ember-wordmark {
+    background-image: linear-gradient(
+      180deg,
+      var(--ember-gold-200) 0%,
+      var(--ember-gold-400) 42%,
+      var(--ember-flame-500) 78%,
+      var(--ember-flame-600) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: var(--ember-gold-300);
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.9))
+      drop-shadow(0 0 22px rgb(238 130 51 / 0.45));
+    font-family: var(--display-font);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    /* Optical centring: tracking adds space after the last letter. */
+    margin-right: -0.2em;
+    text-transform: uppercase;
+  }
+
+  /* Engraved divider: a dark cut with a lit lower edge and a centre stud. */
+  .theme-ember .ember-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--ink-muted);
+  }
+  .theme-ember .ember-divider::before,
+  .theme-ember .ember-divider::after {
+    flex: 1;
+    height: 2px;
+    border-top: 1px solid rgb(0 0 0 / 0.8);
+    border-bottom: 1px solid rgb(255 190 120 / 0.14);
+    content: "";
+  }
+
+  /* ------------------------------------------------------------ parchment */
+
+  .theme-ember .ember-parchment {
+    position: relative;
+    isolation: isolate;
+    color: var(--paper-ink);
+    filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.65));
+  }
+  .theme-ember .ember-parchment::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(90% 70% at 30% 20%, var(--paper-light), transparent 70%),
+      radial-gradient(
+        60% 50% at 88% 92%,
+        rgb(122 52 16 / 0.28),
+        transparent 70%
+      ),
+      radial-gradient(40% 30% at 6% 96%, rgb(122 52 16 / 0.2), transparent 70%),
+      var(--grain-paper),
+      linear-gradient(160deg, var(--paper) 30%, var(--paper-shade) 100%);
+    box-shadow: inset 0 0 18px rgb(122 52 16 / 0.35);
+    clip-path: polygon(
+      0.6% 1.1%,
+      12% 0.2%,
+      27% 0.9%,
+      44% 0%,
+      61% 0.8%,
+      78% 0.1%,
+      93% 0.7%,
+      99.5% 0.3%,
+      100% 14%,
+      99.2% 31%,
+      100% 52%,
+      99.3% 71%,
+      100% 88%,
+      99.2% 99.3%,
+      86% 100%,
+      69% 99.2%,
+      52% 100%,
+      33% 99.3%,
+      16% 100%,
+      0.9% 99.4%,
+      0% 84%,
+      0.8% 63%,
+      0% 41%,
+      0.7% 22%
+    );
+    content: "";
+  }
+  .theme-ember .ember-parchment :focus-visible {
+    outline-color: var(--paper-ink);
+  }
+  .theme-ember .ember-paper-muted {
+    color: var(--paper-ink-muted);
+  }
+  .theme-ember .ember-paper-rule {
+    height: 3px;
+    border-top: 1px solid var(--paper-ink-muted);
+    border-bottom: 1px solid rgb(90 61 34 / 0.35);
+  }
+
+  /* -------------------------------------------------------------- buttons */
+
+  .theme-ember .ember-btn {
+    display: inline-flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    min-height: var(--btn-height);
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--frame-outer);
+    border-radius: var(--corner-md);
+    font-family: var(--display-font);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1.15;
+    text-align: center;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      filter var(--dur-fast) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+    user-select: none;
+  }
+  .theme-ember .ember-btn:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+    filter: brightness(0.92);
+  }
+  .theme-ember .ember-btn:disabled,
+  .theme-ember .ember-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* Primary: a live coal. */
+  .theme-ember .ember-btn--primary {
+    background-image: linear-gradient(
+      180deg,
+      var(--btn-primary-top) 0%,
+      var(--btn-primary-mid) 55%,
+      var(--btn-primary-low) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 rgb(255 240 200 / 0.7),
+      inset 0 0 0 1px var(--btn-primary-edge),
+      inset 0 -3px 0 rgb(122 52 16 / 0.55),
+      0 0 22px rgb(238 130 51 / 0.38),
+      0 6px 14px -4px rgb(0 0 0 / 0.8);
+    color: var(--on-accent);
+  }
+  @media (hover: hover) {
+    .theme-ember .ember-btn--primary:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+    .theme-ember .ember-btn--secondary:hover:not(:disabled) {
+      filter: brightness(1.25);
+    }
+  }
+
+  /* Secondary: carved oak with a gilt line. */
+  .theme-ember .ember-btn--secondary {
+    background-color: var(--surface-raised);
+    background-image:
+      var(--grain-wood),
+      linear-gradient(180deg, rgb(255 190 120 / 0.1), transparent 55%);
+    box-shadow:
+      inset 0 0 0 1px var(--line-strong),
+      inset 0 1px 0 1px rgb(255 200 140 / 0.14),
+      inset 0 -3px 0 rgb(0 0 0 / 0.4),
+      0 6px 14px -6px rgb(0 0 0 / 0.8);
+    color: var(--accent-strong);
+  }
+  .theme-ember .ember-btn--secondary[aria-pressed="true"] {
+    background-color: var(--ember-blood-900);
+    box-shadow:
+      inset 0 0 0 1px var(--accent),
+      inset 0 2px 8px rgb(0 0 0 / 0.7),
+      0 0 16px rgb(238 130 51 / 0.3);
+    color: var(--ink);
+  }
+
+  .theme-ember .ember-btn--primary:disabled,
+  .theme-ember .ember-btn--secondary:disabled {
+    background-color: var(--ember-char-800);
+    background-image: var(--grain-wood);
+    box-shadow:
+      inset 0 0 0 1px var(--line),
+      inset 0 2px 6px rgb(0 0 0 / 0.6);
+    color: var(--ink-muted);
+  }
+
+  /* Approve and Reject: two heavy wax-sealed slabs. */
+  .theme-ember .ember-btn--vote {
+    flex-direction: column;
+    gap: 0.375rem;
+    min-height: 92px;
+    padding: 0.75rem 0.5rem;
+    font-size: 1rem;
+  }
+  .theme-ember .ember-btn--approve {
+    background-color: var(--ember-laurel-900);
+    background-image:
+      var(--grain-wood),
+      radial-gradient(
+        120% 90% at 50% 0%,
+        rgb(169 207 130 / 0.22),
+        transparent 70%
+      );
+    box-shadow:
+      inset 0 0 0 1px var(--ember-laurel-500),
+      inset 0 1px 0 1px rgb(200 240 160 / 0.2),
+      inset 0 -3px 0 rgb(0 0 0 / 0.45),
+      0 6px 14px -6px rgb(0 0 0 / 0.8);
+    color: var(--vote-approve);
+  }
+  .theme-ember .ember-btn--reject {
+    background-color: var(--ember-blood-900);
+    background-image:
+      var(--grain-wood),
+      radial-gradient(
+        120% 90% at 50% 0%,
+        rgb(244 115 107 / 0.22),
+        transparent 70%
+      );
+    box-shadow:
+      inset 0 0 0 1px var(--ember-blood-500),
+      inset 0 1px 0 1px rgb(255 170 160 / 0.2),
+      inset 0 -3px 0 rgb(0 0 0 / 0.45),
+      0 6px 14px -6px rgb(0 0 0 / 0.8);
+    color: var(--vote-reject);
+  }
+  .theme-ember .ember-btn--vote:disabled {
+    background-color: var(--ember-char-800);
+    background-image: var(--grain-wood);
+    box-shadow:
+      inset 0 0 0 1px var(--line),
+      inset 0 2px 6px rgb(0 0 0 / 0.6);
+    color: var(--ink-muted);
+  }
+
+  /* --------------------------------------------------------------- fields */
+
+  .theme-ember .ember-input {
+    width: 100%;
+    min-height: 52px;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--frame-outer);
+    border-radius: var(--corner-sm);
+    background-color: var(--well);
+    box-shadow:
+      inset 0 2px 6px rgb(0 0 0 / 0.9),
+      inset 0 0 0 1px var(--line),
+      0 1px 0 rgb(255 190 120 / 0.1);
+    color: var(--ink);
+    font-family: var(--body-font);
+    font-size: 1.1875rem;
+    font-weight: 500;
+    transition: box-shadow var(--dur-base) var(--ease-out);
+  }
+  .theme-ember .ember-input::placeholder {
+    color: var(--ink-muted);
+    opacity: 0.75;
+  }
+  .theme-ember .ember-input:focus-visible {
+    box-shadow:
+      inset 0 2px 6px rgb(0 0 0 / 0.9),
+      inset 0 0 0 1px var(--line-strong),
+      0 0 18px rgb(255 201 120 / 0.25);
+  }
+  .theme-ember .ember-input--code {
+    font-family: var(--display-font);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: 0.4em;
+    text-align: center;
+    text-indent: 0.4em;
+    text-transform: uppercase;
+  }
+  .theme-ember .ember-input--code::placeholder {
+    letter-spacing: 0.4em;
+  }
+
+  /* A switch: a brass stud sliding in a groove. Lit when on. */
+  .theme-ember .ember-switch {
+    display: inline-block;
+    position: relative;
+    flex-shrink: 0;
+    width: 58px;
+    height: 30px;
+    border: 1px solid var(--frame-outer);
+    border-radius: 15px;
+    background-color: var(--well);
+    box-shadow:
+      inset 0 2px 5px rgb(0 0 0 / 0.9),
+      inset 0 0 0 1px var(--line-strong);
+    transition:
+      background-color var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+  }
+  .theme-ember .ember-switch::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-image: radial-gradient(
+      circle at 35% 30%,
+      var(--ember-oak-300),
+      var(--ember-oak-500) 70%
+    );
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.8),
+      inset 0 0 0 1px rgb(0 0 0 / 0.35);
+    content: "";
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      background-image var(--dur-base) var(--ease-out);
+  }
+  .theme-ember [aria-checked="true"] .ember-switch {
+    background-color: var(--ember-flame-800);
+    box-shadow:
+      inset 0 2px 5px rgb(0 0 0 / 0.7),
+      inset 0 0 0 1px var(--accent),
+      0 0 14px rgb(238 130 51 / 0.35);
+  }
+  .theme-ember [aria-checked="true"] .ember-switch::after {
+    transform: translateX(28px);
+    background-image: radial-gradient(
+      circle at 35% 30%,
+      var(--ember-gold-200),
+      var(--ember-gold-400) 60%,
+      var(--ember-flame-600)
+    );
+  }
+
+  /* ------------------------------------------------------------ wax seals */
+
+  .theme-ember .ember-seal {
+    --seal: var(--wax-ember);
+    --seal-light: var(--wax-ember-light);
+    --seal-dark: var(--wax-ember-dark);
+    --seal-ink: var(--wax-ink);
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 47% 53% 51% 49% / 52% 47% 53% 48%;
+    background-image: radial-gradient(
+      circle at 34% 28%,
+      var(--seal-light),
+      var(--seal) 55%,
+      var(--seal-dark) 100%
+    );
+    box-shadow:
+      inset 0 0 0 2px rgb(0 0 0 / 0.18),
+      inset 0 0 0 3px rgb(255 255 255 / 0.1),
+      0 1px 2px rgb(0 0 0 / 0.8);
+    color: var(--seal-ink);
+  }
+  .theme-ember .ember-seal--gold {
+    --seal: var(--ember-gold-600);
+    --seal-light: var(--ember-gold-300);
+    --seal-dark: var(--ember-flame-800);
+    --seal-ink: var(--ember-char-950);
+  }
+  .theme-ember .ember-seal--arcane {
+    --seal: var(--ember-arcane-700);
+    --seal-light: var(--ember-arcane-500);
+    --seal-dark: var(--ember-arcane-900);
+    --seal-ink: var(--ember-arcane-200);
+  }
+  .theme-ember .ember-seal--laurel {
+    --seal: var(--ember-laurel-700);
+    --seal-light: var(--ember-laurel-500);
+    --seal-dark: var(--ember-laurel-900);
+    --seal-ink: var(--ember-parchment-100);
+  }
+  .theme-ember .ember-seal--ember {
+    --seal: var(--ember-flame-600);
+    --seal-light: var(--ember-flame-300);
+    --seal-dark: var(--ember-flame-800);
+    --seal-ink: var(--ember-char-950);
+  }
+  /* No wax yet: an empty ring pressed into the wood. */
+  .theme-ember .ember-seal--empty {
+    background-image: none;
+    background-color: var(--well);
+    box-shadow:
+      inset 0 0 0 1px var(--line-strong),
+      inset 0 2px 4px rgb(0 0 0 / 0.8);
+    color: var(--ink-muted);
+  }
+
+  /* ---------------------------------------------------------- medallions */
+
+  .theme-ember .ember-medallion {
+    --medal-ring: var(--seat-metal);
+    display: grid;
+    position: relative;
+    flex-shrink: 0;
+    place-items: center;
+    width: var(--medal-size, var(--seat-size));
+    height: var(--medal-size, var(--seat-size));
+    border-radius: 50%;
+    background-image: radial-gradient(
+      circle at 50% 30%,
+      var(--ember-char-700),
+      var(--seat-field) 60%,
+      var(--ember-char-950)
+    );
+    box-shadow:
+      inset 0 0 0 1px var(--frame-outer),
+      inset 0 0 0 3px var(--medal-ring),
+      inset 0 0 0 4px var(--frame-outer),
+      inset 0 0 0 5px rgb(184 134 47 / 0.6),
+      inset 0 6px 10px 4px rgb(0 0 0 / 0.55),
+      0 3px 6px rgb(0 0 0 / 0.85);
+    color: var(--ember-parchment-200);
+    font-family: var(--display-font);
+    font-size: calc(var(--medal-size, var(--seat-size)) * 0.42);
+    font-weight: 700;
+    line-height: 1;
+    transition:
+      box-shadow var(--dur-base) var(--ease-out),
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+  }
+  .theme-ember .ember-medallion--you {
+    --medal-ring: var(--seat-you);
+  }
+  /* On the team: the frame catches fire. */
+  .theme-ember .ember-medallion--team {
+    --medal-ring: var(--seat-team);
+    background-image: radial-gradient(
+      circle at 50% 35%,
+      var(--ember-flame-800),
+      var(--ember-blood-900) 62%,
+      var(--ember-char-950)
+    );
+    box-shadow:
+      inset 0 0 0 1px var(--frame-outer),
+      inset 0 0 0 3px var(--medal-ring),
+      inset 0 0 0 4px var(--frame-outer),
+      inset 0 0 0 5px var(--ember-gold-300),
+      inset 0 6px 10px 4px rgb(0 0 0 / 0.4),
+      0 0 0 1px var(--frame-outer),
+      0 0 18px 2px rgb(238 130 51 / 0.6),
+      0 3px 6px rgb(0 0 0 / 0.85);
+    color: var(--ember-gold-200);
+  }
+  .theme-ember .ember-medallion--away {
+    opacity: 0.55;
+  }
+
+  /* ----------------------------------------------------------- the table */
+
+  .theme-ember .ember-tabletop {
+    border-radius: 50%;
+    background-color: var(--ember-oak-800);
+    background-image:
+      radial-gradient(
+        closest-side,
+        rgb(247 150 70 / 0.3),
+        rgb(247 150 70 / 0.08) 55%,
+        transparent 80%
+      ),
+      radial-gradient(closest-side, transparent 62%, rgb(11 6 7 / 0.7) 100%),
+      var(--grain-wood-light), var(--grain-wood),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent 62px,
+        rgb(0 0 0 / 0.5) 62px,
+        rgb(0 0 0 / 0.5) 63.5px,
+        rgb(255 190 120 / 0.06) 63.5px,
+        transparent 66px
+      );
+    box-shadow:
+      inset 0 0 0 2px var(--frame-outer),
+      inset 0 0 0 5px var(--ember-oak-600),
+      inset 0 0 0 6px var(--frame-outer),
+      inset 0 0 0 7px rgb(184 134 47 / 0.5),
+      inset 0 0 60px 10px rgb(0 0 0 / 0.6),
+      0 24px 50px -10px rgb(0 0 0 / 0.95),
+      0 0 0 1px rgb(0 0 0 / 0.6);
+  }
+
+  .theme-ember .ember-rune {
+    filter: drop-shadow(0 0 5px var(--rune-glow));
+  }
+  .theme-ember .ember-rune-halo {
+    border-radius: 50%;
+    background-image: radial-gradient(
+      closest-side,
+      rgb(255 176 102 / 0.34),
+      rgb(238 130 51 / 0.16) 55%,
+      transparent 100%
+    );
+  }
+  .theme-ember .ember-rune-core {
+    border-radius: 50%;
+    background-image: radial-gradient(
+      closest-side,
+      var(--ember-char-900) 70%,
+      rgb(20 12 14 / 0.86) 100%
+    );
+    box-shadow:
+      inset 0 0 0 1px rgb(247 150 70 / 0.6),
+      0 0 16px rgb(0 0 0 / 0.8);
+  }
+
+  /* The action area: the near edge of the table, under the player's thumb. */
+  .theme-ember .ember-dock {
+    border-top: 1px solid var(--frame-outer);
+    background-color: var(--ember-oak-900);
+    background-image:
+      var(--grain-wood),
+      linear-gradient(180deg, rgb(255 180 110 / 0.09), transparent 30%);
+    box-shadow:
+      inset 0 1px 0 rgb(184 134 47 / 0.7),
+      inset 0 2px 0 rgb(0 0 0 / 0.6),
+      0 -14px 28px rgb(0 0 0 / 0.75);
+  }
+  @media (min-width: 1024px) {
+    .theme-ember .ember-dock {
+      border: 1px solid var(--frame-outer);
+      border-radius: var(--corner-md);
+      background-color: var(--surface);
+      background-image:
+        var(--grain-wood-light), var(--grain-wood),
+        linear-gradient(180deg, rgb(255 180 110 / 0.07), transparent 38%);
+      box-shadow:
+        inset 0 0 0 1px var(--frame-inner),
+        inset 0 0 0 4px var(--surface),
+        inset 0 0 0 5px rgb(184 134 47 / 0.55),
+        inset 0 -24px 34px -18px rgb(0 0 0 / 0.55),
+        0 14px 28px -10px rgb(0 0 0 / 0.8);
+    }
+  }
+
+  /* -------------------------------------------------------- playing cards */
+
+  .theme-ember .ember-cardback {
+    border: 1px solid var(--frame-outer);
+    border-radius: var(--corner-lg);
+    background-color: var(--ember-blood-900);
+    background-image:
+      radial-gradient(closest-side, rgb(238 130 51 / 0.22), transparent 85%),
+      var(--grain-wood),
+      repeating-linear-gradient(
+        45deg,
+        rgb(0 0 0 / 0.16) 0,
+        rgb(0 0 0 / 0.16) 2px,
+        transparent 2px,
+        transparent 9px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        rgb(0 0 0 / 0.16) 0,
+        rgb(0 0 0 / 0.16) 2px,
+        transparent 2px,
+        transparent 9px
+      ),
+      linear-gradient(160deg, var(--ember-plum-700), var(--ember-blood-900));
+    box-shadow:
+      inset 0 0 0 3px var(--ember-blood-900),
+      inset 0 0 0 4px var(--frame-gilt),
+      inset 0 0 0 8px var(--ember-blood-900),
+      inset 0 0 0 9px rgb(184 134 47 / 0.6),
+      inset 0 0 30px rgb(0 0 0 / 0.6);
+  }
+
+  /* The role card: lies face down, lifts and turns while held. */
+  .theme-ember .ember-flip {
+    position: relative;
+    perspective: 1400px;
+  }
+  /* The shadow the card casts on the table. It is a separate layer because a
+     filter on the turning element would flatten its two faces into one. */
+  .theme-ember .ember-flip::before {
+    position: absolute;
+    z-index: -1;
+    inset: 3% 1% -4%;
+    border-radius: 12px;
+    background-image: radial-gradient(
+      closest-side,
+      rgb(0 0 0 / 0.85) 55%,
+      transparent 100%
+    );
+    content: "";
+    transition:
+      transform var(--dur-turn) var(--ease-out),
+      opacity var(--dur-turn) var(--ease-out);
+  }
+  .theme-ember .ember-flip[aria-pressed="true"]::before {
+    transform: translateY(18px) scale(1.08);
+    opacity: 0.7;
+  }
+  .theme-ember .ember-flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform var(--dur-turn) var(--ease-out);
+  }
+  .theme-ember .ember-flip[aria-pressed="true"] .ember-flip-inner {
+    transform: translateY(-12px) rotateY(180deg) scale(1.03);
+  }
+  .theme-ember .ember-flip-face {
+    position: absolute;
+    inset: 0;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  .theme-ember .ember-flip-face--front {
+    transform: rotateY(180deg);
+  }
+
+  /* A quest card in the hand. */
+  .theme-ember .ember-questcard {
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    width: 100%;
+    min-height: 100px;
+    padding: 0.625rem 0.5rem;
+    font-family: var(--display-font);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+  }
+  .theme-ember .ember-questcard:active:not(:disabled) {
+    transform: translateY(-4px) rotate(-1deg);
+  }
+  .theme-ember .ember-questcard:disabled {
+    cursor: not-allowed;
+  }
+  .theme-ember .ember-questcard--barred::before {
+    filter: saturate(0.35) brightness(0.62);
+  }
+  .theme-ember .ember-questcard--success {
+    color: var(--paper-success);
+  }
+  .theme-ember .ember-questcard--fail {
+    color: var(--paper-fail);
+  }
+
+  /* ---------------------------------------------------------- quest track */
+
+  .theme-ember .ember-quest {
+    --q-ring: var(--line-strong);
+    --q-fill: var(--well);
+    --q-ink: var(--ink-muted);
+    display: grid;
+    position: relative;
+    flex-shrink: 0;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--q-fill);
+    box-shadow:
+      inset 0 0 0 1px var(--frame-outer),
+      inset 0 0 0 3px var(--q-ring),
+      inset 0 0 0 4px var(--frame-outer),
+      inset 0 5px 8px 3px rgb(0 0 0 / 0.45),
+      0 2px 4px rgb(0 0 0 / 0.85);
+    color: var(--q-ink);
+    font-family: var(--display-font);
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .theme-ember .ember-quest--current {
+    --q-ring: var(--accent);
+    --q-fill: var(--ember-flame-800);
+    --q-ink: var(--ember-gold-200);
+    box-shadow:
+      inset 0 0 0 1px var(--frame-outer),
+      inset 0 0 0 3px var(--q-ring),
+      inset 0 0 0 4px var(--frame-outer),
+      inset 0 5px 8px 3px rgb(0 0 0 / 0.35),
+      0 0 16px 2px rgb(238 130 51 / 0.6),
+      0 2px 4px rgb(0 0 0 / 0.85);
+  }
+  .theme-ember .ember-quest--success {
+    --q-ring: var(--ember-laurel-300);
+    --q-fill: var(--ember-laurel-700);
+    --q-ink: var(--ember-parchment-100);
+  }
+  .theme-ember .ember-quest--fail {
+    --q-ring: var(--ember-blood-300);
+    --q-fill: var(--ember-blood-700);
+    --q-ink: var(--ember-parchment-100);
+  }
+  /* The engraved line that joins the five quests on a phone. */
+  .theme-ember .ember-quest-line {
+    position: relative;
+  }
+  .theme-ember .ember-quest-line::before {
+    position: absolute;
+    top: 23px;
+    right: 10%;
+    left: 10%;
+    height: 2px;
+    border-top: 1px solid rgb(0 0 0 / 0.85);
+    border-bottom: 1px solid rgb(255 190 120 / 0.16);
+    content: "";
+  }
+  @media (min-width: 1024px) {
+    .theme-ember .ember-quest {
+      width: 54px;
+      height: 54px;
+      font-size: 1.375rem;
+    }
+    .theme-ember .ember-quest-line::before {
+      display: none;
+    }
+  }
+
+  /* ---------------------------------------------------------------- seats */
+
+  .theme-ember .ember-seat-name {
+    font-family: var(--display-font);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 1),
+      0 0 8px rgb(0 0 0 / 0.9);
+    text-transform: uppercase;
+  }
+  .theme-ember .ember-seat-tag {
+    padding: 1px 6px 0;
+    border-radius: var(--corner-sm);
+    background-image: linear-gradient(
+      180deg,
+      var(--ember-gold-200),
+      var(--ember-gold-400)
+    );
+    box-shadow:
+      0 0 0 1px var(--frame-outer),
+      0 1px 3px rgb(0 0 0 / 0.8);
+    color: var(--on-accent);
+    font-family: var(--display-font);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+  .theme-ember .ember-seat-caption {
+    font-family: var(--display-font);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 1),
+      0 0 8px rgb(0 0 0 / 0.9);
+    text-transform: uppercase;
+  }
+  .theme-ember .ember-seat-button {
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .theme-ember .ember-seat-button:active {
+    transform: scale(0.94);
+  }
+  @media (min-width: 1024px) {
+    .theme-ember .ember-seat-name {
+      font-size: 1.0625rem;
+    }
+    .theme-ember .ember-seat-tag {
+      font-size: 0.8125rem;
+    }
+    .theme-ember .ember-seat-caption {
+      font-size: 0.9375rem;
+    }
+  }
+
+  /* A small quest card lying face up on the table. */
+  .theme-ember .ember-tablecard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 68px;
+    height: 92px;
+    font-family: var(--display-font);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  @media (min-width: 1024px) {
+    .theme-ember .ember-tablecard {
+      gap: 6px;
+      width: 104px;
+      height: 144px;
+      font-size: 0.9375rem;
+      letter-spacing: 0.06em;
+    }
+  }
+
+  /* ------------------------------------------------------------- motion */
+
+  .theme-ember .ember-turn {
+    transform-origin: 50% 50%;
+    animation: ember-turn 60s linear infinite;
+  }
+  .theme-ember .ember-turn--back {
+    animation-duration: 90s;
+    animation-direction: reverse;
+  }
+  .theme-ember .ember-flame {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: ember-flicker 2.8s ease-in-out infinite;
+  }
+  .theme-ember .ember-halo {
+    animation: ember-halo 2.8s ease-in-out infinite;
+  }
+  /* Whatever needs the player's attention breathes like a coal. */
+  .theme-ember .ember-pulse {
+    animation: ember-pulse 2.2s ease-in-out infinite;
+  }
+  .theme-ember .ember-arrive {
+    animation: ember-arrive var(--dur-base) var(--ease-out) both;
+  }
+  .theme-ember .ember-deal {
+    animation: ember-deal 420ms var(--ease-out) both;
+  }
+}
+
+@keyframes ember-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ember-flicker {
+  0%,
+  100% {
+    transform: scale(1, 1) rotate(0deg);
+    opacity: 1;
+  }
+  18% {
+    transform: scale(0.94, 1.06) rotate(-2deg);
+    opacity: 0.92;
+  }
+  37% {
+    transform: scale(1.04, 0.95) rotate(1.5deg);
+    opacity: 1;
+  }
+  58% {
+    transform: scale(0.96, 1.08) rotate(2.5deg);
+    opacity: 0.88;
+  }
+  79% {
+    transform: scale(1.03, 0.97) rotate(-1deg);
+    opacity: 0.97;
+  }
+}
+
+@keyframes ember-halo {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  18% {
+    opacity: 0.72;
+  }
+  37% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 0.66;
+  }
+  79% {
+    opacity: 0.94;
+  }
+}
+
+@keyframes ember-pulse {
+  0%,
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 rgb(238 130 51 / 0));
+  }
+  50% {
+    filter: brightness(1.18) drop-shadow(0 0 10px rgb(238 130 51 / 0.75));
+  }
+}
+
+@keyframes ember-arrive {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+@keyframes ember-deal {
+  from {
+    transform: translateY(-14px) rotate(-6deg) scale(1.08);
+    opacity: 0;
+  }
+}

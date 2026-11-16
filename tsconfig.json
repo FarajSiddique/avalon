@@ -1,0 +1,22 @@
+{
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts"],
+  "exclude": ["node_modules", "dist", ".wrangler"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["./worker-configuration.d.ts", "node", "vite/client"],
+    "paths": { "@/*": ["./src/*"] },
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

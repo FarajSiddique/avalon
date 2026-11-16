@@ -1,66 +1,80 @@
 ---
 paths:
-  - "packages/server/src/**/*"
-  - "packages/shared/src/**/*"
+  - "src/server/**/*"
+  - "src/shared/**/*"
 ---
 
 # Role Definitions
 
-## Good Roles
+The catalogue is implemented in `src/shared/roles.ts`. What each role learns is
+computed on the server by `knowledgeFor` (`src/server/game/knowledge.ts`) and sent
+to that player only, as `you.knowledge` in their `GameView`.
 
-### Merlin (required)
+Good and Evil are shown with the `good` and `evil` design tokens, always together
+with an icon or shape and a text label, never colour alone.
+
+## Good roles
+
+### Merlin (always in the game)
+
 - Knows all Evil players **except Mordred**.
-- Win condition: Good wins 3 Quests AND Assassin fails to identify Merlin.
-- Risk: being too obvious hands Evil the win via assassination.
-- UI colour: Blue `#4A8FE3`
+- Wins if Good completes 3 quests AND the Assassin fails to name him.
+- Being too obvious hands Evil the win through the assassination.
 
 ### Percival (optional)
-- Knows which players are Merlin and Morgana but **cannot tell them apart**.
-- Must protect the real Merlin while being deceived by Morgana.
-- Note: pair with Mordred or Morgana in 5-player games.
-- UI colour: Blue
 
-### Loyal Servant of Arthur (filler Good)
-- No knowledge. Starts blind.
-- UI colour: Blue
+- Sees which players are Merlin and Morgana but **cannot tell them apart**.
+- Must protect the real Merlin while Morgana tries to mislead him.
+- Works best together with Morgana.
 
-## Evil Roles
+### Loyal Servant of Arthur (fills the remaining Good seats)
 
-### Assassin (required)
-- Knows all other Evil players (except Oberon).
-- After Good wins 3 Quests: names one Good player as Merlin. Correct → Evil wins.
-- UI colour: Red `#C73838`
+- No knowledge.
 
-### Minion of Mordred (filler Evil)
-- Knows all other Evil players (except Oberon). No special power.
-- UI colour: Red
+## Evil roles
+
+### Assassin (always in the game)
+
+- Knows the other Evil players (except Oberon).
+- After Good completes 3 quests, names one player as Merlin. Correct: Evil wins.
+
+### Minion of Mordred (fills the remaining Evil seats)
+
+- Knows the other Evil players (except Oberon). No special power.
 
 ### Mordred (optional)
-- Knows all other Evil players (except Oberon).
-- **Hidden from Merlin** — the one Evil player Merlin cannot see.
-- Server: exclude Mordred from Merlin's `role_assigned` payload.
-- UI colour: Red
+
+- Knows the other Evil players (except Oberon).
+- **Hidden from Merlin.** Server: leave Mordred out of Merlin's `evilIds`.
 
 ### Morgana (optional)
-- Knows all other Evil players (except Oberon).
-- **Appears as Merlin to Percival** — both Merlin and Morgana raise thumbs for Percival.
-- UI colour: Purple `#A050E0`
+
+- Knows the other Evil players (except Oberon).
+- **Appears as Merlin to Percival.** Server: Percival's `merlinCandidateIds` holds
+  Merlin and Morgana in seat order, with nothing to tell them apart.
 
 ### Oberon (optional)
-- **No knowledge at all.** Does not open eyes during Evil reveal.
-- Other Evil players do not know Oberon exists.
-- Server: exclude Oberon from all Evil knowledge lists; no Evil players in Oberon's list.
-- UI colour: Purple/violet
 
-## Knowledge Matrix
+- **No knowledge at all**, and the other Evil players do not know him.
+- Server: leave Oberon out of every Evil player's `allyIds`, and give Oberon
+  `{ kind: "none" }`. Merlin does see Oberon.
 
-| Role | Knows Evil players | Knows Merlin | Visible to Merlin |
-|---|---|---|---|
-| Merlin | ✓ (except Mordred) | — | — |
-| Percival | ✗ | ✓ (+ Morgana, indistinct) | ✓ |
-| Loyal Servant | ✗ | ✗ | ✓ |
-| Assassin | ✓ (except Oberon) | ✗ | ✓ |
-| Minion of Mordred | ✓ (except Oberon) | ✗ | ✓ |
-| Mordred | ✓ (except Oberon) | ✗ | **✗** |
-| Morgana | ✓ (except Oberon) | ✗ | ✓ |
-| Oberon | **✗** | ✗ | ✓ |
+## Knowledge matrix
+
+| Role              | `you.knowledge`                                | Seen by Merlin |
+| ----------------- | ---------------------------------------------- | -------------- |
+| Merlin            | `merlin`: Evil ids, without Mordred            | n/a            |
+| Percival          | `percival`: Merlin and Morgana, not told apart | no             |
+| Loyal Servant     | `none`                                         | no             |
+| Assassin          | `evil`: other Evil ids, without Oberon         | yes            |
+| Minion of Mordred | `evil`: other Evil ids, without Oberon         | yes            |
+| Mordred           | `evil`: other Evil ids, without Oberon         | **no**         |
+| Morgana           | `evil`: other Evil ids, without Oberon         | yes            |
+| Oberon            | `none`                                         | yes            |
+
+## Choosing roles for a game
+
+- Evil seats: the Assassin plus the chosen Evil optional roles must not exceed the
+  Evil count for the player count. If they do, the host cannot start
+  (`too_many_evil_roles`). Remaining Evil seats are Minions.
+- Good seats: Merlin, Percival if chosen, the rest Loyal Servants.

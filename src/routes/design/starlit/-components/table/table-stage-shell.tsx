@@ -184,7 +184,7 @@ export function TableShell({
         ref={focus}
         data-stage-slot="table"
         data-pickable={pickable}
-        className="sl-table-focus absolute inset-x-0 top-[var(--head-h)] bottom-[calc(var(--pinned-h)+7.25rem)] z-0 lg:top-24 lg:right-[28rem] lg:bottom-0"
+        className="sl-table-focus absolute inset-x-0 top-[var(--head-h)] bottom-[calc(var(--pinned-h)+7.25rem)] z-0 lg:top-[calc(var(--head-h)+2.75rem)] lg:right-[28rem] lg:bottom-0"
         onPointerDown={onFocusDown}
         onPointerUp={onFocusUp}
         onPointerCancel={() => {

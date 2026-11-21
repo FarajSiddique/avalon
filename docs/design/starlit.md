@@ -521,6 +521,31 @@ to Claude. Code: `src/design/tweaks/`.
   the canvas and tags are decorative. The room code, the start blockers, I'm
   ready and Start are always in view. On a phone every section starts
   closed so the table shows; a wide screen opens the player list.
+- **The game at the table.** The same stage carries on past the lobby
+  (spec: `docs/superpowers/specs/2026-11-21-starlit-table-3d-design.md`).
+  The game is the fixed seven of the mock; you take Wren's seat under the
+  name you typed on the landing (kept for the visit in `sessionStorage`).
+  - _Role card._ The camera settles low behind your seat and the cloud card
+    sits over the scene: press and hold to part the clouds, let go and they
+    close, exactly as the flat card. The scene never changes while you hold
+    (no marks over the heads of players you know). "Continue to the table"
+    unlocks after the first hold. On every table step, "Your role" is the
+    same hold in a small button.
+  - _The round, acted out._ The leader's ring is lit with a crown; the team
+    glows and arcs of light join it. Tags over the heads are the screen's
+    own buttons and say each state with an icon and a word (crown, Chosen,
+    Voted or Waiting, Approve or Reject, Played). Votes stay Voted or Waiting
+    until every tag turns in the same frame. When you lead, tap a figure, its
+    tag or a name in the Team list to pick; a drag never picks. The quest
+    draws the camera in on the team; the result lays the shuffled cards face
+    down by the fire and turns them one at a time.
+  - _Panels._ Quests and Vote history are collapsible, with a one-line state
+    when closed ("Good 1, Evil 1 · Quest 3 needs 3 · 1 of 5 rejected", "Last:
+    rejected 4 to 3"). On a phone both start closed; a wide screen opens
+    Quests. The step panel and action bar are always in view.
+  - _Camera._ Each step to the next is a 1.2s move (1.6s from the lobby to
+    the role card), swinging round the table. Any other jump, a direct load
+    and reduced motion cut. Without WebGL every screen is the flat version.
 - **Tuning tokens.** Values that were hardcoded are now tokens at their old
   values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel
@@ -554,7 +579,9 @@ to Claude. Code: `src/design/tweaks/`.
 - The disabled Fail card with "Good players can only play Success" (required by the brief) tells anyone looking over a shoulder that the player is Good. The real game should think about this, for example by keeping both cards behind a hold.
 - In the prototype the role text is passed to the card as React children, so it is in the page payload even while hidden. In the real game it should come from the private socket message and only be kept in memory.
 - On a 1440 by 900 window the quest-card and quest-result steps are 945px and 923px tall, so they scroll slightly. The other table steps, the lobby, the role screen and the landing fit exactly.
-- On a phone the vote history is a long list under the table. It probably wants to be a sheet or a collapsed section.
+- On a phone the flat table (the no-WebGL fallback) still shows the vote history as a long list under the table. The 3D table has it in a collapsed section.
+- On a phone the 3D table's open space is about 210 to 280px tall between the header and the sheet, so figures are small and seven tags crowd. Picking by the Team list is the dependable way there.
+- The 3D table's frame rate was not measured, on a laptop or a phone.
 - Bright sparkle stars in the fixed sky can pass behind a page title while scrolling. They are a few pixels wide and titles stay readable, but text that must be guaranteed sits on a panel.
 - With three start blockers at once (someone away, someone not ready, too many Evil roles) the sticky bar in the lobby is about 190px tall on a phone. It still works, but a long list of reasons should probably collapse to the first one plus "and 2 more".
 - Sound was checked by measurement only (length, peak, not silent, no clicks at loop points), never by ear. The mix between cues, and how they sound on a phone speaker, needs a listen.

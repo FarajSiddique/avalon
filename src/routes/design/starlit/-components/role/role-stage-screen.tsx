@@ -98,7 +98,7 @@ export function RoleStageScreen({ variant }: { variant: RoleVariant }) {
       <div
         ref={focus}
         data-stage-slot="role"
-        className="absolute inset-x-0 top-[7.5rem] bottom-[25rem] lg:top-28 lg:right-[28rem] lg:bottom-0"
+        className="absolute inset-x-0 top-[7.5rem] bottom-[25rem] lg:top-56 lg:right-[28rem] lg:bottom-0"
       />
 
       <header

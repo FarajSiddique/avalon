@@ -279,3 +279,29 @@ test("unsafe values in a share link are dropped", async ({ page }) => {
   await expect.poll(() => tweakCss(page)).toContain("--ink: #ff0000");
   expect(await tweakCss(page)).not.toContain("display");
 });
+
+test("an artwork version chosen on the contact sheet sticks and reaches the studio", async ({
+  page,
+}) => {
+  await page.goto("/design/starlit/artwork");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const bell = page.locator('[data-variant="tent:bell"]');
+  const pavilion = page.locator('[data-variant="tent:pavilion"]');
+  await expect(pavilion).toHaveAttribute("aria-pressed", "true");
+  await bell.click();
+  await expect(bell).toHaveAttribute("aria-pressed", "true");
+  await expect(pavilion).toHaveAttribute("aria-pressed", "false");
+  await page.locator('[data-variant="fire:cauldron"]').click();
+
+  await page.reload();
+  await expect(bell).toHaveAttribute("aria-pressed", "true");
+
+  await page.goto("/design/studio");
+  await expect(page.getByTestId("change-count")).toHaveText("2 changes");
+  await expect(
+    page
+      .getByRole("group", { name: "Tent" })
+      .getByRole("button", { name: "Bell tent" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});

@@ -22,6 +22,7 @@ import { Route as DesignEmberLobbyRouteImport } from './routes/design/ember/lobb
 import { Route as DesignLavenderIndexRouteImport } from './routes/design/lavender/index'
 import { Route as DesignLavenderLobbyRouteImport } from './routes/design/lavender/lobby'
 import { Route as DesignStarlitIndexRouteImport } from './routes/design/starlit/index'
+import { Route as DesignStarlitArtworkRouteImport } from './routes/design/starlit/artwork'
 import { Route as DesignStarlitLobbyRouteImport } from './routes/design/starlit/lobby'
 import { Route as DesignStarlitMotionRouteImport } from './routes/design/starlit/motion'
 import { Route as DesignEmberRoleRoleRouteImport } from './routes/design/ember/role.$role'
@@ -96,6 +97,11 @@ const DesignStarlitIndexRoute = DesignStarlitIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DesignStarlitRouteRoute,
 } as any)
+const DesignStarlitArtworkRoute = DesignStarlitArtworkRouteImport.update({
+  id: '/artwork',
+  path: '/artwork',
+  getParentRoute: () => DesignStarlitRouteRoute,
+} as any)
 const DesignStarlitLobbyRoute = DesignStarlitLobbyRouteImport.update({
   id: '/lobby',
   path: '/lobby',
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/design/': typeof DesignIndexRoute
   '/design/ember/lobby': typeof DesignEmberLobbyRoute
   '/design/lavender/lobby': typeof DesignLavenderLobbyRoute
+  '/design/starlit/artwork': typeof DesignStarlitArtworkRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
   '/design/starlit/motion': typeof DesignStarlitMotionRoute
   '/design/ember/': typeof DesignEmberIndexRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/design': typeof DesignIndexRoute
   '/design/ember/lobby': typeof DesignEmberLobbyRoute
   '/design/lavender/lobby': typeof DesignLavenderLobbyRoute
+  '/design/starlit/artwork': typeof DesignStarlitArtworkRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
   '/design/starlit/motion': typeof DesignStarlitMotionRoute
   '/design/ember': typeof DesignEmberIndexRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/design/': typeof DesignIndexRoute
   '/design/ember/lobby': typeof DesignEmberLobbyRoute
   '/design/lavender/lobby': typeof DesignLavenderLobbyRoute
+  '/design/starlit/artwork': typeof DesignStarlitArtworkRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
   '/design/starlit/motion': typeof DesignStarlitMotionRoute
   '/design/ember/': typeof DesignEmberIndexRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/design/'
     | '/design/ember/lobby'
     | '/design/lavender/lobby'
+    | '/design/starlit/artwork'
     | '/design/starlit/lobby'
     | '/design/starlit/motion'
     | '/design/ember/'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/design'
     | '/design/ember/lobby'
     | '/design/lavender/lobby'
+    | '/design/starlit/artwork'
     | '/design/starlit/lobby'
     | '/design/starlit/motion'
     | '/design/ember'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/design/'
     | '/design/ember/lobby'
     | '/design/lavender/lobby'
+    | '/design/starlit/artwork'
     | '/design/starlit/lobby'
     | '/design/starlit/motion'
     | '/design/ember/'
@@ -377,6 +389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DesignStarlitIndexRouteImport
       parentRoute: typeof DesignStarlitRouteRoute
     }
+    '/design/starlit/artwork': {
+      id: '/design/starlit/artwork'
+      path: '/artwork'
+      fullPath: '/design/starlit/artwork'
+      preLoaderRoute: typeof DesignStarlitArtworkRouteImport
+      parentRoute: typeof DesignStarlitRouteRoute
+    }
     '/design/starlit/lobby': {
       id: '/design/starlit/lobby'
       path: '/lobby'
@@ -471,6 +490,7 @@ const DesignLavenderRouteRouteWithChildren =
   DesignLavenderRouteRoute._addFileChildren(DesignLavenderRouteRouteChildren)
 
 interface DesignStarlitRouteRouteChildren {
+  DesignStarlitArtworkRoute: typeof DesignStarlitArtworkRoute
   DesignStarlitLobbyRoute: typeof DesignStarlitLobbyRoute
   DesignStarlitMotionRoute: typeof DesignStarlitMotionRoute
   DesignStarlitIndexRoute: typeof DesignStarlitIndexRoute
@@ -479,6 +499,7 @@ interface DesignStarlitRouteRouteChildren {
 }
 
 const DesignStarlitRouteRouteChildren: DesignStarlitRouteRouteChildren = {
+  DesignStarlitArtworkRoute: DesignStarlitArtworkRoute,
   DesignStarlitLobbyRoute: DesignStarlitLobbyRoute,
   DesignStarlitMotionRoute: DesignStarlitMotionRoute,
   DesignStarlitIndexRoute: DesignStarlitIndexRoute,

@@ -27,6 +27,8 @@ import {
   encodeState,
   listChanges,
   sanitizeState,
+  DEFAULT_SCENE,
+  sceneChanges,
   skyChanges,
   type SkyOptions,
   type TweakState,
@@ -43,9 +45,11 @@ import {
   useSavedDials,
   useTweaks,
 } from "./store";
+import { SCENE_PARTS } from "@/routes/design/starlit/-components/art/scene-options";
 import { SHARE_PARAM, useCatalog } from "./use-starlit-tweaks";
 import {
   ROLE_VARIANTS,
+  STARLIT_ARTWORK_PATH,
   STARLIT_MOTION_PATH,
   TABLE_STEPS,
   TABLE_STEP_LABELS,
@@ -62,8 +66,68 @@ const SCREENS: { label: string; href: string }[] = [
     label: `Table: ${TABLE_STEP_LABELS[s]}`,
     href: paths.table(s),
   })),
+  { label: "Artwork variants", href: STARLIT_ARTWORK_PATH },
   { label: "Motion gallery", href: STARLIT_MOTION_PATH },
 ];
+
+/** Pick a version of each piece of artwork. */
+function SceneEditor({
+  state,
+  onShowAll,
+}: {
+  state: TweakState;
+  onShowAll: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      {SCENE_PARTS.map((part) => (
+        <div key={part.key} role="group" aria-label={part.title}>
+          <div className="mb-1 text-[12px] font-semibold text-white">
+            {part.title}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {part.styles.map((style) => {
+              const [name, blurb] = (
+                part.labels as Record<string, readonly [string, string]>
+              )[style] ?? [style, ""];
+              const active = state.scene[part.key] === style;
+              return (
+                <button
+                  key={style}
+                  type="button"
+                  title={blurb}
+                  aria-pressed={active}
+                  className={`${btn} ${active ? "border-white/70 bg-white/20 text-white" : ""}`}
+                  onClick={() =>
+                    setTweaks((s) => ({
+                      ...s,
+                      scene: { ...s.scene, [part.key]: style },
+                    }))
+                  }
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <button type="button" className={btn} onClick={onShowAll}>
+          Preview every version side by side
+        </button>
+        <button
+          type="button"
+          className={btn}
+          disabled={sceneChanges(state).length === 0}
+          onClick={() => setTweaks((s) => ({ ...s, scene: DEFAULT_SCENE }))}
+        >
+          reset
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const DEVICES = {
   phone: { width: 390, height: 844 },
@@ -730,6 +794,7 @@ export function TweakStudio() {
   const totalChanges =
     changes.length +
     skyChanges(state).length +
+    sceneChanges(state).length +
     (state.typeScale !== 100 ? 1 : 0);
   const searching = query.trim() !== "" || changedOnly;
 
@@ -950,6 +1015,17 @@ export function TweakStudio() {
                         state={state}
                       />
                     ))}
+                  </Section>
+                  <Section
+                    title="Artwork"
+                    blurb="Which tent, campfire and castle the scene draws"
+                    badge={sceneChanges(state).length}
+                    defaultOpen
+                  >
+                    <SceneEditor
+                      state={state}
+                      onShowAll={() => setScreen(STARLIT_ARTWORK_PATH)}
+                    />
                   </Section>
                   <Section
                     title="Sky drawing"

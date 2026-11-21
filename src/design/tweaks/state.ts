@@ -7,6 +7,11 @@ import {
   type SkyOptions,
 } from "@/routes/design/starlit/-components/art/sky-options";
 import {
+  DEFAULT_SCENE,
+  sanitizeScene,
+  type SceneOptions,
+} from "@/routes/design/starlit/-components/art/scene-options";
+import {
   NO_SHIFT,
   contrastRatio,
   isIdentityShift,
@@ -23,7 +28,7 @@ import {
   type Catalog,
 } from "./catalog";
 
-export { DEFAULT_SKY, type SkyOptions };
+export { DEFAULT_SCENE, DEFAULT_SKY, type SceneOptions, type SkyOptions };
 
 export interface TweakState {
   version: 1;
@@ -35,6 +40,8 @@ export interface TweakState {
   /** Palette shifts in OKLCH. "all" applies first, then the primitive's family. */
   shifts: Record<string, ColorShift>;
   sky: SkyOptions;
+  /** Which version of the tent, campfire and castle the artwork draws. */
+  scene: SceneOptions;
   /** Root font size in percent: scales every rem in the design. */
   typeScale: number;
   /** Per-token notes for Claude ("warmer, but not orange"). */
@@ -48,6 +55,7 @@ export const DEFAULT_STATE: TweakState = {
   vars: {},
   shifts: {},
   sky: DEFAULT_SKY,
+  scene: DEFAULT_SCENE,
   typeScale: 100,
   comments: {},
 };
@@ -129,6 +137,7 @@ export function sanitizeState(input: unknown): TweakState {
       ),
       lightsSeed: Math.round(finite(sky.lightsSeed, DEFAULT_SKY.lightsSeed)),
     },
+    scene: sanitizeScene(input.scene),
     typeScale: Math.min(160, Math.max(60, finite(input.typeScale, 100))),
     comments,
   };
@@ -219,10 +228,19 @@ export function skyChanges(
     .map((k) => [k, DEFAULT_SKY[k], state.sky[k]]);
 }
 
+export function sceneChanges(
+  state: TweakState,
+): [keyof SceneOptions, string, string][] {
+  return (Object.keys(DEFAULT_SCENE) as (keyof SceneOptions)[])
+    .filter((k) => state.scene[k] !== DEFAULT_SCENE[k])
+    .map((k) => [k, DEFAULT_SCENE[k], state.scene[k]]);
+}
+
 export function isPristine(catalog: Catalog, state: TweakState): boolean {
   return (
     listChanges(catalog, state).length === 0 &&
     skyChanges(state).length === 0 &&
+    sceneChanges(state).length === 0 &&
     state.typeScale === 100
   );
 }
@@ -280,6 +298,11 @@ export function buildCssDiff(catalog: Catalog, state: TweakState): string {
   if (sky.length)
     parts.push(
       `/* NightSky options (night-sky.tsx DEFAULT_SKY):\n${sky.map(([k, from, to]) => `   ${k}: ${to} (was ${from})`).join("\n")}\n*/`,
+    );
+  const scene = sceneChanges(state);
+  if (scene.length)
+    parts.push(
+      `/* Artwork (scene-options.ts DEFAULT_SCENE):\n${scene.map(([k, from, to]) => `   ${k}: ${to} (was ${from})`).join("\n")}\n*/`,
     );
   return parts.join("\n\n") || "/* No changes from the Starlit defaults. */";
 }
@@ -396,6 +419,7 @@ export function compactState(
   );
   if (Object.keys(shifts).length) out.shifts = shifts;
   if (skyChanges(state).length) out.sky = state.sky;
+  if (sceneChanges(state).length) out.scene = state.scene;
   if (state.typeScale !== 100) out.typeScale = state.typeScale;
   const comments = Object.fromEntries(
     Object.entries(state.comments).filter(([, c]) => c.trim()),
@@ -468,6 +492,12 @@ export function buildBrief(
         `| \`${c.token}\` | ${c.scope === "wide" ? "≥1024px" : "all"} | \`${c.from}\` | \`${c.to}\` | ${note} |`,
       );
     }
+    lines.push("");
+  }
+  const scene = sceneChanges(state);
+  if (scene.length) {
+    lines.push("### Artwork", "");
+    for (const [k, from, to] of scene) lines.push(`- ${k}: ${from} → ${to}`);
     lines.push("");
   }
   const sky = skyChanges(state);

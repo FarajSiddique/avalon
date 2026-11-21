@@ -239,6 +239,35 @@ describe("turning a dial into CSS", () => {
   });
 });
 
+describe("artwork versions", () => {
+  const catalog = themeCatalog();
+
+  it("default to the original drawings and reject unknown versions", () => {
+    expect(sanitizeState({}).scene).toEqual({
+      tent: "pavilion",
+      fire: "crossed",
+      castle: "keep",
+    });
+    expect(
+      sanitizeState({ scene: { tent: "bell", fire: "dragon", castle: 3 } })
+        .scene,
+    ).toEqual({ tent: "bell", fire: "crossed", castle: "keep" });
+  });
+
+  it("travel in share codes and appear in the brief", () => {
+    const state = sanitizeState({
+      name: "Art",
+      scene: { tent: "ridge", fire: "brazier", castle: "fortress" },
+    });
+    expect(decodeState(encodeState(state))?.scene).toEqual(state.scene);
+    expect(isPristine(catalog, state)).toBe(false);
+    const brief = buildBrief(catalog, state, "http://x");
+    expect(brief).toContain("### Artwork");
+    expect(brief).toContain("- tent: pavilion → ridge");
+    expect(buildCss(catalog, state)).toBe("");
+  });
+});
+
 describe("panel contrast", () => {
   const catalog = themeCatalog();
 

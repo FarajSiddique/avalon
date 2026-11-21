@@ -1,4 +1,6 @@
 import { useId } from "react";
+import { SceneArtContext, useSceneArt } from "./scene-context";
+import type { CastleStyle, SceneOptions, TentStyle } from "./scene-options";
 import { Fire, GlowGradient } from "./campfire";
 import { Cloud } from "./cloud";
 import { makeGrass, makeValleyLights } from "./lights";
@@ -54,7 +56,79 @@ const OUTLINE = {
   strokeLinecap: "round",
 } as const;
 
-function Castle() {
+function Castle({ style }: { style: CastleStyle }) {
+  switch (style) {
+    case "spires":
+      return <SpiresCastle />;
+    case "ruin":
+      return <RuinCastle />;
+    case "fortress":
+      return <FortressCastle />;
+    case "none":
+      return null;
+    default:
+      return <KeepCastle />;
+  }
+}
+
+/** Three tall pointed towers, a pennant on the highest. */
+function SpiresCastle() {
+  return (
+    <g transform="translate(742 353)" fill="var(--art-hill-2)">
+      <path d="M-14 0V-30H-8V-50L-2 -78L4 -50V-30H14V-22H18V-26H22V-22H26V-26H30V-22H33V-42H32L40 -96L48 -42H47V-22H54V-44L60 -66L66 -44V-28H72V0Z" />
+      <path d="M40 -96V-108L53 -103L40 -99Z" fill="var(--art-cloud-edge-dim)" />
+      <g fill="var(--art-window)">
+        <rect x={38.5} y={-62} width={3} height={5} />
+        <rect x={-3.5} y={-42} width={3} height={5} />
+        <rect x={58.5} y={-38} width={3} height={5} />
+        <rect x={20} y={-12} width={3} height={5} />
+      </g>
+    </g>
+  );
+}
+
+/** Broken walls and one lit arch. */
+function RuinCastle() {
+  return (
+    <g transform="translate(742 353)" fill="var(--art-hill-2)">
+      <path d="M-12 0V-34L-8 -38L-6 -30L-2 -42L2 -36V-22H10V-16L14 -20L18 -14V-22H24V-50L28 -54L30 -46L34 -58L38 -52V-26H44L48 -30L52 -24L58 -28V0Z" />
+      <path
+        d="M29.5 -34V-40A2.5 2.5 0 0 1 34.5 -40V-34Z"
+        fill="var(--art-window)"
+      />
+      <rect
+        x={-5}
+        y={-24}
+        width={3}
+        height={4}
+        fill="var(--art-window)"
+        opacity={0.5}
+      />
+    </g>
+  );
+}
+
+/** Curtain walls, two round towers, a keep and a lit gate. */
+function FortressCastle() {
+  return (
+    <g transform="translate(742 353)" fill="var(--art-hill-2)">
+      <path d="M-40 0V-30H-36V-34H-32V-30H-28V-48L-22 -58L-16 -48V-24H-10V-28H-6V-24H-2V-28H2V-24H6V-28H10V-24H14V-56H18V-60H22V-56H26V-60H30V-56H34V-60H38V-56H42V-24H46V-28H50V-24H54V-28H58V-24H62V-28H66V-24H72V-48L78 -58L84 -48V-30H88V-34H92V-30H96V0Z" />
+      <path d="M28 -60V-74L41 -69L28 -65Z" fill="var(--art-cloud-edge-dim)" />
+      <path d="M24 0V-9A4 4 0 0 1 32 -9V0Z" fill="var(--art-window)" />
+      <g fill="var(--art-window)">
+        <rect x={-23.5} y={-42} width={3} height={5} />
+        <rect x={20} y={-46} width={3} height={5} />
+        <rect x={33} y={-38} width={3} height={5} />
+        <rect x={76.5} y={-40} width={3} height={5} />
+        <rect x={-8} y={-16} width={3} height={4} />
+        <rect x={58} y={-16} width={3} height={4} />
+      </g>
+    </g>
+  );
+}
+
+/** The original: a modest keep with one flag. */
+function KeepCastle() {
   return (
     <g transform="translate(742 353)" fill="var(--art-hill-2)">
       <path d="M-10 0V-26L-4 -40L2 -26V-18H22V-44L27 -60L32 -44V-20H36V-24H41V-20H46V-24H51V-20H56V-30L61 -42L66 -30V0Z" />
@@ -82,7 +156,207 @@ function Moon({ glowId }: { glowId: string }) {
   );
 }
 
-function Tent({ clipId }: { clipId: string }) {
+function Tent({ style, clipId }: { style: TentStyle; clipId: string }) {
+  switch (style) {
+    case "bell":
+      return <BellTent />;
+    case "ridge":
+      return <RidgeTent />;
+    case "none":
+      return null;
+    default:
+      return <PavilionTent clipId={clipId} />;
+  }
+}
+
+const PENNANT =
+  "M1101 297C1119 293 1131 303 1151 297L1141 306L1151 315C1131 319 1119 309 1101 313Z";
+
+/** A pole topped with a gold ball and a waving pennant, at x, from y up. */
+function Pole({ x, top, base }: { x: number; top: number; base: number }) {
+  return (
+    <g>
+      <path d={`M${x} ${base}V${top}`} {...OUTLINE} strokeWidth={3.5} />
+      <path
+        className="sl-pennant"
+        d={PENNANT}
+        transform={`translate(${x - 1100} ${top + 3 - 294})`}
+        fill="var(--art-cloud-edge)"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+      <circle
+        cx={x}
+        cy={top - 2}
+        r={3.5}
+        fill="var(--art-gold)"
+        {...OUTLINE}
+        strokeWidth={1.5}
+      />
+    </g>
+  );
+}
+
+/** A round bell tent: one centre pole, a low bell of canvas, guy ropes. */
+function BellTent() {
+  return (
+    <g>
+      <g {...OUTLINE} strokeWidth={1.5} fill="none">
+        <path d="M1034 462L996 508M1166 462L1204 506" />
+        <path d="M992 508h9M1199 506h9" strokeWidth={3} />
+      </g>
+      <Pole x={1100} top={334} base={376} />
+      <path
+        d="M1018 504L1024 466C1040 440 1078 404 1100 372C1122 404 1160 440 1176 466L1182 504Q1100 514 1018 504Z"
+        fill="var(--art-tent)"
+        {...OUTLINE}
+      />
+      <path
+        d="M1023 474Q1100 484 1177 474L1178 486Q1100 496 1022 486Z"
+        fill="var(--art-tent-stripe)"
+      />
+      <path
+        d="M1100 372C1112 392 1126 410 1144 428"
+        fill="none"
+        stroke="var(--art-tent-shade)"
+        strokeWidth={2}
+      />
+      <path
+        d="M1100 372C1088 392 1074 410 1056 428"
+        fill="none"
+        stroke="var(--art-tent-shade)"
+        strokeWidth={2}
+      />
+      {/* The side away from the fire falls into shade. */}
+      <path
+        d="M1100 372C1122 404 1160 440 1176 466L1182 504Q1144 510 1120 509Q1114 430 1100 372Z"
+        fill="var(--art-sky-mid)"
+        opacity={0.34}
+      />
+      <path
+        d="M1018 504L1024 466C1030 458 1038 450 1046 442L1042 508Q1030 506 1018 504Z"
+        fill="var(--art-fire-glow)"
+        opacity={0.28}
+      />
+      <path
+        d="M1024 466Q1100 476 1176 466"
+        fill="none"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+      {/* Doorway, one flap tied back */}
+      <path
+        d="M1084 508L1100 430L1116 508Z"
+        fill="var(--art-tent-dark)"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+      <path
+        d="M1091 508L1100 458L1109 508Z"
+        fill="var(--art-fire-outer)"
+        opacity={0.55}
+      />
+      <path
+        d="M1100 430L1084 508L1070 506Q1086 470 1100 430Z"
+        fill="var(--art-tent-shade)"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+    </g>
+  );
+}
+
+/** A knight's campaign tent: an A-frame gable with the ridge running back. */
+function RidgeTent() {
+  return (
+    <g>
+      <g {...OUTLINE} strokeWidth={1.5} fill="none">
+        <path d="M1046 490L1006 510M1206 476L1230 500" />
+        <path d="M1002 510h9M1226 500h9" strokeWidth={3} />
+      </g>
+      <Pole x={1176} top={352} base={374} />
+      {/* The long side, running back from the gable */}
+      <path
+        d="M1092 382L1176 372L1214 488L1150 500Z"
+        fill="var(--art-tent-shade)"
+        {...OUTLINE}
+      />
+      <path
+        d="M1112 380L1124 378.6L1180 496L1168 497.5Z"
+        fill="var(--art-tent-stripe)"
+      />
+      <path
+        d="M1146 376L1158 374.6L1204 490L1192 492Z"
+        fill="var(--art-tent-stripe)"
+      />
+      <path
+        d="M1092 382L1176 372L1214 488L1150 500Z"
+        fill="var(--art-sky-mid)"
+        opacity={0.3}
+      />
+      <Pole x={1092} top={340} base={384} />
+      {/* The gable, facing the fire */}
+      <path
+        d="M1034 504L1092 382L1150 500Q1092 510 1034 504Z"
+        fill="var(--art-tent)"
+        {...OUTLINE}
+      />
+      <path
+        d="M1034 504L1060 448L1064 506Z"
+        fill="var(--art-fire-glow)"
+        opacity={0.28}
+      />
+      {/* Doorway, both flaps tied back */}
+      <path
+        d="M1076 506L1092 440L1108 504Z"
+        fill="var(--art-tent-dark)"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+      <path
+        d="M1084 506L1092 466L1100 505Z"
+        fill="var(--art-fire-outer)"
+        opacity={0.55}
+      />
+      <path
+        d="M1092 440L1076 506L1066 505Q1080 470 1092 440Z"
+        fill="var(--art-tent-shade)"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+      <path
+        d="M1092 440L1108 504L1118 503Q1104 470 1092 440Z"
+        fill="var(--art-tent-shade)"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+      {/* Valance along the gable's eaves */}
+      <path
+        d="M1092 382L1034 504"
+        fill="none"
+        stroke="var(--art-tent-stripe)"
+        strokeWidth={5}
+        strokeLinecap="round"
+      />
+      <path
+        d="M1092 382L1150 500"
+        fill="none"
+        stroke="var(--art-tent-stripe)"
+        strokeWidth={5}
+        strokeLinecap="round"
+      />
+      <path
+        d="M1034 504L1092 382L1150 500"
+        fill="none"
+        {...OUTLINE}
+        strokeWidth={2}
+      />
+    </g>
+  );
+}
+
+/** The original: a round tournament pavilion with a scalloped valance. */
+function PavilionTent({ clipId }: { clipId: string }) {
   return (
     <g>
       <clipPath id={clipId}>
@@ -405,12 +679,52 @@ function LogSeat({ x, y, width }: { x: number; y: number; width: number }) {
  * left open so the page's star field shows through. Everything that matters
  * sits in the right-hand 60% of the drawing, which is what a phone sees.
  */
-export function CampScene({ className }: { className?: string }) {
+export function CampScene({
+  className,
+  scene: override,
+  viewBox = "0 0 1440 700",
+  preserveAspectRatio = "xMaxYMax slice",
+}: {
+  className?: string;
+  /** Draw these artwork versions instead of the chosen ones. */
+  scene?: Partial<SceneOptions>;
+  /** Crop to part of the drawing (the artwork contact sheet uses this). */
+  viewBox?: string;
+  preserveAspectRatio?: string;
+}) {
   const id = useId();
+  const chosen = useSceneArt();
+  const scene = override ? { ...chosen, ...override } : chosen;
+  return (
+    <SceneArtContext.Provider value={scene}>
+      <CampSceneSvg
+        id={id}
+        scene={scene}
+        className={className}
+        viewBox={viewBox}
+        preserveAspectRatio={preserveAspectRatio}
+      />
+    </SceneArtContext.Provider>
+  );
+}
+
+function CampSceneSvg({
+  id,
+  scene,
+  className,
+  viewBox,
+  preserveAspectRatio,
+}: {
+  id: string;
+  scene: SceneOptions;
+  className: string | undefined;
+  viewBox: string;
+  preserveAspectRatio: string;
+}) {
   return (
     <svg
-      viewBox="0 0 1440 700"
-      preserveAspectRatio="xMaxYMax slice"
+      viewBox={viewBox}
+      preserveAspectRatio={preserveAspectRatio}
       className={className}
       aria-hidden="true"
       focusable="false"
@@ -449,7 +763,7 @@ export function CampScene({ className }: { className?: string }) {
         d="M0 380C60 372 110 344 170 336C230 328 270 354 330 358C400 362 440 322 510 312C570 304 610 340 690 352C760 362 800 334 860 324C930 312 990 340 1060 348C1140 358 1200 326 1270 322C1340 318 1390 338 1440 342V700H0Z"
         fill="var(--art-hill-1)"
       />
-      <Castle />
+      <Castle style={scene.castle} />
       <path
         d="M0 408C120 388 240 400 360 396C500 392 600 372 740 384C880 396 960 380 1100 376C1240 372 1340 390 1440 384V700H0Z"
         fill="var(--art-hill-2)"
@@ -528,7 +842,7 @@ export function CampScene({ className }: { className?: string }) {
       </g>
 
       <Banner />
-      <Tent clipId={`${id}-tent`} />
+      <Tent style={scene.tent} clipId={`${id}-tent`} />
       <Shields />
 
       <LogSeat x={752} y={552} width={62} />

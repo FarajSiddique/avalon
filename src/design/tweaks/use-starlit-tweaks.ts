@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildCatalog, readDeclarations, type Catalog } from "./catalog";
 import {
+  DEFAULT_SCENE,
   DEFAULT_SKY,
   DEFAULT_STATE,
   buildCss,
   decodeState,
+  type SceneOptions,
   type SkyOptions,
 } from "./state";
 import { getTweaks, saveDial, setTweaks, useBypass, useTweaks } from "./store";
@@ -79,4 +81,11 @@ export function useStarlitTweaks(): { css: string; sky: SkyOptions } {
     [bypass, catalog, state],
   );
   return { css, sky: bypass ? DEFAULT_SKY : state.sky };
+}
+
+/** The artwork versions the dial picks (the originals while comparing). */
+export function useSceneTweak(): SceneOptions {
+  const state = useTweaks();
+  const bypass = useBypass();
+  return bypass ? DEFAULT_SCENE : state.scene;
 }

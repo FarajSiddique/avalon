@@ -430,6 +430,15 @@ to Claude. Code: `src/design/tweaks/`.
   that it adds OKLCH hue, chroma and lightness shifts for the whole palette and
   for each colour family, the sky drawing (star count, pattern, twinkle ratio,
   village lights), and the root type scale.
+- **Artwork versions.** The tent (striped pavilion, bell tent, ridge tent,
+  none), the campfire (crossed logs, log tipi, cauldron, iron brazier) and
+  the castle (small keep, fairytale spires, ruin, walled fortress, none) each
+  have versions, all original inline SVG on the art tokens. The first of
+  each is the original drawing and the default. `/design/starlit/artwork` is
+  a contact sheet of every version; choosing one there or in the studio's
+  Artwork section applies it everywhere through `SceneArtContext`
+  (`-components/art/scene-context.tsx`), including the fire in the seat ring
+  and the motion gallery.
 - **Tuning tokens.** Values that were hardcoded are now tokens at their old
   values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel

@@ -106,3 +106,48 @@ test.describe("a shared dial on a phone", () => {
     });
   });
 });
+
+/** Every artwork version, then a few combinations on the landing scene. */
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+]) {
+  test.describe(`artwork at ${viewport.width}`, () => {
+    test.use({ viewport });
+
+    test("contact sheet and combinations", async ({ page }) => {
+      await page.goto("/design/starlit/artwork");
+      await page.evaluate(() => localStorage.clear());
+      await page.reload();
+      await expect(page.locator("[data-variant]").first()).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(500);
+      await page.screenshot({
+        path: path.join(OUT, `09-artwork-variants-${viewport.width}.png`),
+        fullPage: true,
+      });
+
+      const combos = [
+        ["bell", "tipi", "spires"],
+        ["ridge", "brazier", "fortress"],
+        ["pavilion", "cauldron", "ruin"],
+      ] as const;
+      for (const [tent, fire, castle] of combos) {
+        await page.locator(`[data-variant="tent:${tent}"]`).click();
+        await page.locator(`[data-variant="fire:${fire}"]`).click();
+        await page.locator(`[data-variant="castle:${castle}"]`).click();
+        await page.goto("/design/starlit");
+        await expect(page.locator("main").first()).toBeVisible();
+        await page.waitForTimeout(500);
+        await page.screenshot({
+          path: path.join(
+            OUT,
+            `10-landing-${tent}-${fire}-${castle}-${viewport.width}.png`,
+          ),
+        });
+        await page.goto("/design/starlit/artwork");
+        await expect(page.locator("[data-variant]").first()).toBeVisible();
+      }
+    });
+  });
+}

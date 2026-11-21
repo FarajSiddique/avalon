@@ -82,3 +82,6 @@ export const STARLIT_MOTION_PATH = "/design/starlit/motion";
 
 /** The tweak studio: every Starlit token on a dial, previewed at phone and wide width. */
 export const STARLIT_STUDIO_PATH = "/design/studio";
+
+/** Every version of the tent, campfire and castle, side by side. */
+export const STARLIT_ARTWORK_PATH = "/design/starlit/artwork";

@@ -532,6 +532,7 @@ export async function mountConcept(
           revealFrom: { ...reveal },
           fadeFrom: fade,
         };
+        host.dataset.flight = path;
         report("flying");
       } else {
         flight = null;

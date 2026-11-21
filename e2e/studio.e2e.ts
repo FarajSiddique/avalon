@@ -471,8 +471,12 @@ test("creating a room flies the camera from the landing into a new lobby", async
   });
   // You host a new room; friends arrive one by one.
   await expect(page.locator('[data-tag="p-wren"]')).toContainText("Faraj");
-  await expect(page.getByText("4 more players are needed.")).toBeVisible();
-  await expect(page.locator("[data-tag]")).toHaveCount(2, { timeout: 30_000 });
+  // Friends keep arriving while the test runs, so check the trend, not an
+  // exact moment: too few to start, and more than just you before long.
+  await expect(page.getByText(/more players? (is|are) needed/)).toBeVisible();
+  await expect
+    .poll(() => page.locator("[data-tag]").count(), { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(2);
 
   // Back to the landing: the camera flies back out.
   await page.getByRole("link", { name: "Landing", exact: true }).click();
@@ -547,4 +551,74 @@ test("without WebGL, a 3D hero falls back to the drawn scene", async ({
     page.locator('main svg[preserveAspectRatio="xMaxYMax slice"]'),
   ).toBeVisible();
   await expect(page.locator("[data-concept] canvas")).toHaveCount(0);
+});
+
+test("without WebGL, the Star Table landing shows the drawing and stays put", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      type: string,
+      ...rest: unknown[]
+    ) {
+      if (type.startsWith("webgl")) return null;
+      return (original as (...a: unknown[]) => unknown).call(
+        this,
+        type,
+        ...rest,
+      );
+    } as typeof original;
+  });
+  await page.goto("/design/starlit");
+  await page.evaluate(
+    (t) => localStorage.setItem("avalon:starlit-tweaks:v1", t),
+    TABLE_HERO,
+  );
+  await page.reload();
+  const drawing = page.locator(
+    'main svg[preserveAspectRatio="xMaxYMax slice"]',
+  );
+  await expect(drawing).toBeVisible();
+  // A failed stage must not be claimed again and again: count changes to
+  // the page for two seconds once it has settled.
+  const changes = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let n = 0;
+        const observer = new MutationObserver((list) => (n += list.length));
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => {
+          observer.disconnect();
+          resolve(n);
+        }, 2000);
+      }),
+  );
+  expect(changes).toBeLessThan(5);
+  await expect(drawing).toBeVisible();
+  await expect(page.locator("[data-stage-host]")).toHaveCount(0);
+});
+
+test("from the drawn landing, Join brings the stage in on the join path", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto("/design/starlit");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  // The default hero is the drawing, so there is no stage on the landing.
+  await expect(page.locator("[data-stage-host]")).toHaveCount(0);
+  await page.getByRole("link", { name: "Join" }).click();
+  const stage = page.locator("[data-stage-host]");
+  await expect(stage).toHaveAttribute("data-flight", "join", {
+    timeout: 60_000,
+  });
+  await expect(stage).toHaveAttribute("data-stage", "lobby", {
+    timeout: 60_000,
+  });
+  await expect(page.getByText("You joined")).toBeVisible();
+  expect(errors).toEqual([]);
 });

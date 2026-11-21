@@ -5,7 +5,9 @@ import {
   useEffect,
   useMemo,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
   type RefObject,
 } from "react";
 import type { StagePhase } from "../three/engine";
@@ -44,7 +46,7 @@ interface StageValue {
   depart: (path: FlightPath) => void;
   /** The stage has taken the pending flight. */
   takePending: () => void;
-  setStatus: (status: StageStatus) => void;
+  setStatus: Dispatch<SetStateAction<StageStatus>>;
   setPhase: (phase: StagePhase | null) => void;
 }
 

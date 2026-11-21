@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import type { Mounted, Rect, StageTarget } from "../three/engine";
+import type { FlightPath } from "../three/types";
 import { NameTag } from "../three/hero-3d";
 import { useStage } from "./stage-context";
 
@@ -28,6 +29,13 @@ function LiveStage() {
   const mounted = useRef<Mounted | null>(null);
   const latestPlayers = useRef(players);
   const [height, setHeight] = useState<number | null>(null);
+  // The way this flight is going. Kept after the pending flight is taken,
+  // since the engine may still be loading when the lobby mounts.
+  const path = useRef<FlightPath | null>(pending);
+  useEffect(() => {
+    if (pending) path.current = pending;
+    else if (slot?.mode === "hero") path.current = null;
+  }, [pending, slot]);
 
   // Where the stage should be now, measured from the claiming screen.
   const mode = pending ? "lobby" : (slot?.mode ?? "hero");
@@ -51,7 +59,7 @@ function LiveStage() {
     }
     return {
       mode,
-      path: pending ?? undefined,
+      path: pending ?? path.current ?? undefined,
       focus,
       reveal: live?.reveal === "focus" ? focus : null,
       fade: live && focus ? focus.h * live.fade : 0,
@@ -119,7 +127,9 @@ function LiveStage() {
       cancelled = true;
       mounted.current?.stop();
       mounted.current = null;
-      setStatus("idle");
+      // A failure sticks: the screens show their drawings from then on,
+      // rather than claiming the stage again and failing again.
+      setStatus((status) => (status === "failed" ? status : "idle"));
       setPhase(null);
     };
   }, [setStatus, setPhase]);

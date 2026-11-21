@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { setTweaks } from "@/design/tweaks/store";
 import { useSceneTweak } from "@/design/tweaks/use-starlit-tweaks";
 import { CampScene } from "./-components/art/camp-scene";
+import { cropFor } from "./-components/art/backdrop-layout";
 import {
   SCENE_PARTS,
+  type BackdropStyle,
   type SceneOptions,
 } from "./-components/art/scene-options";
 import { IconCheck } from "./-components/icons";
@@ -13,12 +15,22 @@ export const Route = createFileRoute("/design/starlit/artwork")({
   component: ArtworkPage,
 });
 
-/** Where each part sits in the 1440 by 700 camp drawing, for the close-ups. */
-const CROPS: Record<keyof SceneOptions, { viewBox: string; aspect: string }> = {
-  tent: { viewBox: "960 270 290 250", aspect: "aspect-[29/25]" },
-  fire: { viewBox: "730 410 240 170", aspect: "aspect-[24/17]" },
-  castle: { viewBox: "684 236 176 120", aspect: "aspect-[22/15]" },
-};
+/** How each kind of card frames the drawing. */
+function framing(part: keyof SceneOptions, backdrop: BackdropStyle) {
+  switch (part) {
+    case "backdrop":
+      return { viewBox: "0 0 1440 700", aspect: "aspect-[1440/700]" };
+    case "tent":
+      return { viewBox: cropFor("tent", backdrop), aspect: "aspect-[29/25]" };
+    case "fire":
+      return { viewBox: cropFor("fire", backdrop), aspect: "aspect-[24/17]" };
+    case "castle":
+      return {
+        viewBox: cropFor("castle", backdrop),
+        aspect: "aspect-[22/15]",
+      };
+  }
+}
 
 function choose(part: keyof SceneOptions, style: string): void {
   setTweaks((s) => ({ ...s, scene: { ...s.scene, [part]: style } }));
@@ -36,12 +48,14 @@ function ArtworkPage() {
       <header className="max-w-[40rem]">
         <p className="sl-eyebrow">Artwork variants</p>
         <h1 className="font-display mt-1 text-4xl font-medium">
-          Tent, campfire and castle
+          Backdrop, tent, campfire and castle
         </h1>
         <p className="text-ink-muted mt-2 text-[1.0625rem] leading-relaxed">
-          Every version, drawn in place. Choose one and it is used on every
-          Starlit screen: the landing scene, the fire in the seat ring and the
-          motion gallery. The tweak studio shows the same choice under Artwork.
+          Every version, drawn in place. A backdrop is a whole new scene; the
+          tent, campfire and castle are drawn inside whichever backdrop is
+          chosen. A choice is used on every Starlit screen: the landing scene,
+          the fire in the seat ring and the motion gallery. The tweak studio
+          shows the same choice under Artwork.
         </p>
       </header>
 
@@ -63,8 +77,15 @@ function ArtworkPage() {
           >
             {part.title}
           </h2>
-          <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <ul
+            className={`grid gap-3 ${
+              part.key === "backdrop"
+                ? "grid-cols-1 md:grid-cols-2"
+                : "grid-cols-2 md:grid-cols-3 xl:grid-cols-5"
+            }`}
+          >
             {part.styles.map((style) => {
+              const frame = framing(part.key, scene.backdrop);
               const [name, blurb] = (
                 part.labels as Record<string, readonly [string, string]>
               )[style] ?? [style, ""];
@@ -84,9 +105,9 @@ function ArtworkPage() {
                   >
                     <CampScene
                       scene={{ [part.key]: style }}
-                      viewBox={CROPS[part.key].viewBox}
+                      viewBox={frame.viewBox}
                       preserveAspectRatio="xMidYMid slice"
-                      className={`block w-full bg-[var(--art-sky-mid)] ${CROPS[part.key].aspect}`}
+                      className={`block w-full bg-[var(--art-sky-mid)] ${frame.aspect}`}
                     />
                     <span className="flex flex-1 flex-col gap-1 p-3">
                       <span className="flex flex-wrap items-center gap-x-1.5 font-bold">

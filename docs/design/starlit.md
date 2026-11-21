@@ -439,6 +439,18 @@ to Claude. Code: `src/design/tweaks/`.
   Artwork section applies it everywhere through `SceneArtContext`
   (`-components/art/scene-context.tsx`), including the fire in the seat ring
   and the motion gallery.
+- **Backdrops.** Four whole-scene alternatives to the vale, in
+  `-components/art/backdrops.tsx`: Moonlit lake (the castle on an island,
+  reflected, with the moon laid across the water), Clifftop by the sea (a
+  headland camp, the castle on the far cliffs, sea stacks), Standing stones (a
+  clearing walled in by pines, a trilithon behind the fire, fireflies) and
+  Mountain pass (snowy peaks, the castle on a crag with a bridge and a
+  waterfall). Each one draws the chosen tent, campfire and castle, placed by
+  `backdrop-layout.ts`. They keep the vale's rules: same palette tokens, open
+  sky for the star field, landmarks right of x 760 (clear of the title and
+  form at 1440, inside the phone's crop at 390), and dark ground along the
+  bottom edge. Only the landing and the motion gallery's arrival scene draw a
+  backdrop; the seat ring and the other motion scenes pick up the fire alone.
 - **Tuning tokens.** Values that were hardcoded are now tokens at their old
   values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel

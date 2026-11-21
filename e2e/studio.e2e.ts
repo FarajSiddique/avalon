@@ -293,12 +293,20 @@ test("an artwork version chosen on the contact sheet sticks and reaches the stud
   await expect(bell).toHaveAttribute("aria-pressed", "true");
   await expect(pavilion).toHaveAttribute("aria-pressed", "false");
   await page.locator('[data-variant="fire:cauldron"]').click();
+  const forest = page.locator('[data-variant="backdrop:forest"]');
+  await forest.click();
 
   await page.reload();
   await expect(bell).toHaveAttribute("aria-pressed", "true");
+  await expect(forest).toHaveAttribute("aria-pressed", "true");
 
   await page.goto("/design/studio");
-  await expect(page.getByTestId("change-count")).toHaveText("2 changes");
+  await expect(page.getByTestId("change-count")).toHaveText("3 changes");
+  await expect(
+    page
+      .getByRole("group", { name: "Backdrop" })
+      .getByRole("button", { name: "Standing stones" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(
     page
       .getByRole("group", { name: "Tent" })

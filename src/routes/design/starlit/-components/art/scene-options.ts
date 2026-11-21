@@ -3,6 +3,13 @@
  * each list is the original drawing.
  */
 
+export const BACKDROP_STYLES = [
+  "vale",
+  "lake",
+  "coast",
+  "forest",
+  "peaks",
+] as const;
 export const TENT_STYLES = ["pavilion", "bell", "ridge", "none"] as const;
 export const FIRE_STYLES = ["crossed", "tipi", "cauldron", "brazier"] as const;
 export const CASTLE_STYLES = [
@@ -13,23 +20,53 @@ export const CASTLE_STYLES = [
   "none",
 ] as const;
 
+export type BackdropStyle = (typeof BACKDROP_STYLES)[number];
 export type TentStyle = (typeof TENT_STYLES)[number];
 export type FireStyle = (typeof FIRE_STYLES)[number];
 export type CastleStyle = (typeof CASTLE_STYLES)[number];
 
 export interface SceneOptions {
+  backdrop: BackdropStyle;
   tent: TentStyle;
   fire: FireStyle;
   castle: CastleStyle;
 }
 
 export const DEFAULT_SCENE: SceneOptions = {
+  backdrop: "vale",
   tent: "pavilion",
   fire: "crossed",
   castle: "keep",
 };
 
 export const SCENE_PARTS = [
+  {
+    key: "backdrop",
+    title: "Backdrop",
+    styles: BACKDROP_STYLES,
+    labels: {
+      vale: [
+        "Starlit vale",
+        "The original: a camp on a hill above a sleeping valley and its river.",
+      ],
+      lake: [
+        "Moonlit lake",
+        "The camp on a lakeshore, the castle on an island, the moon laid across the water.",
+      ],
+      coast: [
+        "Clifftop by the sea",
+        "A headland camp above a night sea, the castle on the far cliffs.",
+      ],
+      forest: [
+        "Standing stones",
+        "A clearing walled in by pines, a ring of old stones around the fire.",
+      ],
+      peaks: [
+        "Mountain pass",
+        "A rocky ledge under snowy peaks, the castle on a crag with a waterfall.",
+      ],
+    },
+  },
   {
     key: "tent",
     title: "Tent",
@@ -111,6 +148,7 @@ export function sanitizeScene(input: unknown): SceneOptions {
       ? (input as Record<string, unknown>)
       : {};
   return {
+    backdrop: pick(BACKDROP_STYLES, v.backdrop, DEFAULT_SCENE.backdrop),
     tent: pick(TENT_STYLES, v.tent, DEFAULT_SCENE.tent),
     fire: pick(FIRE_STYLES, v.fire, DEFAULT_SCENE.fire),
     castle: pick(CASTLE_STYLES, v.castle, DEFAULT_SCENE.castle),

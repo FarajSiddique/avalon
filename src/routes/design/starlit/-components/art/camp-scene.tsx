@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { SceneArtContext, useSceneArt } from "./scene-context";
 import type { CastleStyle, SceneOptions, TentStyle } from "./scene-options";
+import { Backdrop } from "./backdrops";
 import { Fire, GlowGradient } from "./campfire";
 import { Cloud } from "./cloud";
 import { makeGrass, makeValleyLights } from "./lights";
@@ -74,7 +75,10 @@ function Castle({ style }: { style: CastleStyle }) {
 /** Three tall pointed towers, a pennant on the highest. */
 function SpiresCastle() {
   return (
-    <g transform="translate(742 353)" fill="var(--art-hill-2)">
+    <g
+      transform="translate(742 353)"
+      fill="var(--castle-tone, var(--art-hill-2))"
+    >
       <path d="M-14 0V-30H-8V-50L-2 -78L4 -50V-30H14V-22H18V-26H22V-22H26V-26H30V-22H33V-42H32L40 -96L48 -42H47V-22H54V-44L60 -66L66 -44V-28H72V0Z" />
       <path d="M40 -96V-108L53 -103L40 -99Z" fill="var(--art-cloud-edge-dim)" />
       <g fill="var(--art-window)">
@@ -90,7 +94,10 @@ function SpiresCastle() {
 /** Broken walls and one lit arch. */
 function RuinCastle() {
   return (
-    <g transform="translate(742 353)" fill="var(--art-hill-2)">
+    <g
+      transform="translate(742 353)"
+      fill="var(--castle-tone, var(--art-hill-2))"
+    >
       <path d="M-12 0V-34L-8 -38L-6 -30L-2 -42L2 -36V-22H10V-16L14 -20L18 -14V-22H24V-50L28 -54L30 -46L34 -58L38 -52V-26H44L48 -30L52 -24L58 -28V0Z" />
       <path
         d="M29.5 -34V-40A2.5 2.5 0 0 1 34.5 -40V-34Z"
@@ -111,7 +118,10 @@ function RuinCastle() {
 /** Curtain walls, two round towers, a keep and a lit gate. */
 function FortressCastle() {
   return (
-    <g transform="translate(742 353)" fill="var(--art-hill-2)">
+    <g
+      transform="translate(742 353)"
+      fill="var(--castle-tone, var(--art-hill-2))"
+    >
       <path d="M-40 0V-30H-36V-34H-32V-30H-28V-48L-22 -58L-16 -48V-24H-10V-28H-6V-24H-2V-28H2V-24H6V-28H10V-24H14V-56H18V-60H22V-56H26V-60H30V-56H34V-60H38V-56H42V-24H46V-28H50V-24H54V-28H58V-24H62V-28H66V-24H72V-48L78 -58L84 -48V-30H88V-34H92V-30H96V0Z" />
       <path d="M28 -60V-74L41 -69L28 -65Z" fill="var(--art-cloud-edge-dim)" />
       <path d="M24 0V-9A4 4 0 0 1 32 -9V0Z" fill="var(--art-window)" />
@@ -130,7 +140,10 @@ function FortressCastle() {
 /** The original: a modest keep with one flag. */
 function KeepCastle() {
   return (
-    <g transform="translate(742 353)" fill="var(--art-hill-2)">
+    <g
+      transform="translate(742 353)"
+      fill="var(--castle-tone, var(--art-hill-2))"
+    >
       <path d="M-10 0V-26L-4 -40L2 -26V-18H22V-44L27 -60L32 -44V-20H36V-24H41V-20H46V-24H51V-20H56V-30L61 -42L66 -30V0Z" />
       <path d="M27 -60V-70L38 -66L27 -62Z" fill="var(--art-cloud-edge-dim)" />
       <g fill="var(--art-window)">
@@ -708,6 +721,31 @@ export function CampScene({
   );
 }
 
+/** The tent, banner, fire, seats and sword, at their place in the vale. */
+function Camp({ id, scene }: { id: string; scene: SceneOptions }) {
+  return (
+    <>
+      <Banner />
+      <Tent style={scene.tent} clipId={`${id}-tent`} />
+      <Shields />
+
+      <LogSeat x={752} y={552} width={62} />
+      <LogSeat x={902} y={540} width={64} />
+      <circle
+        className="sl-fire-glow"
+        cx={850}
+        cy={520}
+        r={170}
+        fill={`url(#${id}-fire)`}
+      />
+      <g transform="translate(850 548) scale(1.15)">
+        <Fire />
+      </g>
+      <SwordInStone />
+    </>
+  );
+}
+
 function CampSceneSvg({
   id,
   scene,
@@ -729,6 +767,29 @@ function CampSceneSvg({
       aria-hidden="true"
       focusable="false"
     >
+      {scene.backdrop === "vale" ? (
+        <ValeScene id={id} scene={scene} />
+      ) : (
+        <>
+          <defs>
+            <GlowGradient id={`${id}-fire`} color="var(--art-fire-glow)" />
+          </defs>
+          <Backdrop
+            style={scene.backdrop}
+            id={id}
+            camp={<Camp id={id} scene={scene} />}
+            castle={<Castle style={scene.castle} />}
+          />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** The original backdrop: a camp on a hill above a sleeping valley. */
+function ValeScene({ id, scene }: { id: string; scene: SceneOptions }) {
+  return (
+    <>
       <defs>
         <GlowGradient id={`${id}-fire`} color="var(--art-fire-glow)" />
         <GlowGradient id={`${id}-moon`} color="var(--art-moon)" />
@@ -841,23 +902,7 @@ function CampSceneSvg({
         ))}
       </g>
 
-      <Banner />
-      <Tent style={scene.tent} clipId={`${id}-tent`} />
-      <Shields />
-
-      <LogSeat x={752} y={552} width={62} />
-      <LogSeat x={902} y={540} width={64} />
-      <circle
-        className="sl-fire-glow"
-        cx={850}
-        cy={520}
-        r={170}
-        fill={`url(#${id}-fire)`}
-      />
-      <g transform="translate(850 548) scale(1.15)">
-        <Fire />
-      </g>
-      <SwordInStone />
+      <Camp id={id} scene={scene} />
 
       <Tree />
 
@@ -884,6 +929,6 @@ function CampSceneSvg({
         />
       ))}
       <path d={FRONT_GRASS} fill="var(--art-ground-dark)" />
-    </svg>
+    </>
   );
 }

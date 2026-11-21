@@ -17,6 +17,11 @@ import {
 } from "./catalog";
 import { PROPOSED_DIALS } from "./presets";
 import {
+  BACKDROP_LAYOUT,
+  cropFor,
+} from "@/routes/design/starlit/-components/art/backdrop-layout";
+import { BACKDROP_STYLES } from "@/routes/design/starlit/-components/art/scene-options";
+import {
   DEFAULT_STATE,
   buildBrief,
   buildCss,
@@ -244,6 +249,7 @@ describe("artwork versions", () => {
 
   it("default to the original drawings and reject unknown versions", () => {
     expect(sanitizeState({}).scene).toEqual({
+      backdrop: "vale",
       tent: "pavilion",
       fire: "crossed",
       castle: "keep",
@@ -251,20 +257,50 @@ describe("artwork versions", () => {
     expect(
       sanitizeState({ scene: { tent: "bell", fire: "dragon", castle: 3 } })
         .scene,
-    ).toEqual({ tent: "bell", fire: "crossed", castle: "keep" });
+    ).toEqual({
+      backdrop: "vale",
+      tent: "bell",
+      fire: "crossed",
+      castle: "keep",
+    });
+    expect(sanitizeState({ scene: { backdrop: "moon" } }).scene.backdrop).toBe(
+      "vale",
+    );
   });
 
   it("travel in share codes and appear in the brief", () => {
     const state = sanitizeState({
       name: "Art",
-      scene: { tent: "ridge", fire: "brazier", castle: "fortress" },
+      scene: {
+        backdrop: "peaks",
+        tent: "ridge",
+        fire: "brazier",
+        castle: "fortress",
+      },
     });
     expect(decodeState(encodeState(state))?.scene).toEqual(state.scene);
     expect(isPristine(catalog, state)).toBe(false);
     const brief = buildBrief(catalog, state, "http://x");
     expect(brief).toContain("### Artwork");
     expect(brief).toContain("- tent: pavilion → ridge");
+    expect(brief).toContain("- backdrop: vale → peaks");
     expect(buildCss(catalog, state)).toBe("");
+  });
+});
+
+describe("backdrop layouts", () => {
+  it("frame each part where the backdrop puts it", () => {
+    expect(cropFor("fire", "vale")).toBe("730 410 240 170");
+    expect(cropFor("castle", "vale")).toBe("684 236 176 120");
+    for (const backdrop of BACKDROP_STYLES) {
+      const [x, y, w, h] = cropFor("castle", backdrop).split(" ").map(Number);
+      const { castle } = BACKDROP_LAYOUT[backdrop];
+      // The castle's foot stays inside its close-up.
+      expect(castle.x).toBeGreaterThan(x!);
+      expect(castle.x).toBeLessThan(x! + w!);
+      expect(castle.y).toBeGreaterThan(y!);
+      expect(castle.y).toBeLessThan(y! + h!);
+    }
   });
 });
 

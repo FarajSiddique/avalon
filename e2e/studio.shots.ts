@@ -148,6 +148,22 @@ for (const viewport of [
         await page.goto("/design/starlit/artwork");
         await expect(page.locator("[data-variant]").first()).toBeVisible();
       }
+
+      // Each whole-scene backdrop, with the original tent, fire and castle.
+      for (const part of ["tent:pavilion", "fire:crossed", "castle:keep"]) {
+        await page.locator(`[data-variant="${part}"]`).click();
+      }
+      for (const backdrop of ["lake", "coast", "forest", "peaks"]) {
+        await page.locator(`[data-variant="backdrop:${backdrop}"]`).click();
+        await page.goto("/design/starlit");
+        await expect(page.locator("main").first()).toBeVisible();
+        await page.waitForTimeout(500);
+        await page.screenshot({
+          path: path.join(OUT, `11-backdrop-${backdrop}-${viewport.width}.png`),
+        });
+        await page.goto("/design/starlit/artwork");
+        await expect(page.locator("[data-variant]").first()).toBeVisible();
+      }
     });
   });
 }

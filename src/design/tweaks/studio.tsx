@@ -1018,7 +1018,7 @@ export function TweakStudio() {
                   </Section>
                   <Section
                     title="Artwork"
-                    blurb="Which tent, campfire and castle the scene draws"
+                    blurb="Which backdrop, tent, campfire and castle the scene draws"
                     badge={sceneChanges(state).length}
                     defaultOpen
                   >

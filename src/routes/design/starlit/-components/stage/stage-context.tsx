@@ -4,14 +4,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
   type RefObject,
 } from "react";
-import type { StagePhase } from "../three/engine";
-import type { FlightPath, TablePlayer } from "../three/types";
+import type { StageMode, StagePhase } from "../three/engine";
+import type { FlightPath, TablePlay, TablePlayer } from "../three/types";
 
 /**
  * The stage: one live Star Table behind the landing and the lobby, so going
@@ -19,7 +20,7 @@ import type { FlightPath, TablePlayer } from "../three/types";
  * claims it with a slot; the lobby also says who is at the table.
  */
 export interface StageSlot {
-  mode: "hero" | "lobby";
+  mode: StageMode;
   /** The open space the table is framed in. */
   focus: RefObject<HTMLElement | null>;
   /** "focus": show only the focus box (the landing band); "whole": all of it. */
@@ -48,6 +49,19 @@ interface StageValue {
   takePending: () => void;
   setStatus: Dispatch<SetStateAction<StageStatus>>;
   setPhase: (phase: StagePhase | null) => void;
+  /** Role and table: the game's state in the scene. */
+  play: TablePlay | null;
+  setPlay: (play: TablePlay | null) => void;
+  /**
+   * Role and table: the element the screen positions its own name tags in
+   * (so they can be buttons). Null: the stage draws plain tags itself.
+   */
+  tagLayer: HTMLElement | null;
+  setTagLayer: (el: HTMLElement | null) => void;
+  /** The live scene answers "whose figure is here"; the stage sets this. */
+  picker: RefObject<
+    ((clientX: number, clientY: number) => string | null) | null
+  >;
 }
 
 const StageContext = createContext<StageValue | null>(null);
@@ -59,6 +73,11 @@ export function StageProvider({ children }: { children: ReactNode }) {
   const [leaving, setLeaving] = useState(false);
   const [status, setStatus] = useState<StageStatus>("idle");
   const [phase, setPhase] = useState<StagePhase | null>(null);
+  const [play, setPlay] = useState<TablePlay | null>(null);
+  const [tagLayer, setTagLayer] = useState<HTMLElement | null>(null);
+  const picker = useRef<
+    ((clientX: number, clientY: number) => string | null) | null
+  >(null);
 
   const depart = useCallback((path: FlightPath) => {
     setPending(path);
@@ -83,8 +102,24 @@ export function StageProvider({ children }: { children: ReactNode }) {
       takePending,
       setStatus,
       setPhase,
+      play,
+      setPlay,
+      tagLayer,
+      setTagLayer,
+      picker,
     }),
-    [slot, players, pending, leaving, status, phase, depart, takePending],
+    [
+      slot,
+      players,
+      pending,
+      leaving,
+      status,
+      phase,
+      depart,
+      takePending,
+      play,
+      tagLayer,
+    ],
   );
   return (
     <StageContext.Provider value={value}>{children}</StageContext.Provider>
@@ -112,6 +147,46 @@ export function useStageSlot(
     setSlot(() => slot);
     return () => setSlot((current) => (current === slot ? null : current));
   }, [mode, reveal, fade, focus, setSlot]);
+}
+
+/**
+ * The game's state in the scene while this screen is mounted. Pass a stable
+ * (memoised) object. On unmount it is cleared, but a screen mounting in the
+ * same commit (the next step) sets its own, so the scene never blinks.
+ */
+export function useStagePlay(play: TablePlay | null): void {
+  const { setPlay } = useStage();
+  useEffect(() => {
+    setPlay(play);
+  }, [play, setPlay]);
+  useEffect(() => () => setPlay(null), [setPlay]);
+}
+
+/** Give the stage this screen's tag layer while it is mounted. */
+export function useTagLayer(layer: RefObject<HTMLElement | null>): void {
+  const { setTagLayer } = useStage();
+  useEffect(() => {
+    const el = layer.current;
+    setTagLayer(el);
+    return () => setTagLayer(null);
+  }, [layer, setTagLayer]);
+}
+
+/**
+ * "Whose figure is under this point?" for a click on the open space. Null
+ * when nobody's is, or the scene is not running. React owns the click (on
+ * the focus area), so taps on panels never reach figures behind them.
+ */
+export function usePickAt(): (
+  clientX: number,
+  clientY: number,
+) => string | null {
+  const { picker } = useStage();
+  return useCallback(
+    (clientX: number, clientY: number) =>
+      picker.current?.(clientX, clientY) ?? null,
+    [picker],
+  );
 }
 
 /** Who stands at the table while this screen is mounted. */

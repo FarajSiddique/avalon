@@ -1,6 +1,8 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { isRoleVariant } from "@/design/directions";
 import { RoleScreen } from "./-components/role/role-screen";
+import { RoleStageScreen } from "./-components/role/role-stage-screen";
+import { useStage } from "./-components/stage/stage-context";
 
 export const Route = createFileRoute("/design/starlit/role/$role")({
   beforeLoad: ({ params }) => {
@@ -12,7 +14,13 @@ export const Route = createFileRoute("/design/starlit/role/$role")({
 
 function RolePage() {
   const { role } = Route.useParams();
+  const { status } = useStage();
   if (!isRoleVariant(role)) return null;
   // A different role is a different screen: remount so nothing carries over.
-  return <RoleScreen key={role} variant={role} />;
+  // Without WebGL (a failed stage stays failed) the flat card is the screen.
+  return status === "failed" ? (
+    <RoleScreen key={role} variant={role} />
+  ) : (
+    <RoleStageScreen key={role} variant={role} />
+  );
 }

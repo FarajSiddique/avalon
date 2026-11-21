@@ -404,6 +404,21 @@
     overflow: hidden;
   }
 
+  /*
+   * A game screen's own tag layer (StageTags), inside its main. It covers
+   * the main; the engine offsets tags by the gap between it and the stage.
+   */
+  .sl-stage-tags {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .sl-stage-tags > button {
+    pointer-events: auto;
+  }
+
   /* The landing steps aside while the camera flies to the lobby. */
   .sl-landing > * {
     transition:

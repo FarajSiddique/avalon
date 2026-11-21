@@ -24,6 +24,9 @@ export function Stage() {
 function LiveStage() {
   const stage = useStage();
   const { slot, pending, players, takePending, setStatus, setPhase } = stage;
+  const { play, tagLayer, picker } = stage;
+  const latestPlay = useRef(play);
+  const latestTagLayer = useRef(tagLayer);
   const host = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
   const mounted = useRef<Mounted | null>(null);
@@ -78,7 +81,7 @@ function LiveStage() {
 
   // Mount once, starting where the first screen wants it, or at the landing
   // when a flight from it is pending.
-  const initial = useRef(pending ? 0 : slot?.mode === "lobby" ? 1 : 0);
+  const initial = useRef(pending ? 0 : slot && slot.mode !== "hero" ? 1 : 0);
   const pushRef = useRef(push);
   useLayoutEffect(() => {
     pushRef.current = push;
@@ -117,6 +120,9 @@ function LiveStage() {
         }
         mounted.current = controls;
         controls.setPlayers(latestPlayers.current);
+        controls.setPlay(latestPlay.current);
+        controls.setTagLayer(latestTagLayer.current);
+        picker.current = controls.pickAt;
         pushRef.current();
         setStatus("running");
       })
@@ -127,17 +133,28 @@ function LiveStage() {
       cancelled = true;
       mounted.current?.stop();
       mounted.current = null;
+      picker.current = null;
       // A failure sticks: the screens show their drawings from then on,
       // rather than claiming the stage again and failing again.
       setStatus((status) => (status === "failed" ? status : "idle"));
       setPhase(null);
     };
-  }, [setStatus, setPhase]);
+  }, [setStatus, setPhase, picker]);
 
   useEffect(() => {
     latestPlayers.current = players;
     mounted.current?.setPlayers(players);
   }, [players]);
+
+  useEffect(() => {
+    latestPlay.current = play;
+    mounted.current?.setPlay(play);
+  }, [play]);
+
+  useEffect(() => {
+    latestTagLayer.current = tagLayer;
+    mounted.current?.setTagLayer(tagLayer);
+  }, [tagLayer]);
 
   // Re-aim whenever the claiming screen or its layout changes. Fonts and
   // late layout move the landing band, so keep measuring for a moment.
@@ -176,9 +193,12 @@ function LiveStage() {
         className="sl-backstage__canvas"
       />
       <div ref={overlay} className="sl-backstage__tags">
-        {players.map((player) => (
-          <NameTag key={player.id} player={player} />
-        ))}
+        {/* A screen with its own tag layer draws its own tags. */}
+        {tagLayer
+          ? null
+          : players.map((player) => (
+              <NameTag key={player.id} player={player} />
+            ))}
       </div>
     </div>
   );

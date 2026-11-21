@@ -10,6 +10,7 @@ import { play } from "@/client/sound";
 import { avatarFor, lookSummary } from "@/design/avatar";
 import { designPaths } from "@/design/directions";
 import { useAvatar } from "@/design/use-avatar";
+import { setYourName } from "@/design/your-name";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import type { LobbySearch } from "../../lobby";
@@ -78,6 +79,10 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const isHost = view.you.isHost;
   const hostName = view.players.find((p) => p.isHost)?.name ?? "The host";
   useEveryoneReadyChord(canStart);
+  // The game seats you under the name you typed.
+  useEffect(() => {
+    if (name) setYourName(name);
+  }, [name]);
 
   // The table's open space, claimed from the shared stage.
   const stage = useStage();

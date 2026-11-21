@@ -17,6 +17,7 @@ import type {
   FlightPath,
   Layout,
   Pointer,
+  TablePlay,
   TablePlayer,
 } from "./types";
 
@@ -65,11 +66,15 @@ export interface Rect {
 }
 
 /** Where the stage is: settled on one framing, or flying between them. */
-export type StagePhase = "hero" | "lobby" | "flying";
+/** Settled on a framing (the mode's name), or flying between two. */
+export type StagePhase = "hero" | "lobby" | "role" | "table" | "flying";
+
+/** The screen that has the stage. Role and table are past the lobby. */
+export type StageMode = "hero" | "lobby" | "role" | "table";
 
 /** What the stage should show. Null rects mean the whole canvas. */
 export interface StageTarget {
-  mode: "hero" | "lobby";
+  mode: StageMode;
   /** The way to fly there. Defaults to "create" (to the lobby) or "back". */
   path?: FlightPath;
   /** Where the scene's own frame sits in the canvas: the open space. */
@@ -88,6 +93,16 @@ export interface Mounted {
   setPlayers(players: readonly TablePlayer[]): void;
   /** The stage only: change framing, flying when asked to. */
   setTarget(target: StageTarget): void;
+  /** Role and table: the game's state in the scene. */
+  setPlay(play: TablePlay | null): void;
+  /** The player whose figure is under this viewport point, or null. */
+  pickAt(clientX: number, clientY: number): string | null;
+  /**
+   * Position name tags inside this element instead of the stage's own
+   * overlay (a screen owns its tags so they can be buttons). Null: back to
+   * the stage's overlay.
+   */
+  setTagLayer(el: HTMLElement | null): void;
 }
 
 /** Seconds each flight takes, by the wall clock. */
@@ -216,7 +231,7 @@ export async function mountConcept(
       if (flight.progress >= 1) {
         blend = flight.to;
         flight = null;
-        report(blend >= 1 ? "lobby" : "hero");
+        report(blend >= 1 ? (aim?.mode ?? "lobby") : "hero");
       }
     } else {
       focus = toFocus;
@@ -304,8 +319,9 @@ export async function mountConcept(
   // Name tags follow the figures' heads. Nearer figures place theirs first;
   // a tag that would overlap one already placed moves up above it.
   const projected = new Vector3();
+  let tagLayer: HTMLElement | null = options.overlay ?? null;
   const placeTags = () => {
-    const overlay = options.overlay;
+    const overlay = tagLayer;
     if (!overlay || !concept.anchors) return;
     const anchors = concept.anchors();
     const tags: { el: HTMLElement; x: number; y: number; depth: number }[] = [];
@@ -466,6 +482,9 @@ export async function mountConcept(
       stop: () => image.remove(),
       setPlayers: () => undefined,
       setTarget: () => undefined,
+      setPlay: () => undefined,
+      pickAt: () => null,
+      setTagLayer: () => undefined,
     };
   }
 
@@ -518,8 +537,11 @@ export async function mountConcept(
     if (!stage) return;
     const was = aim?.mode ?? (blend >= 0.5 ? "lobby" : "hero");
     aim = next;
-    const to = next.mode === "lobby" ? 1 : 0;
-    if (next.mode !== was || (!flight && blend !== to)) {
+    // STUB: role and table sit at the lobby blend until the engine task
+    // adds their shots.
+    const to = next.mode === "hero" ? 0 : 1;
+    const wasTo = was === "hero" ? 0 : 1;
+    if (to !== wasTo || (!flight && blend !== to)) {
       if (next.animate && !motion.matches) {
         const path = next.path ?? (to === 1 ? "create" : "back");
         flight = {
@@ -540,6 +562,7 @@ export async function mountConcept(
         report(next.mode);
       }
     } else if (flight && next.path) flight.path = next.path;
+    else if (!flight && next.mode !== was) report(next.mode);
     applyStage(0);
     if (running) return;
     if (motion.matches) still();
@@ -563,8 +586,27 @@ export async function mountConcept(
     renderer.forceContextLoss();
     canvas.remove();
   };
+  // CONTRACT STUBS (the engine task fills these in): the game's state in
+  // the scene, "who is at this point", and a tag layer owned by a screen.
+  const setPlay = (next: TablePlay | null) => {
+    concept.setPlay?.(next);
+    if (running) return;
+    concept.update({ time, dt: 0, pointer, ...frameInfo() });
+    renderOnce();
+  };
+  const pickAt = (clientX: number, clientY: number): string | null => {
+    const box = host.getBoundingClientRect();
+    if (!box.width || !box.height) return null;
+    const x = ((clientX - box.left) / box.width) * 2 - 1;
+    const y = -(((clientY - box.top) / box.height) * 2 - 1);
+    return concept.pick?.(x, y) ?? null;
+  };
+  const setTagLayer = (el: HTMLElement | null) => {
+    tagLayer = el ?? options.overlay ?? null;
+  };
+
   if (stage) report(blend >= 1 ? "lobby" : "hero");
-  return { stop, setPlayers, setTarget };
+  return { stop, setPlayers, setTarget, setPlay, pickAt, setTagLayer };
 }
 
 function easeInOut(t: number): number {

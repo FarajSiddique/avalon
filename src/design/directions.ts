@@ -79,3 +79,6 @@ export function nextTableStep(step: TableStep): TableStep {
 
 /** Starlit Vale also has a gallery of every moment of motion and sound. */
 export const STARLIT_MOTION_PATH = "/design/starlit/motion";
+
+/** The tweak studio: every Starlit token on a dial, previewed at phone and wide width. */
+export const STARLIT_STUDIO_PATH = "/design/studio";

@@ -15,6 +15,7 @@ import { Route as DesignIndexRouteImport } from './routes/design/index'
 import { Route as DesignEmberRouteRouteImport } from './routes/design/ember/route'
 import { Route as DesignLavenderRouteRouteImport } from './routes/design/lavender/route'
 import { Route as DesignStarlitRouteRouteImport } from './routes/design/starlit/route'
+import { Route as DesignStudioRouteImport } from './routes/design/studio'
 import { Route as RoomCodeRouteImport } from './routes/room.$code'
 import { Route as DesignEmberIndexRouteImport } from './routes/design/ember/index'
 import { Route as DesignEmberLobbyRouteImport } from './routes/design/ember/lobby'
@@ -58,6 +59,11 @@ const DesignLavenderRouteRoute = DesignLavenderRouteRouteImport.update({
 const DesignStarlitRouteRoute = DesignStarlitRouteRouteImport.update({
   id: '/design/starlit',
   path: '/design/starlit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignStudioRoute = DesignStudioRouteImport.update({
+  id: '/design/studio',
+  path: '/design/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RoomCodeRoute = RoomCodeRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/design/lavender': typeof DesignLavenderRouteRouteWithChildren
   '/design/starlit': typeof DesignStarlitRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/design/studio': typeof DesignStudioRoute
   '/room/$code': typeof RoomCodeRoute
   '/design/': typeof DesignIndexRoute
   '/design/ember/lobby': typeof DesignEmberLobbyRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
+  '/design/studio': typeof DesignStudioRoute
   '/room/$code': typeof RoomCodeRoute
   '/design': typeof DesignIndexRoute
   '/design/ember/lobby': typeof DesignEmberLobbyRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/design/lavender': typeof DesignLavenderRouteRouteWithChildren
   '/design/starlit': typeof DesignStarlitRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/design/studio': typeof DesignStudioRoute
   '/room/$code': typeof RoomCodeRoute
   '/design/': typeof DesignIndexRoute
   '/design/ember/lobby': typeof DesignEmberLobbyRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/design/lavender'
     | '/design/starlit'
     | '/api/health'
+    | '/design/studio'
     | '/room/$code'
     | '/design/'
     | '/design/ember/lobby'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/health'
+    | '/design/studio'
     | '/room/$code'
     | '/design'
     | '/design/ember/lobby'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/design/lavender'
     | '/design/starlit'
     | '/api/health'
+    | '/design/studio'
     | '/room/$code'
     | '/design/'
     | '/design/ember/lobby'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   DesignLavenderRouteRoute: typeof DesignLavenderRouteRouteWithChildren
   DesignStarlitRouteRoute: typeof DesignStarlitRouteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
+  DesignStudioRoute: typeof DesignStudioRoute
   RoomCodeRoute: typeof RoomCodeRoute
   DesignIndexRoute: typeof DesignIndexRoute
 }
@@ -313,6 +326,13 @@ declare module '@tanstack/react-router' {
       path: '/design/starlit'
       fullPath: '/design/starlit'
       preLoaderRoute: typeof DesignStarlitRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/design/studio': {
+      id: '/design/studio'
+      path: '/design/studio'
+      fullPath: '/design/studio'
+      preLoaderRoute: typeof DesignStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/room/$code': {
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignLavenderRouteRoute: DesignLavenderRouteRouteWithChildren,
   DesignStarlitRouteRoute: DesignStarlitRouteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
+  DesignStudioRoute: DesignStudioRoute,
   RoomCodeRoute: RoomCodeRoute,
   DesignIndexRoute: DesignIndexRoute,
 }

@@ -415,6 +415,46 @@ Not taken: **`spring-physics`** (real springs need a library or WAAPI maths; a s
 
 One place the skill's advice was not followed in the original direction: "animate one or two key elements per view". The sky has many small ambient animations. They are slow, low-contrast, opacity or transform only, and off under reduced motion; the functional motion on each screen is still one thing at a time.
 
+## Tweak studio
+
+`/design/studio` puts every token of the theme on a dial and previews the real
+prototype screens live, at phone (390 by 844) and wide (1440 by 900) width, in
+iframes. It exists so the owner can refine Starlit by hand and hand the result
+to Claude. Code: `src/design/tweaks/`.
+
+- **What it dials.** All of the tokens in `.theme-starlit`, read from the
+  live stylesheet, so there is no second copy of the defaults: every palette
+  primitive, the semantic layer (each one picks a primitive from a swatch grid
+  or takes a custom colour), the art colours, motion curves and durations,
+  shapes, and the table layout with separate phone and wide values. On top of
+  that it adds OKLCH hue, chroma and lightness shifts for the whole palette and
+  for each colour family, the sky drawing (star count, pattern, twinkle ratio,
+  village lights), and the root type scale.
+- **Tuning tokens.** Values that were hardcoded are now tokens at their old
+  values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
+  WONK, display, eyebrow, button and label weights and tracking, panel
+  opacity, highlight and border, fire and star glow, sky gradient stops,
+  star and cloud visibility, horizon height, and every ambient animation
+  duration with one `--ambient-tempo` multiplier. With no dial set, the
+  screenshots match the old ones pixel for pixel.
+- **How it applies.** The dial lives in `localStorage`. The Starlit layout
+  turns it into a `<style>` with a doubled `.theme-starlit` selector, and
+  passes the sky options to `NightSky`. A token with a wide value gets its
+  phone override only below 1024px. The server always renders the plain theme.
+- **Checks.** A live WCAG table for the text pairs the design relies on.
+  `src/design/tweaks/tweaks.test.ts` fails if the shipped theme or a
+  proposed dial drops below its target.
+- **Working with Claude.** Write notes on the dial and on single tokens
+  ("warmer, but not orange"), then use Share: "Copy brief for Claude" gives
+  Markdown with the notes, every change, contrast failures and the JSON to
+  reload it. A share link (`?tweaks=...`) opens any Starlit screen with the
+  dial applied, on any device, phones included. Claude proposes dials by
+  adding them to `src/design/tweaks/presets.ts`; they appear under
+  "Proposed by Claude". "Copy CSS diff" is the patch for `-theme.css` once
+  a dial is final.
+- **Phase 0.** When the tokens move to `:root`, change `THEME_SELECTOR` in
+  `src/design/tweaks/catalog.ts` and the selector in the test's parser.
+
 ## Known gaps
 
 - Built and looked at with the 7-player mock only. The seat layout is computed for 5 to 10 seats, but other counts have not been viewed. At 10 players on a phone a seat cell is about 70px wide, which will be tight for long names.

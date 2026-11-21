@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   DIRECTIONS,
   STARLIT_MOTION_PATH,
+  STARLIT_STUDIO_PATH,
   TABLE_STEPS,
   TABLE_STEP_LABELS,
   designPaths,
@@ -73,7 +74,10 @@ function ScreenLinks({ slug }: { slug: DirectionSlug }) {
       href: paths.table(step),
     })),
     ...(slug === "starlit"
-      ? [{ label: "Motion and sound", href: STARLIT_MOTION_PATH }]
+      ? [
+          { label: "Motion and sound", href: STARLIT_MOTION_PATH },
+          { label: "Tweak studio", href: STARLIT_STUDIO_PATH },
+        ]
       : []),
   ];
   return (
@@ -149,7 +153,14 @@ function DesignIndexPage() {
           >
             motion and sound gallery
           </ProtoLink>
-          . Sound is off until you turn it on.
+          . Sound is off until you turn it on. To refine it, open the{" "}
+          <ProtoLink
+            href={STARLIT_STUDIO_PATH}
+            className="text-accent-strong font-semibold underline underline-offset-4"
+          >
+            tweak studio
+          </ProtoLink>
+          : every token on a dial, previewed live at phone and wide width.
         </p>
         <p className="text-ink-muted">
           The other two stay here for comparison until the real screens are

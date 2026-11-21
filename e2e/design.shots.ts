@@ -66,6 +66,11 @@ interface Shot {
 /** Wait until the screen has rendered, fonts are in and its height is stable. */
 async function settle(page: Page): Promise<void> {
   await page.locator("main:visible").first().waitFor();
+  // Starlit's role and table screens draw the 3D version first and swap to
+  // the flat one once the stage fails (no WebGL here). Wait for the swap.
+  await expect(
+    page.locator("main[data-role-stage], main[data-step]"),
+  ).toHaveCount(0);
   await page.evaluate(() => document.fonts.ready);
   let previous = -1;
   await expect
@@ -86,13 +91,15 @@ async function settle(page: Page): Promise<void> {
  * press again until the card reports that it is held.
  */
 async function holdRoleCard(page: Page): Promise<void> {
-  const card = page.locator("button[aria-pressed]:visible").first();
-  await card.scrollIntoViewIfNeeded();
-  const box = await card.boundingBox();
-  if (!box) throw new Error("No hold-to-reveal control found");
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // In the screen, not the sound toggle (which also has aria-pressed).
+  const card = page.locator("main button[aria-pressed]:visible").first();
   await expect(async () => {
     await page.mouse.up();
+    // Measured on each try: the card can move as the screen settles.
+    await card.scrollIntoViewIfNeeded();
+    const box = await card.boundingBox();
+    if (!box) throw new Error("No hold-to-reveal control found");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     await expect(card).toHaveAttribute("aria-pressed", "true", {
       timeout: 400,

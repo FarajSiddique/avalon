@@ -5,7 +5,9 @@ import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import { IconArrowRight, IconCheck, IconRing } from "../icons";
 import { SoundLink } from "../sound-link";
+import { AvatarMaker } from "./avatar-maker";
 import { HostSettings } from "./host-settings";
+import { LobbyTable } from "./lobby-table";
 import { PlayerList } from "./player-list";
 import { RoomCode } from "./room-code";
 
@@ -31,7 +33,7 @@ export function LobbyScreen() {
   useEveryoneReadyChord(canStart);
 
   return (
-    <main className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col gap-4 px-4 pt-6 lg:grid lg:flex-none lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)_minmax(0,27rem)] lg:grid-rows-[auto_auto_auto_1fr] lg:items-start lg:gap-6 lg:px-8 lg:pt-10 lg:pb-12">
+    <main className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col gap-4 px-4 pt-6 lg:grid lg:flex-none lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)_minmax(0,27rem)] lg:grid-rows-[auto_auto_auto_auto_auto_1fr] lg:items-start lg:gap-6 lg:px-8 lg:pt-10 lg:pb-12">
       <header className="lg:col-span-3">
         <p className="sl-eyebrow">The lobby</p>
         <h1 className="font-display mt-1 text-[2rem] leading-tight font-medium lg:text-5xl">
@@ -42,11 +44,15 @@ export function LobbyScreen() {
         </p>
       </header>
 
-      <div className="lg:col-start-1 lg:row-start-2">
+      <div className="lg:col-span-3 lg:row-start-2">
+        <LobbyTable view={view} />
+      </div>
+
+      <div className="lg:col-start-1 lg:row-start-3">
         <RoomCode code={view.code} />
       </div>
 
-      <div className="lg:col-start-2 lg:row-span-3 lg:row-start-2">
+      <div className="lg:col-start-2 lg:row-span-4 lg:row-start-3">
         <PlayerList
           view={view}
           onToggleReady={lobby.toggleReady}
@@ -54,7 +60,11 @@ export function LobbyScreen() {
         />
       </div>
 
-      <div className="lg:col-start-3 lg:row-span-3 lg:row-start-2">
+      <div className="lg:col-start-3 lg:row-start-3">
+        <AvatarMaker />
+      </div>
+
+      <div className="lg:col-start-3 lg:row-span-3 lg:row-start-4">
         <HostSettings
           view={view}
           onToggleRole={lobby.toggleRole}
@@ -62,7 +72,7 @@ export function LobbyScreen() {
         />
       </div>
 
-      <div className="sl-bar -mx-4 lg:col-start-1 lg:row-start-3 lg:mx-0">
+      <div className="sl-bar -mx-4 lg:col-start-1 lg:row-start-4 lg:mx-0">
         <div className="lg:border-line lg:bg-surface flex flex-col gap-2.5 lg:rounded-lg lg:border lg:p-5">
           <div role="status" aria-live="polite">
             {canStart ? (
@@ -105,13 +115,19 @@ export function LobbyScreen() {
         </div>
       </div>
 
-      <div className="flex justify-center pb-6 lg:col-start-1 lg:row-start-4 lg:pb-0">
+      <div className="flex flex-wrap justify-center gap-x-4 pb-6 lg:col-start-1 lg:row-start-5 lg:pb-0">
         <button
           type="button"
           className="sl-plain"
           onClick={lobby.simulateEveryoneReady}
         >
           Prototype: everyone ready
+        </button>
+        <button type="button" className="sl-plain" onClick={lobby.addGuest}>
+          Prototype: someone joins
+        </button>
+        <button type="button" className="sl-plain" onClick={lobby.removeGuest}>
+          Prototype: someone leaves
         </button>
       </div>
     </main>

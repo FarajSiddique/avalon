@@ -469,6 +469,25 @@ to Claude. Code: `src/design/tweaks/`.
   Thumbnails on the artwork page draw one frame, keep it as an image and free
   the GPU. Not yet checked on a real phone or Safari: frame rate and battery
   there are the open question.
+- **Lobby table and avatars.** The prototype lobby opens on The Star Table
+  framed from above, with every player standing at a seat as a small
+  low-poly figure in their own look: a cloak colour (art tokens only, never
+  the Good or Evil colours), headwear (bare, hood, helm, circlet, feathered
+  cap) and a chest emblem (star, moon, sun, leaf, key). Nothing in a look may
+  hint at a role. Players rise out of a column of light as they arrive (one
+  by one when the lobby opens), sink away when they leave, and idle with a
+  gentle sway; away players are greyed. A gold ring at their feet and their
+  seat's rune light when they are ready. Name tags are HTML over the canvas,
+  placed every frame above each head (nearer figures first, a tag that would
+  overlap moves up), and say the state with an icon as well as the list
+  does. "Your look" picks your figure and is saved in the browser
+  (`src/design/use-avatar.ts`). The model is `src/design/avatar.ts`, shaped
+  to become `avatar` on `SeatView` and the join input; mock players get a
+  stable look from their id. Code: `-components/three/avatar.ts` (the
+  figure), `seating.ts` (seats, arrivals, tags) and the lobby variant of
+  `scenes/star-table.ts`. Player changes go to the running scene, so it is
+  never rebuilt; a dial change rebuilds it with everyone already standing.
+  Without WebGL the drawn campfire stands in.
 - **Tuning tokens.** Values that were hardcoded are now tokens at their old
   values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel

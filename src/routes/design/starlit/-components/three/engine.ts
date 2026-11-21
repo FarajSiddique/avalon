@@ -2,6 +2,7 @@ import {
   NeutralToneMapping,
   SRGBColorSpace,
   Vector2,
+  Vector3,
   WebGLRenderer,
 } from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -9,7 +10,13 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { readPalette, readPaletteSource } from "./palette";
-import type { ConceptScene, CreateConcept, Layout, Pointer } from "./types";
+import type {
+  ConceptScene,
+  CreateConcept,
+  Layout,
+  Pointer,
+  TablePlayer,
+} from "./types";
 
 export type ConceptName = "isle" | "lake" | "table";
 
@@ -31,19 +38,36 @@ export interface MountOptions {
   snapshot?: boolean;
   /** The GPU dropped the context: the caller should show the drawing. */
   onLost?: () => void;
+  /** "lobby" frames the whole table and seats `players` at it. */
+  variant?: "hero" | "lobby";
+  /** Lobby: who is at the table when it opens. */
+  players?: readonly TablePlayer[];
+  /**
+   * Lobby: an element over the canvas whose children carry `data-tag` set to
+   * a player id. Each is moved above that player's head every frame.
+   */
+  overlay?: HTMLElement | null;
+}
+
+export interface Mounted {
+  stop(): void;
+  /** Lobby: change who is at the table without remounting. */
+  setPlayers(players: readonly TablePlayer[]): void;
 }
 
 /**
- * Put a 3D concept into `host`. Returns a function that tears it all down,
- * or null when the browser has no WebGL (the caller shows the drawing).
+ * Put a 3D concept into `host`. Returns its controls, or null when the
+ * browser has no WebGL (the caller shows the drawing).
  */
 export async function mountConcept(
   host: HTMLElement,
   name: ConceptName,
   options: MountOptions,
-): Promise<(() => void) | null> {
+): Promise<Mounted | null> {
   const create = await LOADERS[name]();
 
+  // Ask quietly first: three.js logs an error when it cannot get a context.
+  if (!document.createElement("canvas").getContext("webgl2")) return null;
   let renderer: WebGLRenderer;
   try {
     renderer = new WebGLRenderer({
@@ -72,11 +96,15 @@ export async function mountConcept(
     return Number.isFinite(value) && value > 0 ? value : 1;
   };
 
+  const variant = options.variant ?? "hero";
+  let players: readonly TablePlayer[] | null = options.players ?? null;
   let concept: ConceptScene = create({
     renderer,
     palette: readPalette(themeEl),
     lite,
+    variant,
   });
+  if (players) concept.setPlayers?.(players);
   let paletteSource = readPaletteSource(themeEl);
 
   const composer = new EffectComposer(renderer);
@@ -131,8 +159,72 @@ export async function mountConcept(
   let running = false;
   let visible = true;
 
+  // Name tags follow the figures' heads. Nearer figures place theirs first;
+  // a tag that would overlap one already placed moves up above it.
+  const projected = new Vector3();
+  const placeTags = () => {
+    const overlay = options.overlay;
+    if (!overlay || !concept.anchors) return;
+    const anchors = concept.anchors();
+    const tags: { el: HTMLElement; x: number; y: number; depth: number }[] = [];
+    for (const child of overlay.children) {
+      const el = child as HTMLElement;
+      const at = el.dataset.tag ? anchors.get(el.dataset.tag) : undefined;
+      if (!at) {
+        el.style.opacity = "0";
+        continue;
+      }
+      projected.copy(at).project(concept.camera);
+      if (projected.z >= 1) {
+        el.style.opacity = "0";
+        continue;
+      }
+      tags.push({
+        el,
+        x: ((projected.x + 1) / 2) * layout.width,
+        y: ((1 - projected.y) / 2) * layout.height,
+        depth: projected.z,
+      });
+    }
+    tags.sort((a, b) => a.depth - b.depth);
+    const placed: {
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+    }[] = [];
+    for (const tag of tags) {
+      const w = tag.el.offsetWidth;
+      const h = tag.el.offsetHeight;
+      let bottom = tag.y;
+      for (let tries = 0; tries < 6; tries++) {
+        const hit = placed.find(
+          (b) =>
+            tag.x - w / 2 < b.right + 4 &&
+            tag.x + w / 2 > b.left - 4 &&
+            bottom - h < b.bottom + 2 &&
+            bottom > b.top - 2,
+        );
+        if (!hit) break;
+        bottom = hit.top - 3;
+      }
+      // Never off the top of the canvas.
+      bottom = Math.max(bottom, h + 4);
+      placed.push({
+        left: tag.x - w / 2,
+        right: tag.x + w / 2,
+        top: bottom - h,
+        bottom,
+      });
+      tag.el.style.transform = `translate(${tag.x.toFixed(1)}px, ${bottom.toFixed(1)}px) translate(-50%, -100%)`;
+      tag.el.style.opacity = "1";
+    }
+    host.dataset.seated = String(concept.seated?.() ?? 0);
+  };
+
   const renderOnce = () => {
     composer.render();
+    placeTags();
   };
 
   const tick = (now: number) => {
@@ -148,7 +240,7 @@ export async function mountConcept(
     pointer.x += (target.x - pointer.x) * ease;
     pointer.y += (target.y - pointer.y) * ease;
     concept.update({ time, dt, pointer });
-    composer.render();
+    renderOnce();
   };
 
   const still = () => {
@@ -160,6 +252,7 @@ export async function mountConcept(
         dt: 1 / 30,
         pointer: { x: 0, y: 0 },
       });
+    concept.settle?.();
     concept.update({
       time: concept.posterTime,
       dt: 1 / 30,
@@ -186,7 +279,17 @@ export async function mountConcept(
     if (source === paletteSource) return;
     paletteSource = source;
     concept.dispose();
-    concept = create({ renderer, palette: readPalette(themeEl), lite });
+    concept = create({
+      renderer,
+      palette: readPalette(themeEl),
+      lite,
+      variant,
+    });
+    // Same people, already standing: a colour change is not an arrival.
+    if (players) {
+      concept.setPlayers?.(players);
+      concept.settle?.();
+    }
     renderPass.scene = concept.scene;
     renderPass.camera = concept.camera;
     applyBloom();
@@ -209,7 +312,7 @@ export async function mountConcept(
     renderer.dispose();
     renderer.forceContextLoss();
     canvas.remove();
-    return () => image.remove();
+    return { stop: () => image.remove(), setPlayers: () => undefined };
   }
 
   const resizeObserver = new ResizeObserver(resize);
@@ -248,7 +351,16 @@ export async function mountConcept(
   if (motion.matches) still();
   sync();
 
-  return () => {
+  const setPlayers = (next: readonly TablePlayer[]) => {
+    players = next;
+    concept.setPlayers?.(next);
+    if (running) return;
+    if (motion.matches) concept.settle?.();
+    concept.update({ time, dt: 0, pointer });
+    renderOnce();
+  };
+
+  const stop = () => {
     running = false;
     cancelAnimationFrame(frameId);
     window.clearTimeout(rebuildTimer);
@@ -265,4 +377,5 @@ export async function mountConcept(
     renderer.forceContextLoss();
     canvas.remove();
   };
+  return { stop, setPlayers };
 }

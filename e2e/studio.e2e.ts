@@ -356,6 +356,44 @@ test("a 3D landing hero mounts its canvas without errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("the lobby table seats everyone, takes newcomers and keeps your look", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto("/design/starlit/lobby");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const table = page.locator('section[aria-label="The table"]');
+  const stage = table.locator("[data-concept]");
+  await expect(stage.locator("canvas")).toBeVisible({ timeout: 60_000 });
+  // The mock lobby has seven players; the engine reports who is standing.
+  await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
+  await expect(table.locator("[data-tag]")).toHaveCount(7);
+  await expect(table.locator('[data-tag="p-wren"]')).toContainText("You");
+
+  await page.getByRole("button", { name: "Prototype: someone joins" }).click();
+  await table.scrollIntoViewIfNeeded();
+  await expect(stage).toHaveAttribute("data-seated", "8", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Prototype: someone leaves" }).click();
+  await table.scrollIntoViewIfNeeded();
+  await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
+
+  // A look chosen in "Your look" is kept for next time.
+  const helm = page.locator('[data-look="headwear:helm"]');
+  await helm.click();
+  await page.locator('[data-look="cloak:moss"]').click();
+  await expect(helm).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(helm).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-look="cloak:moss"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(errors).toEqual([]);
+});
+
 test("without WebGL, a 3D hero falls back to the drawn scene", async ({
   page,
 }) => {

@@ -13,6 +13,7 @@ import {
   HemisphereLight,
   LineBasicMaterial,
   LineSegments,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
@@ -49,6 +50,7 @@ import {
   standard,
   wavePennants,
 } from "../props";
+import { Seating } from "../seating";
 import type { ConceptScene, CreateConcept, Layout } from "../types";
 
 const SEATS = 10;
@@ -59,7 +61,12 @@ const SEATS = 10;
  * runes light one by one like players arriving. Overhead, a dome of
  * constellations turns slowly.
  */
-export const createStarTable: CreateConcept = ({ palette: p, lite }) => {
+export const createStarTable: CreateConcept = ({
+  palette: p,
+  lite,
+  variant,
+}) => {
+  const lobby = variant === "lobby";
   const bin = new Bin();
   const scene = new Scene();
   scene.fog = new FogExp2(p["sky-low"], 0.012);
@@ -87,6 +94,12 @@ export const createStarTable: CreateConcept = ({ palette: p, lite }) => {
   const moonLight = new DirectionalLight(p.moon, 1.4);
   moonLight.position.set(-10, 40, -6);
   scene.add(moonLight);
+  if (lobby) {
+    // A soft light from the viewer's side, so the figures read clearly.
+    const front = new DirectionalLight(p.moon, 1.3);
+    front.position.set(0, 14, 18);
+    scene.add(front);
+  }
 
   /* ---- the clearing ---- */
   scene.add(clearing(bin, p));
@@ -179,7 +192,8 @@ export const createStarTable: CreateConcept = ({ palette: p, lite }) => {
     const seat = new Group();
     seat.position.set(Math.cos(a) * 6.4, 0, Math.sin(a) * 6.4);
     seat.lookAt(0, 0, 0);
-    const h = 1.6 + random() * 0.5;
+    // In the lobby the stones are low, so the figures stand clear of them.
+    const h = (lobby ? 1.0 : 1.6) + random() * (lobby ? 0.25 : 0.5);
     const slab = new Mesh(
       bin.add(jitter(new BoxGeometry(1.3, h, 0.7, 2, 3, 1), 0.12, 60 + i)),
       i % 3 ? stone : shade,
@@ -268,8 +282,22 @@ export const createStarTable: CreateConcept = ({ palette: p, lite }) => {
     scene.add(sprite);
   }
 
+  // In the lobby, players stand at the seats, starting across the table.
+  const seating = lobby
+    ? new Seating(
+        p,
+        bin,
+        scene,
+        Array.from(
+          { length: SEATS },
+          (_, i) => (i / SEATS) * Math.PI * 2 + Math.PI / SEATS,
+        ),
+        7,
+      )
+    : null;
+
   let layout: Layout = { width: 1, height: 1, aspect: 1, wide: false };
-  const look = new Vector3(0, 6.2, 0);
+  const look = lobby ? new Vector3(0, 1.5, -0.7) : new Vector3(0, 6.2, 0);
 
   const concept: ConceptScene = {
     scene,
@@ -278,9 +306,36 @@ export const createStarTable: CreateConcept = ({ palette: p, lite }) => {
     posterTime: 21,
     resize(next) {
       layout = next;
-      frameCamera(camera, layout, { fov: 54, tallFov: 66, shift: 0.16 });
+      if (lobby)
+        frameCamera(camera, layout, { fov: 38, tallFov: 52, shift: 0 });
+      else frameCamera(camera, layout, { fov: 54, tallFov: 66, shift: 0.16 });
     },
     update({ time, dt, pointer }) {
+      if (lobby) {
+        // Looking down on the whole table, with a gentle sway.
+        const sway = Math.sin(time * 0.06) * 0.14 + pointer.x * 0.3;
+        const distance = layout.aspect < 1.4 ? 15.5 : 14.5;
+        camera.position.set(
+          Math.sin(sway) * distance,
+          (layout.aspect < 1.4 ? 15 : 11.5) + pointer.y * 1.2,
+          Math.cos(sway) * distance,
+        );
+        camera.lookAt(look);
+        seating!.update(dt, time);
+        seats.forEach((seat, i) => {
+          const s = seating!.state(i);
+          const level =
+            !s.present || s.away ? 0.05 : s.ready ? s.arrive : 0.3 * s.arrive;
+          (seat.rune.material as MeshBasicMaterial).opacity =
+            0.12 + level * 0.88;
+          seat.glow.material.opacity = level * 0.5;
+          (seat.spoke.material as ShaderMaterial).uniforms.uLevel!.value =
+            level * 0.9;
+        });
+        ringMat.opacity = 0.55;
+        tick(time, dt);
+        return;
+      }
       const azimuth = -0.4 + time * 0.03 + pointer.x * 0.45;
       const distance = layout.aspect < 1 ? 24 : 20;
       const height = 6.5 + pointer.y * 1.8 + Math.sin(time * 0.08) * 0.5;
@@ -302,24 +357,42 @@ export const createStarTable: CreateConcept = ({ palette: p, lite }) => {
           level * 0.9;
       }
       ringMat.opacity = 0.35 + 0.35 * Math.min(1, cycle * 1.3);
-      for (const m of mist) {
-        const a = m.a + time * m.speed;
-        m.sprite.position.set(Math.cos(a) * m.r, 0.9, Math.sin(a) * m.r);
-      }
-      sky.update(time);
-      shooter.update(time);
-      stars.update(time);
-      beam.update(time);
-      fire.update(time, dt, camera);
-      dust.update(time, dt, camera);
-      flies.update(time, dt, camera);
-      wavePennants(keep, time);
+      tick(time, dt);
+    },
+    setPlayers(players) {
+      seating?.set(players);
+    },
+    settle() {
+      seating?.settle();
+    },
+    anchors() {
+      return seating?.anchors() ?? new Map();
+    },
+    seated() {
+      return seating?.seated() ?? 0;
     },
     dispose() {
+      seating?.dispose();
       bin.addTree(scene);
       bin.dispose();
     },
   };
+
+  /** The ambient life of the clearing, shared by both framings. */
+  function tick(time: number, dt: number): void {
+    for (const m of mist) {
+      const a = m.a + time * m.speed;
+      m.sprite.position.set(Math.cos(a) * m.r, 0.9, Math.sin(a) * m.r);
+    }
+    sky.update(time);
+    shooter.update(time);
+    stars.update(time);
+    beam.update(time);
+    fire.update(time, dt, camera);
+    dust.update(time, dt, camera);
+    flies.update(time, dt, camera);
+    wavePennants(keep, time);
+  }
   return concept;
 };
 
@@ -562,10 +635,14 @@ function shootingStar(bin: Bin, p: Palette) {
   const mesh = new Mesh(bin.add(new PlaneGeometry(60, 1.2)), material);
   mesh.visible = false;
   const random = seededRandom(3);
-  let next = 4;
+  let next = 2.5;
   let start = -100;
   const from = new Vector3();
   const dir = new Vector3();
+  const xAxis = new Vector3();
+  const yAxis = new Vector3();
+  const zAxis = new Vector3();
+  const basis = new Matrix4();
   return {
     object: mesh,
     update(time: number) {
@@ -581,8 +658,13 @@ function shootingStar(bin: Bin, p: Palette) {
       if (!mesh.visible) return;
       material.uniforms.uLife!.value = t;
       mesh.position.copy(from).addScaledVector(dir, t * 120);
-      mesh.lookAt(0, 0, 0);
-      mesh.rotation.z = Math.atan2(dir.y, Math.hypot(dir.x, dir.z));
+      // The streak's long axis runs along its travel, its face to the centre.
+      xAxis.copy(dir);
+      zAxis.copy(mesh.position).negate().normalize();
+      yAxis.crossVectors(zAxis, xAxis).normalize();
+      zAxis.crossVectors(xAxis, yAxis);
+      basis.makeBasis(xAxis, yAxis, zAxis);
+      mesh.quaternion.setFromRotationMatrix(basis);
     },
   };
 }

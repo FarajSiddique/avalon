@@ -1,0 +1,121 @@
+/**
+ * A player's look at the table: a cloak colour, headwear and a chest emblem.
+ * Prototype-only for now, but shaped to travel with a seat: when it moves to
+ * the room protocol it becomes `avatar` on `SeatView` and on the join input,
+ * validated with the same lists.
+ *
+ * Nothing here may hint at a hidden role or side: no wizard hats or crowns,
+ * and none of the Good or Evil colours.
+ */
+
+export const CLOAKS = [
+  "rose",
+  "indigo",
+  "river",
+  "moss",
+  "plum",
+  "amber",
+  "canvas",
+  "slate",
+] as const;
+export const HEADWEAR = ["bare", "hood", "helm", "circlet", "cap"] as const;
+export const EMBLEMS = ["star", "moon", "sun", "leaf", "key"] as const;
+
+export type Cloak = (typeof CLOAKS)[number];
+export type Headwear = (typeof HEADWEAR)[number];
+export type Emblem = (typeof EMBLEMS)[number];
+
+export interface Avatar {
+  cloak: Cloak;
+  headwear: Headwear;
+  emblem: Emblem;
+}
+
+export const DEFAULT_AVATAR: Avatar = {
+  cloak: "indigo",
+  headwear: "hood",
+  emblem: "star",
+};
+
+/** Names for the pickers. */
+export const CLOAK_LABELS: Record<Cloak, string> = {
+  rose: "Rose",
+  indigo: "Indigo",
+  river: "River blue",
+  moss: "Moss",
+  plum: "Plum",
+  amber: "Amber",
+  canvas: "Linen",
+  slate: "Slate",
+};
+export const HEADWEAR_LABELS: Record<Headwear, string> = {
+  bare: "Bare head",
+  hood: "Hood",
+  helm: "Helm",
+  circlet: "Circlet",
+  cap: "Feathered cap",
+};
+export const EMBLEM_LABELS: Record<Emblem, string> = {
+  star: "Star",
+  moon: "Moon",
+  sun: "Sun",
+  leaf: "Leaf",
+  key: "Key",
+};
+
+/** The art token each cloak is dyed with (never --good or --evil). */
+export const CLOAK_TOKENS: Record<Cloak, string> = {
+  rose: "--art-tent-stripe",
+  indigo: "--art-banner",
+  river: "--art-river",
+  moss: "--art-ground-lit-2",
+  plum: "--art-log-end",
+  amber: "--art-fire-outer",
+  canvas: "--art-tent-shade",
+  slate: "--art-stone",
+};
+
+function pick<T extends string>(
+  list: readonly T[],
+  value: unknown,
+  fallback: T,
+): T {
+  return typeof value === "string" &&
+    (list as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
+}
+
+/** Accept anything and return a valid look. */
+export function sanitizeAvatar(input: unknown): Avatar {
+  const v =
+    typeof input === "object" && input !== null
+      ? (input as Record<string, unknown>)
+      : {};
+  return {
+    cloak: pick(CLOAKS, v.cloak, DEFAULT_AVATAR.cloak),
+    headwear: pick(HEADWEAR, v.headwear, DEFAULT_AVATAR.headwear),
+    emblem: pick(EMBLEMS, v.emblem, DEFAULT_AVATAR.emblem),
+  };
+}
+
+/** A stable made-up look for a mock player, from their id. */
+export function avatarFor(id: string): Avatar {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const at = <T>(list: readonly T[], shift: number): T =>
+    list[((h >>> shift) & 0xff) % list.length]!;
+  return {
+    cloak: at(CLOAKS, 0),
+    headwear: at(HEADWEAR, 8),
+    emblem: at(EMBLEMS, 16),
+  };
+}
+
+/** A short stable key, to tell when a look has changed. */
+export function avatarKey(a: Avatar): string {
+  return `${a.cloak}/${a.headwear}/${a.emblem}`;
+}

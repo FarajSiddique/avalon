@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TEAM_BALANCE, isPlayerCount } from "@/shared/constants";
+import { MAX_PLAYERS, TEAM_BALANCE, isPlayerCount } from "@/shared/constants";
 import { ROLES, type OptionalRole } from "@/shared/roles";
 import type { LobbyView, StartBlocker } from "@/shared/views";
 import { lobbyView } from "./mock";
@@ -18,6 +18,10 @@ export interface MockLobby {
   toggleLady: () => void;
   /** Prototype helper: everyone comes back and readies up, so Start enables. */
   simulateEveryoneReady: () => void;
+  /** Prototype helper: someone new joins (up to the table's ten seats). */
+  addGuest: () => void;
+  /** Prototype helper: the most recent guest leaves. */
+  removeGuest: () => void;
   canStart: boolean;
 }
 
@@ -45,6 +49,9 @@ function blockersFor(view: LobbyView): StartBlocker[] {
   }
   return blockers;
 }
+
+/** Prototype guests, one long name among them to test the name tags. */
+const GUESTS = ["Elowen", "Maximilliana", "Rowan", "Tamsin"] as const;
 
 function withBlockers(view: LobbyView): LobbyView {
   return { ...view, startBlockers: blockersFor(view) };
@@ -98,5 +105,34 @@ export function useMockLobby(): MockLobby {
           current.players.map((p) => ({ ...p, ready: true, connected: true })),
         ),
       ),
+    addGuest: () =>
+      setView((current) => {
+        if (current.players.length >= MAX_PLAYERS) return current;
+        const name = GUESTS.find(
+          (n) => !current.players.some((p) => p.name === n),
+        );
+        if (!name) return current;
+        return withPlayers(current, [
+          ...current.players,
+          {
+            id: `p-guest-${name.toLowerCase()}`,
+            name,
+            isHost: false,
+            connected: true,
+            ready: false,
+          },
+        ]);
+      }),
+    removeGuest: () =>
+      setView((current) => {
+        const last = [...current.players]
+          .reverse()
+          .find((p) => p.id.startsWith("p-guest-"));
+        if (!last) return current;
+        return withPlayers(
+          current,
+          current.players.filter((p) => p.id !== last.id),
+        );
+      }),
   };
 }

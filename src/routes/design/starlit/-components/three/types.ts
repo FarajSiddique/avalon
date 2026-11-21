@@ -1,5 +1,17 @@
-import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import type { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
+import type { Avatar } from "@/design/avatar";
 import type { Palette } from "./palette";
+
+/** Someone in the lobby, as the table draws them. */
+export interface TablePlayer {
+  id: string;
+  name: string;
+  avatar: Avatar;
+  isHost: boolean;
+  isYou: boolean;
+  connected: boolean;
+  ready: boolean;
+}
 
 export interface Pointer {
   /** -1 (left) to 1 (right), smoothed. */
@@ -32,6 +44,8 @@ export interface SceneContext {
   palette: Palette;
   /** Fewer particles and cheaper effects on small screens. */
   lite: boolean;
+  /** "lobby": framed on the whole table, seats show the players given. */
+  variant: "hero" | "lobby";
 }
 
 export interface ConceptScene {
@@ -44,6 +58,14 @@ export interface ConceptScene {
   bloom: { strength: number; radius: number; threshold: number };
   /** The moment shown as a still frame when motion is reduced. */
   posterTime: number;
+  /** Lobby: who is at the table. Arrivals and departures animate. */
+  setPlayers?(players: readonly TablePlayer[]): void;
+  /** Lobby: where each player's name tag goes, in world space. */
+  anchors?(): ReadonlyMap<string, Vector3>;
+  /** Lobby: how many figures are standing at the table now. */
+  seated?(): number;
+  /** Finish any arrival or departure at once (reduced motion, rebuilds). */
+  settle?(): void;
 }
 
 export type CreateConcept = (ctx: SceneContext) => ConceptScene;

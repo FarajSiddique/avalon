@@ -20,6 +20,27 @@ import {
  * captured at the normal viewport size, because a finger is "down".
  */
 
+// No WebGL here: 3D scenes fall back to their drawings, so these committed
+// screenshots do not depend on the machine's GPU. The 3D lobby is captured
+// in studio.shots.ts with software WebGL.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      type: string,
+      ...rest: unknown[]
+    ) {
+      if (type.startsWith("webgl")) return null;
+      return (original as (...a: unknown[]) => unknown).call(
+        this,
+        type,
+        ...rest,
+      );
+    } as typeof original;
+  });
+});
+
 const OUT = path.join(
   import.meta.dirname,
   "..",

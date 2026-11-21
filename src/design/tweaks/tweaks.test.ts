@@ -17,6 +17,12 @@ import {
 } from "./catalog";
 import { PROPOSED_DIALS } from "./presets";
 import {
+  CLOAK_TOKENS,
+  DEFAULT_AVATAR,
+  avatarFor,
+  sanitizeAvatar,
+} from "@/design/avatar";
+import {
   BACKDROP_LAYOUT,
   cropFor,
 } from "@/routes/design/starlit/-components/art/backdrop-layout";
@@ -307,6 +313,26 @@ describe("backdrop layouts", () => {
       expect(castle.y).toBeGreaterThan(y!);
       expect(castle.y).toBeLessThan(y! + h!);
     }
+  });
+});
+
+describe("avatars", () => {
+  it("default, repair and stay stable per player", () => {
+    expect(sanitizeAvatar({})).toEqual(DEFAULT_AVATAR);
+    expect(
+      sanitizeAvatar({ cloak: "moss", headwear: "crown", emblem: 7 }),
+    ).toEqual({ ...DEFAULT_AVATAR, cloak: "moss" });
+    expect(avatarFor("p-ansel")).toEqual(avatarFor("p-ansel"));
+    for (const id of ["p-wren", "p-ansel", "p-mira", "p-guest-rowan"]) {
+      expect(sanitizeAvatar(avatarFor(id))).toEqual(avatarFor(id));
+    }
+  });
+
+  it("never dye a cloak in the Good or Evil colours", () => {
+    const tokens = Object.values(CLOAK_TOKENS);
+    expect(tokens.every((t) => t.startsWith("--art-"))).toBe(true);
+    expect(tokens).not.toContain("--good");
+    expect(tokens).not.toContain("--evil");
   });
 });
 

@@ -126,6 +126,50 @@ async function openArtwork(page: Page): Promise<void> {
   });
 }
 
+/** The lobby's Star Table: seven players, then ten with a long name. */
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+]) {
+  test.describe(`lobby table at ${viewport.width}`, () => {
+    test.use({ viewport });
+
+    test("lobby table", async ({ page }) => {
+      test.setTimeout(300_000);
+      await page.goto("/design/starlit/lobby");
+      await page.evaluate(() => {
+        localStorage.clear();
+        localStorage.setItem(
+          "avalon:starlit-avatar:v1",
+          JSON.stringify({ cloak: "rose", headwear: "cap", emblem: "moon" }),
+        );
+      });
+      await page.reload();
+      const table = page.locator('section[aria-label="The table"]');
+      const stage = table.locator("[data-concept]");
+      await expect(stage).toHaveAttribute("data-seated", "7", {
+        timeout: 90_000,
+      });
+      await page.waitForTimeout(1500);
+      await page.screenshot({
+        path: path.join(OUT, `13-lobby-${viewport.width}.png`),
+      });
+      for (let i = 0; i < 3; i++)
+        await page
+          .getByRole("button", { name: "Prototype: someone joins" })
+          .click();
+      await table.scrollIntoViewIfNeeded();
+      await expect(stage).toHaveAttribute("data-seated", "10", {
+        timeout: 90_000,
+      });
+      await page.waitForTimeout(1500);
+      await table.screenshot({
+        path: path.join(OUT, `13-lobby-ten-${viewport.width}.png`),
+      });
+    });
+  });
+}
+
 /** Every artwork version, then a few combinations on the landing scene. */
 for (const viewport of [
   { width: 1440, height: 900 },

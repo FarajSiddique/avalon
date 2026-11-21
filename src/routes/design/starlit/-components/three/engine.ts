@@ -29,6 +29,8 @@ export interface MountOptions {
    * thumbnails, so a page of them holds no WebGL contexts.
    */
   snapshot?: boolean;
+  /** The GPU dropped the context: the caller should show the drawing. */
+  onLost?: () => void;
 }
 
 /**
@@ -217,23 +219,28 @@ export async function mountConcept(
     sync();
   });
   intersection.observe(host);
-  // A tweak dial rewrites a <style> in the head: rebuild with its colours.
+  // A tweak dial rewrites a <style> inside the theme (and stylesheets can
+  // change in the head): when the art tokens change, rebuild with them. The
+  // check is a cheap string compare, so other DOM changes cost little.
   let rebuildTimer = 0;
   const styles = new MutationObserver(() => {
     window.clearTimeout(rebuildTimer);
     rebuildTimer = window.setTimeout(rebuild, 150);
   });
-  styles.observe(document.head, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-  });
+  for (const root of [document.head, themeEl]) {
+    styles.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
   document.addEventListener("visibilitychange", sync);
   motion.addEventListener("change", sync);
   const onLost = (event: Event) => {
     event.preventDefault();
     running = false;
     cancelAnimationFrame(frameId);
+    options.onLost?.();
   };
   canvas.addEventListener("webglcontextlost", onLost);
 

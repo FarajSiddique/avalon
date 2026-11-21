@@ -204,6 +204,7 @@ export const createLanternLake: CreateConcept = ({ palette: p, lite }) => {
 
   let layout: Layout = { width: 1, height: 1, aspect: 1, wide: false };
   const look = new Vector3();
+  const onScreen = new Vector3();
 
   const concept: ConceptScene = {
     scene,
@@ -240,7 +241,12 @@ export const createLanternLake: CreateConcept = ({ palette: p, lite }) => {
         l.body.position.set(l.x + drift, l.y + 0.3, l.z);
         l.body.rotation.z = Math.sin(time * 0.8 + l.phase) * 0.06;
         l.glow.position.copy(l.body.position);
-        const fade = l.floating ? 1 : Math.min(1, (62 - l.y) / 18);
+        let fade = l.floating ? 1 : Math.min(1, (62 - l.y) / 18);
+        if (layout.wide) {
+          // Keep lantern light out of the title column on the left.
+          onScreen.copy(l.body.position).project(camera);
+          fade *= Math.min(1, Math.max(0, (onScreen.x + 0.24) / 0.2));
+        }
         l.glow.material.opacity = 0.32 * fade;
         l.body.visible = fade > 0.05;
       }
@@ -360,9 +366,9 @@ function auroraCurtains(bin: Bin, p: Palette) {
       `,
     }),
   );
+  // One curtain, over the castle: kept clear of the title column on wide.
   for (const [z, x, w, h, bend, tilt] of [
-    [-330, 40, 520, 150, 60, 0.18],
-    [-300, -120, 380, 110, 40, -0.12],
+    [-330, 150, 420, 150, 60, 0.18],
   ] as const) {
     const geometry = bin.add(new PlaneGeometry(w, h, 96, 1));
     const pos = geometry.getAttribute("position") as BufferAttribute;

@@ -34,7 +34,14 @@ export function Hero3D({
     if (import.meta.env.SSR) return;
     void import("./engine")
       .then(({ mountConcept }) =>
-        mountConcept(el, concept, { interactive, backdrop, snapshot }),
+        mountConcept(el, concept, {
+          interactive,
+          backdrop,
+          snapshot,
+          onLost: () => {
+            if (!cancelled) setFailed(true);
+          },
+        }),
       )
       .then((teardown) => {
         if (cancelled) teardown?.();

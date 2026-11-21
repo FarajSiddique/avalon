@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildCatalog, readDeclarations, type Catalog } from "./catalog";
-import { DEFAULT_SKY, buildCss, decodeState, type SkyOptions } from "./state";
-import { setTweaks, useBypass, useTweaks } from "./store";
+import {
+  DEFAULT_SKY,
+  DEFAULT_STATE,
+  buildCss,
+  decodeState,
+  type SkyOptions,
+} from "./state";
+import { getTweaks, saveDial, setTweaks, useBypass, useTweaks } from "./store";
 
 /** The query parameter a share link carries the dial in. */
 export const SHARE_PARAM = "tweaks";
@@ -43,9 +49,29 @@ export function useStarlitTweaks(): { css: string; sky: SkyOptions } {
   const catalog = useCatalog(typeof document === "undefined" ? null : document);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get(SHARE_PARAM);
-    const shared = code ? decodeState(code) : null;
-    if (shared) setTweaks(shared);
+    // A share link applies its dial once. The dial it replaces is saved first
+    // (Share > Saved in this browser), and the parameter is removed so a
+    // reload does not apply it again over later changes.
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get(SHARE_PARAM);
+    if (!code) return;
+    const shared = decodeState(code);
+    if (shared) {
+      const current = getTweaks();
+      if (
+        current !== DEFAULT_STATE &&
+        JSON.stringify(current) !== JSON.stringify(shared)
+      ) {
+        const stamp = new Date().toLocaleString();
+        saveDial({
+          ...current,
+          name: `${current.name} (before a shared link, ${stamp})`,
+        });
+      }
+      setTweaks(shared);
+    }
+    url.searchParams.delete(SHARE_PARAM);
+    window.history.replaceState(window.history.state, "", url);
   }, []);
 
   const css = useMemo(

@@ -170,7 +170,10 @@ function Slider({
         className="h-7 w-16 rounded border border-white/15 bg-black/40 px-1.5 text-right text-[12px] text-white tabular-nums"
         step={step}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => {
+          const n = e.target.valueAsNumber;
+          if (Number.isFinite(n)) onChange(n);
+        }}
       />
       <span className="w-5 text-[11px] text-white/45">{suffix}</span>
     </label>
@@ -341,8 +344,8 @@ function ContrastTable({
     <div className="p-3">
       <p className="mb-2 text-[12px] text-white/60">
         WCAG ratios for the pairs the design relies on, computed from the dial.
-        Text needs 4.5:1, UI shapes 3:1. Panels are slightly see-through, so a
-        panel pair is measured on the solid surface colour.
+        Text needs 4.5:1, UI shapes 3:1. Panels are see-through, so a panel pair
+        is measured on the surface at the current panel opacity over the canvas.
       </p>
       <p
         className={`mb-3 text-[13px] font-semibold ${failing ? "text-rose-300" : "text-emerald-300"}`}

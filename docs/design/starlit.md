@@ -436,7 +436,8 @@ to Claude. Code: `src/design/tweaks/`.
   opacity, highlight and border, fire and star glow, sky gradient stops,
   star and cloud visibility, horizon height, and every ambient animation
   duration with one `--ambient-tempo` multiplier. With no dial set, the
-  screenshots match the old ones pixel for pixel.
+  phone screenshots match the old ones pixel for pixel; the wide ones differ
+  only by the new "Tweak studio" link in the prototype nav.
 - **How it applies.** The dial lives in `localStorage`. The Starlit layout
   turns it into a `<style>` with a doubled `.theme-starlit` selector, and
   passes the sky options to `NightSky`. A token with a wide value gets its

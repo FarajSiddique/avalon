@@ -10,6 +10,7 @@ import {
   NO_SHIFT,
   contrastRatio,
   isIdentityShift,
+  mixHex,
   normalizeHex,
   shiftHex,
   type ColorShift,
@@ -55,11 +56,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * A token value that is safe to write into the generated stylesheet: it
+ * cannot end the declaration, open or close a block, or close the <style>.
+ * Dials arrive from share links, so this is checked on the way in and out.
+ */
+export function isSafeValue(value: string): boolean {
+  return value.trim() !== "" && !/[;{}<>]/.test(value);
+}
+
+function isTokenKey(key: string): boolean {
+  return /^--[\w-]+(@wide)?$/.test(key);
+}
+
 function stringRecord(value: unknown): Record<string, string> {
   if (!isRecord(value)) return {};
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(value)) {
-    if (typeof v === "string" && k.startsWith("--")) out[k] = v;
+    if (typeof v === "string" && isTokenKey(k) && isSafeValue(v)) out[k] = v;
   }
   return out;
 }
@@ -224,6 +238,7 @@ export function buildCss(catalog: Catalog, state: TweakState): string {
   const every: string[] = [];
   const wide: string[] = [];
   for (const change of listChanges(catalog, state)) {
+    if (!isSafeValue(change.to)) continue;
     const line = `  ${change.token}: ${change.to};`;
     const def = catalog.get(change.token);
     if (change.scope === "wide") wide.push(line);
@@ -323,13 +338,35 @@ export interface ContrastResult {
   pass: boolean;
 }
 
+/**
+ * Panels are the surface colour at --panel-opacity over the page, so a panel
+ * pair is measured on that blend (over the canvas, the darkest the sky gets
+ * behind a panel is close to it).
+ */
+function panelOver(
+  catalog: Catalog,
+  state: TweakState,
+  surface: string,
+): string {
+  const opacity = Number.parseFloat(
+    resolveValue(catalog, state, "--panel-opacity") ?? "100",
+  );
+  const canvas = resolveValue(catalog, state, "--canvas");
+  if (!canvas || Number.isNaN(opacity)) return surface;
+  return mixHex(surface, canvas, Math.min(100, Math.max(0, opacity)) / 100);
+}
+
 export function checkContrast(
   catalog: Catalog,
   state: TweakState,
 ): ContrastResult[] {
   return CONTRAST_PAIRS.map((pair) => {
     const fgHex = resolveValue(catalog, state, pair.fg);
-    const bgHex = resolveValue(catalog, state, pair.bg);
+    const solid = resolveValue(catalog, state, pair.bg);
+    const bgHex =
+      pair.bg === "--surface" && solid
+        ? panelOver(catalog, state, solid)
+        : solid;
     const ratio = fgHex && bgHex ? contrastRatio(fgHex, bgHex) : null;
     return {
       label: pair.label,

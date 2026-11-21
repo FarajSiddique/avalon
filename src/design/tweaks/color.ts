@@ -168,3 +168,12 @@ export function contrastRatio(fg: string, bg: string): number | null {
   const lb = luminance(b);
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
+
+/** `a` at `amount` (0 to 1) over `b`, mixed in sRGB like color-mix(in srgb). */
+export function mixHex(a: string, b: string, amount: number): string {
+  const x = parseHex(a);
+  const y = parseHex(b);
+  if (!x || !y) return a;
+  const mix = (p: number, q: number) => p * amount + q * (1 - amount);
+  return toHex({ r: mix(x.r, y.r), g: mix(x.g, y.g), b: mix(x.b, y.b) });
+}

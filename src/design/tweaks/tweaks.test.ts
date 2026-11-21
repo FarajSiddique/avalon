@@ -239,6 +239,24 @@ describe("turning a dial into CSS", () => {
   });
 });
 
+describe("panel contrast", () => {
+  const catalog = themeCatalog();
+
+  it("measures panel pairs on the panel as it is drawn, at its opacity", () => {
+    const at = (opacity: string) =>
+      checkContrast(
+        catalog,
+        sanitizeState({ vars: { "--panel-opacity": opacity } }),
+      ).find((r) => r.label === "Muted text on a panel");
+    const solid = at("100%");
+    const clear = at("0%");
+    expect(solid?.bgHex).toBe(
+      resolveValue(catalog, DEFAULT_STATE, "--surface"),
+    );
+    expect(clear?.bgHex).toBe(resolveValue(catalog, DEFAULT_STATE, "--canvas"));
+  });
+});
+
 describe("proposed dials", () => {
   const catalog = themeCatalog();
 

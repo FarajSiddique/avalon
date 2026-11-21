@@ -103,7 +103,11 @@ function RangeControl({
         className={`${inputClass} w-[72px] text-right tabular-nums`}
         step={range.step}
         value={parsed.n}
-        onChange={(e) => onChange(`${e.target.value}${unit}`)}
+        onChange={(e) => {
+          // An emptied or half-typed box is not a value yet: keep the last one.
+          const n = e.target.valueAsNumber;
+          if (Number.isFinite(n)) onChange(`${n}${unit}`);
+        }}
       />
       <span className="w-6 text-[11px] text-white/50">{unit}</span>
     </div>

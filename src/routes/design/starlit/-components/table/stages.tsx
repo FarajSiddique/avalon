@@ -13,7 +13,7 @@ import {
   questReveal,
   voteReveal,
 } from "@/design/mock";
-import { useTeamDraft } from "@/design/use-team-draft";
+import { useTeamDraft, type TeamDraft } from "@/design/use-team-draft";
 import type { GameView, PlayerId, QuestCard, Vote } from "@/shared/views";
 import {
   IconApprove,
@@ -61,7 +61,7 @@ function Ring({
  * Play cues as a step opens, on the audio clock. They stop if the step is
  * left (Next hides the old page, which runs this clean-up) or skipped.
  */
-function useOpeningCues(
+export function useOpeningCues(
   cues: readonly { cue: CueName; at: number }[],
 ): React.RefObject<CueHandle[]> {
   const handles = useRef<CueHandle[]>([]);
@@ -106,7 +106,7 @@ function ActionBar({ children }: { children: ReactNode }) {
   );
 }
 
-function ContinueLink({
+export function ContinueLink({
   to,
   children,
   cue = "tap",
@@ -130,7 +130,7 @@ function ContinueLink({
   );
 }
 
-function Count({ children }: { children: ReactNode }) {
+export function Count({ children }: { children: ReactNode }) {
   return (
     <p
       role="status"
@@ -163,12 +163,34 @@ export function LockedNote({
   );
 }
 
-const CARD = {
+export const CARD = {
   success: { label: "Success", icon: IconSun, className: "sl-card--success" },
   fail: { label: "Fail", icon: IconCrackedMoon, className: "sl-card--fail" },
 } as const satisfies Record<QuestCard, unknown>;
 
 /* ---------------------------------------------------------------- propose */
+
+/**
+ * Toggle a pick with its sound: each pick is one note higher, and the last
+ * one resolves into a chord. Shared with the 3D table.
+ */
+export function pickWithSound(
+  draft: TeamDraft,
+  teamSize: number,
+): (id: PlayerId) => void {
+  return (id) => {
+    const count = draft.draftIds.length;
+    if (draft.isPicked(id)) {
+      play("unpick");
+    } else if (count < teamSize) {
+      play("pick", { index: count });
+      if (count + 1 === teamSize) {
+        play("team-complete", { delay: 0.2 });
+      }
+    }
+    draft.toggle(id);
+  };
+}
 
 function ProposeStage({
   view,
@@ -179,19 +201,7 @@ function ProposeStage({
 }) {
   const draft = useTeamDraft(phase.teamSize, phase.draftIds);
   useOpeningCues([{ cue: "crown", at: 250 }]);
-  const toggle = (id: PlayerId) => {
-    const count = draft.draftIds.length;
-    if (draft.isPicked(id)) {
-      play("unpick");
-    } else if (count < phase.teamSize) {
-      // Each pick is one note higher; the last one resolves into a chord.
-      play("pick", { index: count });
-      if (count + 1 === phase.teamSize) {
-        play("team-complete", { delay: 0.2 });
-      }
-    }
-    draft.toggle(id);
-  };
+  const toggle = pickWithSound(draft, phase.teamSize);
   const status = Object.fromEntries(
     draft.draftIds.map((id): [PlayerId, SeatStatus] => [id, "chosen"]),
   );

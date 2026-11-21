@@ -106,6 +106,8 @@ export interface Figure {
   group: Group;
   /** Grey the figure out while its player is away. */
   setAway(away: boolean): void;
+  /** Light the figure from within (the team), 0 off to 1 full. */
+  setGlow(color: Color, level: number): void;
   dispose(): void;
 }
 
@@ -199,6 +201,18 @@ export function figure(
     }
   });
   const grey = p["stone-shade"];
+  // The lit materials and their own glow, so the team glow can mix back.
+  const lit: { material: MeshStandardMaterial; emissive: Color; k: number }[] =
+    [];
+  for (const { material } of tinted) {
+    if ("emissive" in material)
+      lit.push({
+        material,
+        emissive: material.emissive.clone(),
+        k: material.emissiveIntensity,
+      });
+  }
+  let glowLevel = -1;
 
   return {
     group,
@@ -208,6 +222,14 @@ export function figure(
         if (away) material.color.lerp(grey, 0.65);
         material.transparent = away || material === emblemMat;
         material.opacity = away ? 0.55 : 1;
+      }
+    },
+    setGlow(color, level) {
+      if (Math.abs(level - glowLevel) < 0.002) return;
+      glowLevel = level;
+      for (const { material, emissive, k } of lit) {
+        material.emissive.copy(emissive).multiplyScalar(k).lerp(color, level);
+        material.emissiveIntensity = 1;
       }
     },
     dispose() {

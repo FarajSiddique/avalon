@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { TABLE_STEPS } from "@/design/directions";
 import type { Mounted, Rect, StageTarget } from "../three/engine";
 import type { FlightPath } from "../three/types";
 import { NameTag } from "../three/hero-3d";
@@ -32,6 +33,19 @@ function LiveStage() {
   const mounted = useRef<Mounted | null>(null);
   const latestPlayers = useRef(players);
   const [height, setHeight] = useState<number | null>(null);
+  // Whether the last move between screens was the game's next step (the
+  // camera moves) or a jump (it cuts). Read at the time of each change.
+  const lastPath = useRef<string | null>(null);
+  const flow = useRef(false);
+  const inFlow = useCallback((): boolean => {
+    const now = window.location.pathname;
+    if (lastPath.current === null) lastPath.current = now;
+    else if (now !== lastPath.current) {
+      flow.current = isNextInFlow(lastPath.current, now);
+      lastPath.current = now;
+    }
+    return flow.current;
+  }, []);
   // The way this flight is going. Kept after the pending flight is taken,
   // since the engine may still be loading when the lobby mounts.
   const path = useRef<FlightPath | null>(pending);
@@ -67,8 +81,9 @@ function LiveStage() {
       reveal: live?.reveal === "focus" ? focus : null,
       fade: live && focus ? focus.h * live.fade : 0,
       animate: true,
+      move: inFlow(),
     };
-  }, [slot, mode, pending]);
+  }, [slot, mode, pending, inFlow]);
 
   const push = useCallback(() => {
     const target = measure();
@@ -148,8 +163,8 @@ function LiveStage() {
 
   useEffect(() => {
     latestPlay.current = play;
-    mounted.current?.setPlay(play);
-  }, [play]);
+    mounted.current?.setPlay(play, inFlow());
+  }, [play, inFlow]);
 
   useEffect(() => {
     latestTagLayer.current = tagLayer;
@@ -202,4 +217,31 @@ function LiveStage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Is going from one prototype screen to the other the game's next step
+ * (lobby, role card, then the table's steps in order, round again)? Then
+ * the camera moves; any other jump cuts.
+ */
+function isNextInFlow(from: string, to: string): boolean {
+  const a = screenOf(from);
+  const b = screenOf(to);
+  if (!a || !b) return false;
+  if (a === "lobby") return b.startsWith("role/");
+  // Your own card continues to the table. The Assassin's card is another
+  // seat (a prototype detour), so its Continue cuts.
+  if (a === "role/merlin") return b === "table/propose";
+  if (a.startsWith("table/") && b.startsWith("table/")) {
+    const i = TABLE_STEPS.indexOf(a.slice(6) as (typeof TABLE_STEPS)[number]);
+    return i >= 0 && b.slice(6) === TABLE_STEPS[(i + 1) % TABLE_STEPS.length];
+  }
+  return false;
+}
+
+function screenOf(path: string): string | null {
+  const match = /\/design\/starlit\/(lobby|role\/[^/]+|table\/[^/]+)\/?$/.exec(
+    path,
+  );
+  return match?.[1] ?? null;
 }

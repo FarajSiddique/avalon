@@ -17,8 +17,10 @@ import type {
   FlightPath,
   Layout,
   Pointer,
+  ShotMove,
   TablePlay,
   TablePlayer,
+  TableShot,
 } from "./types";
 
 export type ConceptName = "isle" | "lake" | "table";
@@ -85,6 +87,11 @@ export interface StageTarget {
   fade: number;
   /** Fly there (false: cut, as on a first load). */
   animate: boolean;
+  /**
+   * Past the lobby: a change of shot may move the camera (the next step of
+   * the game's flow). False: it cuts, as for a jump from the nav bar.
+   */
+  move?: boolean;
 }
 
 export interface Mounted {
@@ -93,8 +100,11 @@ export interface Mounted {
   setPlayers(players: readonly TablePlayer[]): void;
   /** The stage only: change framing, flying when asked to. */
   setTarget(target: StageTarget): void;
-  /** Role and table: the game's state in the scene. */
-  setPlay(play: TablePlay | null): void;
+  /**
+   * Role and table: the game's state in the scene. `move`: a change of
+   * shot moves the camera (the next step), rather than cutting.
+   */
+  setPlay(play: TablePlay | null, move?: boolean): void;
   /** The player whose figure is under this viewport point, or null. */
   pickAt(clientX: number, clientY: number): string | null;
   /**
@@ -104,6 +114,13 @@ export interface Mounted {
    */
   setTagLayer(el: HTMLElement | null): void;
 }
+
+const OWNERS = new WeakMap<HTMLElement, object>();
+
+/** Seconds a move between game shots takes, by the wall clock. */
+const SHOT_SECONDS = 1.2;
+/** Seconds for the longer move from the lobby round to your seat. */
+const SHOT_SECONDS_FAR = 1.6;
 
 /** Seconds each flight takes, by the wall clock. */
 const FLIGHT_SECONDS: Record<FlightPath, number> = {
@@ -121,6 +138,26 @@ export async function mountConcept(
   name: ConceptName,
   options: MountOptions,
 ): Promise<Mounted | null> {
+  // One mount at a time owns the host's data attributes: one cancelled
+  // while loading (React's development double mount) must not write over
+  // the live one's. The newest owns them; when it stops, the next one to
+  // write takes them over and writes all of its own.
+  const owner = {};
+  OWNERS.set(host, owner);
+  const marks = new Map<string, string | null>();
+  const write = (key: string, value: string | null) => {
+    if (value === null) delete host.dataset[key];
+    else host.dataset[key] = value;
+  };
+  const mark = (key: string, value: string | null) => {
+    marks.set(key, value);
+    const current = OWNERS.get(host);
+    if (current && current !== owner) return;
+    if (!current) {
+      OWNERS.set(host, owner);
+      for (const [k, v] of marks) write(k, v);
+    } else write(key, value);
+  };
   const create = await LOADERS[name]();
 
   // Ask quietly first: three.js logs an error when it cannot get a context.
@@ -154,12 +191,17 @@ export async function mountConcept(
   };
 
   const variant = options.variant ?? "hero";
+  const displayFont =
+    getComputedStyle(themeEl).getPropertyValue("--display-font").trim() ||
+    undefined;
   let players: readonly TablePlayer[] | null = options.players ?? null;
+  let play: TablePlay | null = null;
   let concept: ConceptScene = create({
     renderer,
     palette: readPalette(themeEl),
     lite,
     variant,
+    displayFont,
   });
   if (players) concept.setPlayers?.(players);
   let paletteSource = readPaletteSource(themeEl);
@@ -204,12 +246,59 @@ export async function mountConcept(
   const report = (next: StagePhase) => {
     if (next === phase) return;
     phase = next;
-    host.dataset.stage = next;
+    mark("stage", next);
     stage?.onPhase?.(next);
+  };
+  /* ---- past the lobby: the game's shots, and the moves between them ---- */
+  let shot: ShotMove = { to: null, progress: 1, id: 0 };
+  let shotMove: {
+    seconds: number;
+    focusFrom: Rect;
+    revealFrom: Rect;
+    fadeFrom: number;
+  } | null = null;
+  /** The first shot after mounting is a cut. */
+  let shotReady = false;
+  const resolveShot = (): TableShot | null => {
+    const mode = aim?.mode;
+    if (mode !== "role" && mode !== "table") return null;
+    return play?.shot ?? (mode === "role" ? "role" : "table");
+  };
+  /** Move (or cut) to the shot the mode and the play ask for. */
+  const retarget = (move: boolean) => {
+    if (!stage || !aim) return;
+    const to = resolveShot();
+    if (shotReady && to === shot.to) return;
+    // A flight from the landing carries the camera to the shot by itself.
+    const animate =
+      shotReady && move && !motion.matches && !flight && blend >= 1;
+    shotReady = true;
+    shot = { to, progress: animate ? 0 : 1, id: shot.id + 1 };
+    mark("shot", to ?? "lobby");
+    if (animate) {
+      const far = phase === "lobby" || shot.to === "role";
+      shotMove = {
+        seconds: far ? SHOT_SECONDS_FAR : SHOT_SECONDS,
+        focusFrom: { ...focus },
+        revealFrom: { ...reveal },
+        fadeFrom: fade,
+      };
+      mark("moving", "");
+      // A move to another screen's framing is a flight; a new shot on the
+      // same screen (the next step at the table) is not.
+      if (aim.mode !== phase) report("flying");
+    } else {
+      shotMove = null;
+      mark("moving", null);
+      // Cut to the game (a direct load or a jump): everyone is already
+      // seated, nobody rises.
+      if (to) concept.settle?.();
+    }
   };
   const frameInfo = () => ({
     blend: stage ? blend : undefined,
     flight: flight ? { path: flight.path, progress: flight.progress } : null,
+    shot: stage ? { ...shot } : undefined,
   });
   /** Advance the flight by `seconds` of wall clock, then frame the camera. */
   const applyStage = (seconds: number, force = false) => {
@@ -232,6 +321,17 @@ export async function mountConcept(
         blend = flight.to;
         flight = null;
         report(blend >= 1 ? (aim?.mode ?? "lobby") : "hero");
+      }
+    } else if (shotMove) {
+      shot.progress = Math.min(1, shot.progress + seconds / shotMove.seconds);
+      const t = easeInOut(shot.progress);
+      focus = mixRect(shotMove.focusFrom, toFocus, t);
+      reveal = mixRect(shotMove.revealFrom, toReveal, t);
+      fade = shotMove.fadeFrom + (toFade - shotMove.fadeFrom) * t;
+      if (shot.progress >= 1) {
+        shotMove = null;
+        mark("moving", null);
+        report(aim?.mode ?? "lobby");
       }
     } else {
       focus = toFocus;
@@ -285,6 +385,7 @@ export async function mountConcept(
     bloom.resolution.set((width * dpr) / 2, (height * dpr) / 2);
     size.width = width;
     size.height = height;
+    measureTags();
     if (stage) applyStage(0, true);
     else {
       const aspect = width / height;
@@ -319,30 +420,71 @@ export async function mountConcept(
   // Name tags follow the figures' heads. Nearer figures place theirs first;
   // a tag that would overlap one already placed moves up above it.
   const projected = new Vector3();
+  const body = new Vector3();
   let tagLayer: HTMLElement | null = options.overlay ?? null;
+  // A screen's own tag layer has its own origin: tags are placed in the
+  // stage's coordinates, then moved by the gap between the two.
+  const tagOffset = { x: 0, y: 0 };
+  const measureTags = () => {
+    if (!tagLayer || tagLayer === options.overlay) {
+      tagOffset.x = tagOffset.y = 0;
+      return;
+    }
+    const a = host.getBoundingClientRect();
+    const b = tagLayer.getBoundingClientRect();
+    tagOffset.x = a.left - b.left;
+    tagOffset.y = a.top - b.top;
+  };
+  const layerObserver = new ResizeObserver(() => {
+    measureTags();
+    if (!running) placeTags();
+  });
+  const hide = (el: HTMLElement) => {
+    el.style.opacity = "0";
+    el.style.visibility = "hidden";
+  };
   const placeTags = () => {
     const overlay = tagLayer;
     if (!overlay || !concept.anchors) return;
     const anchors = concept.anchors();
     const tags: { el: HTMLElement; x: number; y: number; depth: number }[] = [];
+    // On the stage, tags stay inside the open space; elsewhere the canvas.
+    const box = stage ? focus : whole();
     for (const child of overlay.children) {
       const el = child as HTMLElement;
       const at = el.dataset.tag ? anchors.get(el.dataset.tag) : undefined;
       if (!at) {
-        el.style.opacity = "0";
+        hide(el);
         continue;
       }
       projected.copy(at).project(concept.camera);
-      if (projected.z >= 1) {
-        el.style.opacity = "0";
+      const x = ((projected.x + 1) / 2) * size.width;
+      const y = ((1 - projected.y) / 2) * size.height;
+      // The figure's middle, below the tag's anchor: when it is out of the
+      // open space, so is the figure, and so is its tag.
+      body.copy(at);
+      body.y -= 2.4;
+      body.project(concept.camera);
+      const bx = ((body.x + 1) / 2) * size.width;
+      const by = ((1 - body.y) / 2) * size.height;
+      // Behind the camera, off the sides of the open space, below it
+      // (behind a panel), or the figure out of it (a close shot of the
+      // cards): no tag. A head just above the top has its tag pinned there.
+      if (
+        projected.z >= 1 ||
+        (stage &&
+          (x < box.x ||
+            x > box.x + box.w ||
+            y > box.y + box.h ||
+            bx < box.x ||
+            bx > box.x + box.w ||
+            by < box.y ||
+            by > box.y + box.h))
+      ) {
+        hide(el);
         continue;
       }
-      tags.push({
-        el,
-        x: ((projected.x + 1) / 2) * size.width,
-        y: ((1 - projected.y) / 2) * size.height,
-        depth: projected.z,
-      });
+      tags.push({ el, x, y, depth: projected.z });
     }
     tags.sort((a, b) => a.depth - b.depth);
     // On the stage, tags come in as the camera arrives at the table.
@@ -357,30 +499,69 @@ export async function mountConcept(
     for (const tag of tags) {
       const w = tag.el.offsetWidth;
       const h = tag.el.offsetHeight;
-      let bottom = tag.y;
-      for (let tries = 0; tries < 6; tries++) {
-        const hit = placed.find(
+      // Inside the open space: from side to side, and never off its top.
+      const left = stage ? box.x + w / 2 + 4 : -Infinity;
+      const right = stage ? box.x + box.w - w / 2 - 4 : Infinity;
+      const highest = stage ? box.y + h + 4 : h + 4;
+      const clampX = (value: number) =>
+        Math.min(Math.max(value, left), Math.max(left, right));
+      const hitAt = (cx: number, cb: number) =>
+        placed.find(
           (b) =>
-            tag.x - w / 2 < b.right + 4 &&
-            tag.x + w / 2 > b.left - 4 &&
-            bottom - h < b.bottom + 2 &&
-            bottom > b.top - 2,
+            cx - w / 2 < b.right + 4 &&
+            cx + w / 2 > b.left - 4 &&
+            cb - h < b.bottom + 2 &&
+            cb > b.top - 2,
         );
-        if (!hit) break;
-        bottom = hit.top - 3;
+      let x = clampX(tag.x);
+      let bottom = Math.max(tag.y, highest);
+      // A tag in the way: go up above it while there is room; then try
+      // beside it; then just below it.
+      let spot: { x: number; bottom: number } | null = null;
+      for (let tries = 0; tries < 8 && !spot; tries++) {
+        const hit = hitAt(x, bottom);
+        if (!hit) spot = { x, bottom };
+        else if (hit.top - 3 >= highest) bottom = hit.top - 3;
+        else break;
       }
-      // Never off the top of the open space.
-      bottom = Math.max(bottom, (stage ? focus.y : 0) + h + 4);
+      if (!spot) {
+        const hit = hitAt(x, bottom);
+        if (hit) {
+          const sides = [hit.right + 4 + w / 2, hit.left - 4 - w / 2]
+            .map(clampX)
+            .sort((m, n) => Math.abs(m - tag.x) - Math.abs(n - tag.x));
+          for (const side of sides) {
+            if (!hitAt(side, bottom)) {
+              spot = { x: side, bottom };
+              break;
+            }
+          }
+          if (!spot) {
+            let below = hit.bottom + h + 3;
+            for (let tries = 0; tries < 8; tries++) {
+              const next = hitAt(x, below);
+              if (!next) break;
+              below = next.bottom + h + 3;
+            }
+            spot = { x, bottom: below };
+          }
+        } else spot = { x, bottom };
+      }
+      x = spot.x;
+      bottom = spot.bottom;
       placed.push({
-        left: tag.x - w / 2,
-        right: tag.x + w / 2,
+        left: x - w / 2,
+        right: x + w / 2,
         top: bottom - h,
         bottom,
       });
-      tag.el.style.transform = `translate(${tag.x.toFixed(1)}px, ${bottom.toFixed(1)}px) translate(-50%, -100%)`;
+      const tx = x + tagOffset.x;
+      const ty = bottom + tagOffset.y;
+      tag.el.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) translate(-50%, -100%)`;
       tag.el.style.opacity = tagOpacity;
+      tag.el.style.visibility = "";
     }
-    host.dataset.seated = String(concept.seated?.() ?? 0);
+    mark("seated", String(concept.seated?.() ?? 0));
   };
 
   const renderOnce = () => {
@@ -449,12 +630,13 @@ export async function mountConcept(
       palette: readPalette(themeEl),
       lite,
       variant,
+      displayFont,
     });
-    // Same people, already standing: a colour change is not an arrival.
-    if (players) {
-      concept.setPlayers?.(players);
-      concept.settle?.();
-    }
+    // Same people, already standing, the same play: a colour change is not
+    // an arrival, nor a new step.
+    if (players) concept.setPlayers?.(players);
+    concept.setPlay?.(play);
+    if (players || play) concept.settle?.();
     renderPass.scene = concept.scene;
     renderPass.camera = concept.camera;
     applyBloom();
@@ -537,10 +719,11 @@ export async function mountConcept(
     if (!stage) return;
     const was = aim?.mode ?? (blend >= 0.5 ? "lobby" : "hero");
     aim = next;
-    // STUB: role and table sit at the lobby blend until the engine task
-    // adds their shots.
+    // The landing is blend 0; the lobby, the role card and the table all sit
+    // at blend 1, apart by their shot.
     const to = next.mode === "hero" ? 0 : 1;
     const wasTo = was === "hero" ? 0 : 1;
+    let settled = false;
     if (to !== wasTo || (!flight && blend !== to)) {
       if (next.animate && !motion.matches) {
         const path = next.path ?? (to === 1 ? "create" : "back");
@@ -554,15 +737,19 @@ export async function mountConcept(
           revealFrom: { ...reveal },
           fadeFrom: fade,
         };
-        host.dataset.flight = path;
+        mark("flight", path);
         report("flying");
       } else {
         flight = null;
         blend = to;
-        report(next.mode);
+        settled = true;
       }
     } else if (flight && next.path) flight.path = next.path;
-    else if (!flight && next.mode !== was) report(next.mode);
+    else if (!flight && next.mode !== was) settled = true;
+    retarget(next.move ?? false);
+    // A new screen's framing: settled now, or once the move arrives.
+    if (settled) report(shotMove ? "flying" : next.mode);
+    measureTags();
     applyStage(0);
     if (running) return;
     if (motion.matches) still();
@@ -570,10 +757,12 @@ export async function mountConcept(
   };
 
   const stop = () => {
+    if (OWNERS.get(host) === owner) OWNERS.delete(host);
     running = false;
     cancelAnimationFrame(frameId);
     window.clearTimeout(rebuildTimer);
     resizeObserver.disconnect();
+    layerObserver.disconnect();
     intersection.disconnect();
     styles.disconnect();
     document.removeEventListener("visibilitychange", sync);
@@ -586,13 +775,17 @@ export async function mountConcept(
     renderer.forceContextLoss();
     canvas.remove();
   };
-  // CONTRACT STUBS (the engine task fills these in): the game's state in
-  // the scene, "who is at this point", and a tag layer owned by a screen.
-  const setPlay = (next: TablePlay | null) => {
+  const setPlay = (next: TablePlay | null, move = false) => {
+    play = next;
     concept.setPlay?.(next);
+    retarget(move);
     if (running) return;
-    concept.update({ time, dt: 0, pointer, ...frameInfo() });
-    renderOnce();
+    // Held still (reduced motion): the new state shows at once, settled.
+    if (motion.matches) still();
+    else {
+      concept.update({ time, dt: 0, pointer, ...frameInfo() });
+      renderOnce();
+    }
   };
   const pickAt = (clientX: number, clientY: number): string | null => {
     const box = host.getBoundingClientRect();
@@ -602,7 +795,12 @@ export async function mountConcept(
     return concept.pick?.(x, y) ?? null;
   };
   const setTagLayer = (el: HTMLElement | null) => {
+    if (tagLayer && tagLayer !== options.overlay)
+      layerObserver.unobserve(tagLayer);
     tagLayer = el ?? options.overlay ?? null;
+    if (el) layerObserver.observe(el);
+    measureTags();
+    if (!running) placeTags();
   };
 
   if (stage) report(blend >= 1 ? "lobby" : "hero");

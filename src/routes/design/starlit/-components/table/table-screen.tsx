@@ -14,13 +14,13 @@ import { Scoreboard } from "./scoreboard";
 import { TableStage } from "./stages";
 import { VoteHistory } from "./vote-history";
 
-interface Heading {
+export interface Heading {
   quest: number;
   title: string;
   line: string;
 }
 
-function headingFor(step: TableStep, view: GameView): Heading {
+export function headingFor(step: TableStep, view: GameView): Heading {
   const quest = view.questIndex + 1;
   const { phase } = view;
   const leader = playerName(view, view.leaderId);

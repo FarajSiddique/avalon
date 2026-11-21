@@ -1,36 +1,24 @@
 import {
   AdditiveBlending,
   BoxGeometry,
-  BufferAttribute,
-  BufferGeometry,
-  CanvasTexture,
-  Color,
   CylinderGeometry,
   DirectionalLight,
-  DoubleSide,
   FogExp2,
   Group,
   HemisphereLight,
-  LineBasicMaterial,
-  LineSegments,
-  Matrix4,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
   PlaneGeometry,
-  Points,
   RingGeometry,
   Scene,
   ShaderMaterial,
   Sprite,
   SpriteMaterial,
-  SRGBColorSpace,
   Vector3,
 } from "three";
-import { sparklePath } from "../../art/seeded";
 import {
   Bin,
-  fbm2,
   frameCamera,
   glowSprite,
   glowTexture,
@@ -40,7 +28,6 @@ import {
   skyDome,
   starField,
 } from "../kit";
-import type { Palette } from "../palette";
 import {
   campfire,
   castle,
@@ -51,7 +38,28 @@ import {
   wavePennants,
 } from "../props";
 import { Seating } from "../seating";
-import type { ConceptScene, CreateConcept, Layout } from "../types";
+import type {
+  ConceptScene,
+  CreateConcept,
+  Layout,
+  Pointer,
+  ShotMove,
+} from "../types";
+import { TablePlayView } from "./table-play";
+import {
+  copyPose,
+  makePose,
+  mixPose,
+  type Pose,
+  shotPose,
+} from "./table-shots";
+import {
+  clearing,
+  constellations,
+  moonbeam,
+  runeMap,
+  shootingStar,
+} from "./star-table-world";
 
 const SEATS = 10;
 
@@ -65,6 +73,7 @@ export const createStarTable: CreateConcept = ({
   palette: p,
   lite,
   variant,
+  displayFont,
 }) => {
   // The lobby framing as a fixed scene (thumbnails, the old lobby panel).
   // The stage passes a blend instead, and flies between the two.
@@ -87,7 +96,7 @@ export const createStarTable: CreateConcept = ({
     minY: 0.08,
   });
   scene.add(stars.object);
-  const sky = constellations(bin, p, lite);
+  const sky = constellations(bin, p, lite, SEATS);
   scene.add(sky.object);
   const shooter = shootingStar(bin, p);
   scene.add(shooter.object);
@@ -305,6 +314,10 @@ export const createStarTable: CreateConcept = ({
     7,
   );
 
+  // The game: the leader, the team and the quest cards, acted out.
+  const play = new TablePlayView(p, bin, scene, seating, displayFont);
+  const fireScale = fire.object.scale.x;
+
   let layout: Layout = { width: 1, height: 1, aspect: 1, wide: false };
   const look = new Vector3();
   const heroLook = new Vector3(0, 6.2, 0);
@@ -312,6 +325,53 @@ export const createStarTable: CreateConcept = ({
   // Which turn of the landing orbit the flight starts from, fixed while
   // flying so the camera takes the short way round and never jumps.
   let turns = 0;
+  // The framing past the landing: the lobby's, or a game shot, and the
+  // move between them (from where the camera was when the move began).
+  const framed = makePose();
+  const target = makePose();
+  const moveFrom = makePose();
+  let moveId = -1;
+  let shotNow: ShotMove = { to: null, progress: 1, id: 0 };
+  let blendNow = lobby ? 1 : 0;
+  const corners: Vector3[] = [];
+  const others = new Map<string, Vector3>();
+
+  /** The lobby's framing: the whole table from above, swaying gently. */
+  const lobbyPose = (out: Pose, time: number, pointer: Pointer): Pose => {
+    const tall = layout.aspect < 1.4;
+    out.az = Math.sin(time * 0.06) * 0.14 + pointer.x * 0.3;
+    out.dist = tall ? 15.5 : 14.5;
+    out.height = (tall ? 15 : 11.5) + pointer.y * 1.2;
+    out.look.copy(lobbyLook);
+    // Tighter on a phone so the figures read, wider beside a wide screen's
+    // panels so the whole table fits.
+    out.fov = layout.aspect >= 1.7 ? 38 : layout.width < 640 ? 40 : 46;
+    out.tallFov = 52;
+    return out;
+  };
+
+  /** Where the framing past the landing is now. */
+  const placeFrame = (time: number, pointer: Pointer, shot: ShotMove) => {
+    if (shot.to)
+      shotPose(target, shot.to, {
+        layout,
+        standing: seating.standing(),
+        teamIds: play.teamIds(),
+        youAz: play.youAzimuth(),
+        cardCorners: play.cardCorners(corners),
+        time,
+        pointer,
+      });
+    else lobbyPose(target, time, pointer);
+    if (shot.id !== moveId) {
+      // A new move starts where the camera is (the first one: a cut).
+      if (moveId < 0) copyPose(moveFrom, target);
+      else copyPose(moveFrom, framed);
+      moveId = shot.id;
+    }
+    if (shot.progress >= 1) copyPose(framed, target);
+    else mixPose(framed, moveFrom, target, easeInOut(shot.progress));
+  };
 
   const concept: ConceptScene = {
     scene,
@@ -320,22 +380,22 @@ export const createStarTable: CreateConcept = ({
     posterTime: 21,
     resize(next) {
       layout = next;
-      frame(lobby ? 1 : 0);
+      frame(blendNow);
     },
-    update({ time, dt, pointer, blend, flight }) {
+    update({ time, dt, pointer, blend, flight, shot }) {
       const b = blend ?? (lobby ? 1 : 0);
+      blendNow = b;
+      if (shot) shotNow = shot;
+      seating.update(dt, time);
+      play.update(dt, time, camera);
+      placeFrame(time, pointer, shotNow);
       frame(b);
-      const tall = layout.aspect < 1.4;
       // The landing: a slow orbit, low and wide.
       const heroAz = -0.4 + time * 0.03 + pointer.x * 0.45;
       const heroDist = layout.aspect < 1 ? 24 : 20;
       const heroH = 6.5 + pointer.y * 1.8 + Math.sin(time * 0.08) * 0.5;
-      // The lobby: looking down on the whole table, with a gentle sway.
-      const lobbyAz = Math.sin(time * 0.06) * 0.14 + pointer.x * 0.3;
-      const lobbyDist = tall ? 15.5 : 14.5;
-      const lobbyH = (tall ? 15 : 11.5) + pointer.y * 1.2;
       if (b <= 0 || b >= 1)
-        turns = Math.round((heroAz - lobbyAz) / (Math.PI * 2));
+        turns = Math.round((heroAz - framed.az) / (Math.PI * 2));
       const fromAz = heroAz - turns * Math.PI * 2;
       // Mid-flight the path bows: creating a room rises over the table and
       // drops onto it through the moonbeam; joining sweeps round low along
@@ -346,20 +406,21 @@ export const createStarTable: CreateConcept = ({
       const lift = path === "create" ? 15 : path === "join" ? -3.5 : 2;
       const reach = path === "create" ? -7 : path === "join" ? 3 : 3;
       const swing = path === "join" ? 1.1 : 0;
-      const az = mix(fromAz, lobbyAz, b) + swing * bow;
-      const distance = mix(heroDist, lobbyDist, b) + reach * bow;
-      const height = Math.max(2.4, mix(heroH, lobbyH, b) + lift * bow);
+      const az = mix(fromAz, framed.az, b) + swing * bow;
+      const distance = mix(heroDist, framed.dist, b) + reach * bow;
+      const height = Math.max(2.4, mix(heroH, framed.height, b) + lift * bow);
       camera.position.set(
         Math.sin(az) * distance,
         height,
         Math.cos(az) * distance,
       );
-      look.lerpVectors(heroLook, lobbyLook, b);
+      look.lerpVectors(heroLook, framed.look, b);
       if (path === "create") look.y += 1.5 * bow;
       camera.lookAt(look);
 
       front.intensity = 1.3 * b;
-      seating.update(dt, time);
+      // The fire burns low while the quest cards lie by it.
+      fire.object.scale.setScalar(fireScale * (1 - 0.5 * play.calm()));
 
       // On the landing, runes light one by one round the table, hold, then
       // all dim together. In the lobby they show who is seated and ready.
@@ -369,6 +430,7 @@ export const createStarTable: CreateConcept = ({
           ? smooth(0.72, 0.86, flight!.progress) *
             (1 - smooth(0.86, 1, flight!.progress))
           : 0;
+      const game = play.active();
       for (let i = 0; i < seats.length; i++) {
         const seat = seats[i]!;
         const on = Math.min(1, Math.max(0, (cycle * 14 - seat.phase) / 1.2));
@@ -381,8 +443,10 @@ export const createStarTable: CreateConcept = ({
         (seat.rune.material as MeshBasicMaterial).opacity =
           base + level * (1 - base);
         seat.glow.material.opacity = level * mix(0.55, 0.5, b);
+        // In the game every seat is "ready": the spokes dim, so the leader
+        // and the team stand out.
         (seat.spoke.material as ShaderMaterial).uniforms.uLevel!.value =
-          level * 0.9;
+          level * (game ? 0.3 : 0.9);
         // The stones sink as the camera comes down to the table.
         const h = mix(seat.tall, seat.low, b);
         seat.slab.scale.y = h / seat.tall;
@@ -399,28 +463,42 @@ export const createStarTable: CreateConcept = ({
     },
     settle() {
       seating.settle();
+      play.settle();
+      shotNow = { ...shotNow, progress: 1 };
+    },
+    setPlay(next) {
+      play.set(next);
+    },
+    pick(x, y) {
+      camera.updateMatrixWorld();
+      return play.pick(x, y, camera, layout);
     },
     anchors() {
-      return seating.anchors();
+      // Behind your seat, your own figure is the shoulder in the foreground:
+      // its tag would float over the others, so it has none.
+      const all = seating.anchors();
+      const you = play.youId();
+      if (shotNow.to !== "role" || !you || !all.has(you)) return all;
+      others.clear();
+      for (const [id, at] of all) if (id !== you) others.set(id, at);
+      return others;
     },
     seated() {
       return seating.seated();
     },
     dispose() {
+      play.dispose();
       seating.dispose();
       bin.addTree(scene);
       bin.dispose();
     },
   };
 
-  /** Lens and framing, from the landing's (0) to the lobby's (1). */
+  /** Lens, from the landing's (0) to the lobby's or the game shot's (1). */
   function frame(b: number): void {
-    // The lobby's lens: tighter on a phone so the figures read, wider beside
-    // a wide screen's panels so the whole table fits.
-    const lobbyFov = layout.aspect >= 1.7 ? 38 : layout.width < 640 ? 40 : 46;
     frameCamera(camera, layout, {
-      fov: mix(54, lobbyFov, b),
-      tallFov: mix(66, 52, b),
+      fov: mix(54, framed.fov, b),
+      tallFov: mix(66, framed.tallFov, b),
       shift: 0.16 * (1 - b),
     });
   }
@@ -443,277 +521,8 @@ export const createStarTable: CreateConcept = ({
   return concept;
 };
 
-/** The forest floor: dark, faceted, lit warm round the table. */
-function clearing(bin: Bin, p: Palette): Mesh {
-  const geometry = new PlaneGeometry(180, 180, 90, 90).toNonIndexed();
-  geometry.rotateX(-Math.PI / 2);
-  const pos = geometry.getAttribute("position") as BufferAttribute;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const z = pos.getZ(i);
-    const d = Math.hypot(x, z);
-    const rise = d > 16 ? Math.min(6, (d - 16) * 0.12) : 0;
-    pos.setY(i, (fbm2(x * 0.12, z * 0.12) - 0.5) * 0.7 + rise);
-  }
-  const colors = new Float32Array(pos.count * 3);
-  const c = new Color();
-  for (let f = 0; f < pos.count / 3; f++) {
-    let x = 0;
-    let z = 0;
-    for (let v = 0; v < 3; v++) {
-      x += pos.getX(f * 3 + v) / 3;
-      z += pos.getZ(f * 3 + v) / 3;
-    }
-    const d = Math.hypot(x, z);
-    if (d < 5) c.copy(p["ground-lit-2"]);
-    else if (d < 9)
-      c.copy(p["ground-lit-1"]).lerp(p["ground-lit-2"], (9 - d) / 4);
-    else c.copy(p.ground).lerp(p["ground-lit-1"], Math.max(0, (16 - d) / 7));
-    c.multiplyScalar(0.85 + fbm2(x * 0.5, z * 0.5) * 0.3);
-    for (let v = 0; v < 3; v++) colors.set([c.r, c.g, c.b], (f * 3 + v) * 3);
-  }
-  geometry.setAttribute("color", new BufferAttribute(colors, 3));
-  geometry.computeVertexNormals();
-  return new Mesh(
-    bin.add(geometry),
-    standard(bin, new Color(1, 1, 1), { vertexColors: true }),
-  );
-}
-
-/** A four-pointed sparkle, as on the banner, for the seat runes. */
-function runeMap(bin: Bin): CanvasTexture {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  ctx.translate(size / 2, size / 2);
-  ctx.fillStyle = "white";
-  ctx.fill(new Path2D(sparklePath(size * 0.42)));
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.arc(0, 0, size * 0.46, 0, Math.PI * 2);
-  ctx.stroke();
-  const texture = bin.add(new CanvasTexture(canvas));
-  texture.colorSpace = SRGBColorSpace;
-  return texture;
-}
-
-/** Ten constellations on a slowly turning dome, stars joined by faint lines. */
-function constellations(bin: Bin, p: Palette, lite: boolean) {
-  const group = new Group();
-  const random = seededRandom(88);
-  const starPos: number[] = [];
-  const starCol: number[] = [];
-  const linePos: number[] = [];
-  const radius = 400;
-  const tints = [p.star, p["star-blue"], p["star-amber"], p["star-pink"]];
-  for (let k = 0; k < SEATS; k++) {
-    const az = (k / SEATS) * Math.PI * 2 + random() * 0.3;
-    const el = 0.36 + random() * 0.26;
-    const points: Vector3[] = [];
-    const n = 4 + Math.floor(random() * 4);
-    let a = az;
-    let e = el;
-    for (let i = 0; i < n; i++) {
-      a += (random() - 0.5) * 0.28;
-      e += (random() - 0.5) * 0.22;
-      const v = new Vector3(
-        Math.cos(e) * Math.cos(a),
-        Math.sin(e),
-        Math.cos(e) * Math.sin(a),
-      ).multiplyScalar(radius);
-      points.push(v);
-      starPos.push(v.x, v.y, v.z);
-      const t = tints[k % tints.length]!;
-      starCol.push(t.r, t.g, t.b);
-    }
-    for (let i = 1; i < points.length; i++) {
-      const from = points[i - 1]!;
-      const to = points[i]!;
-      linePos.push(from.x, from.y, from.z, to.x, to.y, to.z);
-    }
-  }
-  const lineGeo = bin.add(new BufferGeometry());
-  lineGeo.setAttribute(
-    "position",
-    new BufferAttribute(new Float32Array(linePos), 3),
-  );
-  const lineMat = bin.add(
-    new LineBasicMaterial({
-      color: p["star-blue"],
-      transparent: true,
-      opacity: 0.35,
-      blending: AdditiveBlending,
-      depthWrite: false,
-      fog: false,
-    }),
-  );
-  const lines = new LineSegments(lineGeo, lineMat);
-  group.add(lines);
-  const starGeo = bin.add(new BufferGeometry());
-  starGeo.setAttribute(
-    "position",
-    new BufferAttribute(new Float32Array(starPos), 3),
-  );
-  starGeo.setAttribute(
-    "color",
-    new BufferAttribute(new Float32Array(starCol), 3),
-  );
-  const starMat = bin.add(
-    new ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: AdditiveBlending,
-      vertexColors: true,
-      uniforms: {
-        uTime: { value: 0 },
-        uSize: {
-          value: (lite ? 9 : 11) * Math.min(window.devicePixelRatio || 1, 1.75),
-        },
-      },
-      vertexShader: /* glsl */ `
-        uniform float uTime, uSize; varying vec3 vColor; varying float vTw;
-        void main() {
-          vColor = color;
-          vTw = 0.75 + 0.25 * sin(uTime * 1.3 + position.x * 0.05);
-          gl_PointSize = uSize * vTw;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        varying vec3 vColor; varying float vTw;
-        void main() {
-          vec2 d = gl_PointCoord - 0.5;
-          float r = length(d) * 2.0;
-          float core = pow(max(0.0, 1.0 - r), 3.0);
-          float cross = max(0.0, 1.0 - abs(d.x) * 16.0) * max(0.0, 1.0 - abs(d.y) * 2.0)
-                      + max(0.0, 1.0 - abs(d.y) * 16.0) * max(0.0, 1.0 - abs(d.x) * 2.0);
-          gl_FragColor = vec4(vColor * 2.4 * vTw, core + cross * 0.6);
-        }
-      `,
-    }),
-  );
-  const pts = new Points(starGeo, starMat);
-  pts.frustumCulled = false;
-  group.add(pts);
-  return {
-    object: group,
-    update(time: number) {
-      group.rotation.y = time * 0.012;
-      starMat.uniforms.uTime!.value = time;
-      lineMat.opacity = 0.28 + 0.1 * Math.sin(time * 0.4);
-    },
-  };
-}
-
-/** A soft cone of moonlight falling on the table. */
-function moonbeam(bin: Bin, p: Palette) {
-  const geometry = bin.add(new CylinderGeometry(1.2, 4.8, 44, 48, 1, true));
-  geometry.translate(0, 22, 0);
-  const material = bin.add(
-    new ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: AdditiveBlending,
-      side: DoubleSide,
-      fog: false,
-      uniforms: {
-        uColor: { value: p.moon.clone().lerp(p["star-blue"], 0.5) },
-        uTime: { value: 0 },
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vNormal; varying vec3 vView; varying float vY;
-        void main() {
-          vec4 world = modelMatrix * vec4(position, 1.0);
-          vNormal = normalize(mat3(modelMatrix) * normal);
-          vView = normalize(cameraPosition - world.xyz);
-          vY = position.y / 44.0;
-          gl_Position = projectionMatrix * viewMatrix * world;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform vec3 uColor; uniform float uTime;
-        varying vec3 vNormal; varying vec3 vView; varying float vY;
-        void main() {
-          float edge = pow(abs(dot(normalize(vNormal), normalize(vView))), 2.0);
-          float fade = smoothstep(1.0, 0.25, vY) * smoothstep(0.0, 0.08, vY);
-          float shimmer = 0.85 + 0.15 * sin(uTime * 0.7 + vY * 9.0);
-          gl_FragColor = vec4(uColor * edge * fade * shimmer * 0.05, 1.0);
-        }
-      `,
-    }),
-  );
-  const mesh = new Mesh(geometry, material);
-  mesh.position.set(0, 0.4, 0);
-  mesh.rotation.z = 0.12;
-  mesh.renderOrder = 7;
-  return {
-    object: mesh,
-    update(time: number) {
-      material.uniforms.uTime!.value = time;
-    },
-  };
-}
-
-/** Now and then a shooting star crosses the dome. */
-function shootingStar(bin: Bin, p: Palette) {
-  const material = bin.add(
-    new ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: AdditiveBlending,
-      fog: false,
-      uniforms: { uColor: { value: p.star.clone() }, uLife: { value: 0 } },
-      vertexShader: /* glsl */ `
-        varying vec2 vUv;
-        void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform vec3 uColor; uniform float uLife; varying vec2 vUv;
-        void main() {
-          float a = pow(vUv.x, 3.0) * (1.0 - abs(vUv.y - 0.5) * 2.0);
-          float life = sin(uLife * 3.14159);
-          gl_FragColor = vec4(uColor * 2.5, a * life);
-        }
-      `,
-    }),
-  );
-  const mesh = new Mesh(bin.add(new PlaneGeometry(60, 1.2)), material);
-  mesh.visible = false;
-  const random = seededRandom(3);
-  let next = 2.5;
-  let start = -100;
-  const from = new Vector3();
-  const dir = new Vector3();
-  const xAxis = new Vector3();
-  const yAxis = new Vector3();
-  const zAxis = new Vector3();
-  const basis = new Matrix4();
-  return {
-    object: mesh,
-    update(time: number) {
-      if (time > next) {
-        start = time;
-        next = time + 6 + random() * 7;
-        const az = random() * Math.PI * 2;
-        from.set(Math.cos(az) * 220, 150 + random() * 60, Math.sin(az) * 220);
-        dir.set(-Math.sin(az), -0.35, Math.cos(az)).normalize();
-      }
-      const t = (time - start) / 1.1;
-      mesh.visible = t >= 0 && t <= 1;
-      if (!mesh.visible) return;
-      material.uniforms.uLife!.value = t;
-      mesh.position.copy(from).addScaledVector(dir, t * 120);
-      // The streak's long axis runs along its travel, its face to the centre.
-      xAxis.copy(dir);
-      zAxis.copy(mesh.position).negate().normalize();
-      yAxis.crossVectors(zAxis, xAxis).normalize();
-      zAxis.crossVectors(xAxis, yAxis);
-      basis.makeBasis(xAxis, yAxis, zAxis);
-      mesh.quaternion.setFromRotationMatrix(basis);
-    },
-  };
+function easeInOut(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
 function mix(a: number, b: number, t: number): number {

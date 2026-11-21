@@ -1,72 +1,16 @@
 import { ProtoLink as Link } from "@/design/proto-link";
 import { designPaths, type RoleVariant } from "@/design/directions";
-import { playerNames, roleViews } from "@/design/mock";
+import { roleViews } from "@/design/mock";
 import { ROLES } from "@/shared/roles";
-import type { GameView } from "@/shared/views";
-import { AlignmentTag } from "../alignment-tag";
-import { Constellation, constellationFor } from "../art/constellation";
 import { IconArrowRight, IconEyeOff } from "../icons";
-import { joinNames } from "../names";
 import { SoundLink } from "../sound-link";
+import { RoleFace } from "./role-face";
 import { SkyCard } from "./sky-card";
 
 const paths = designPaths("starlit");
 
-interface KnowledgeText {
-  title: string;
-  names: string | null;
-  /** Colour for the names: the alignment of the players named, not the viewer's. */
-  nameTone: string;
-  note: string | null;
-}
-
-/** What this role learned on the first night, in words, with names. */
-function describeKnowledge(view: GameView): KnowledgeText {
-  const { knowledge } = view.you;
-  const inPlay = view.settings.optionalRoles;
-  switch (knowledge.kind) {
-    case "merlin":
-      return {
-        title: "These players are Evil",
-        names: joinNames(playerNames(view, knowledge.evilIds)),
-        nameTone: "var(--evil)",
-        note: inPlay.includes("mordred")
-          ? "Mordred is in this game and stays hidden from you."
-          : null,
-      };
-    case "evil":
-      return {
-        title: "Your fellow Evil players",
-        names: joinNames(playerNames(view, knowledge.allyIds)),
-        nameTone: "var(--evil)",
-        note: inPlay.includes("oberon")
-          ? "Oberon is in this game. You do not know who he is."
-          : null,
-      };
-    case "percival":
-      return {
-        title: "One of these is Merlin",
-        names: joinNames(playerNames(view, knowledge.merlinCandidateIds)),
-        nameTone: "var(--ink)",
-        note: "The other is Morgana. You cannot tell them apart.",
-      };
-    case "none":
-      return {
-        title: "You know no one",
-        names: null,
-        nameTone: "var(--ink)",
-        note: null,
-      };
-  }
-}
-
 export function RoleScreen({ variant }: { variant: RoleVariant }) {
   const view = roleViews[variant];
-  const role = ROLES[view.you.role];
-  const { alignment } = view.you;
-  const knowledge = describeKnowledge(view);
-  const figure = constellationFor(view.you.role, alignment);
-  const tone = alignment === "good" ? "var(--good)" : "var(--evil)";
   const confirmed =
     view.phase.name === "role_reveal" ? view.phase.confirmedIds : [];
   const other: RoleVariant = variant === "merlin" ? "assassin" : "merlin";
@@ -91,40 +35,7 @@ export function RoleScreen({ variant }: { variant: RoleVariant }) {
 
       <div className="sl-arrive sl-seq lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <SkyCard>
-          <Constellation
-            figure={figure}
-            color={tone}
-            className="h-[5.25rem] w-auto lg:h-[10rem]"
-          />
-          <span className="text-ink-muted block text-[0.8125rem] font-extrabold tracking-[0.14em] uppercase">
-            {figure.name}
-          </span>
-          <span className="font-display text-ink mt-1.5 block text-[2.5rem] leading-none font-medium lg:mt-3 lg:text-[3.25rem]">
-            <span className="sr-only">You are </span>
-            {role.name}
-          </span>
-          <span className="mt-2.5 block">
-            <AlignmentTag alignment={alignment} size="lg" />
-          </span>
-          <span className="text-ink mt-2.5 mb-3 block text-base leading-snug lg:text-[1.0625rem]">
-            {role.summary}
-          </span>
-          <span className="sl-knowledge mt-auto">
-            <span className="text-ink-muted block text-base font-bold">
-              {knowledge.title}
-            </span>
-            {knowledge.names && (
-              <span
-                className="font-display block text-[1.625rem] leading-tight font-medium"
-                style={{ color: knowledge.nameTone }}
-              >
-                {knowledge.names}
-              </span>
-            )}
-            <span className="text-ink mt-1 block text-base leading-snug">
-              {knowledge.note ?? role.knowledge}
-            </span>
-          </span>
+          <RoleFace view={view} />
         </SkyCard>
       </div>
 

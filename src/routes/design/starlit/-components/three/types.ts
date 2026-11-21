@@ -73,6 +73,19 @@ export interface Frame {
   blend?: number;
   /** The stage only: the flight under way, if any. */
   flight?: Flight | null;
+  /** The stage only: the game's camera shot, and the move to it. */
+  shot?: ShotMove;
+}
+
+/**
+ * The camera's shot past the lobby. Null `to` is the lobby framing. A new
+ * `id` starts a move from wherever the camera is; `progress` runs 0 to 1 on
+ * the wall clock (1 at once for a cut).
+ */
+export interface ShotMove {
+  to: TableShot | null;
+  progress: number;
+  id: number;
 }
 
 export interface Layout {
@@ -93,6 +106,8 @@ export interface SceneContext {
   lite: boolean;
   /** "lobby": framed on the whole table, seats show the players given. */
   variant: "hero" | "lobby";
+  /** The theme's display font (a CSS font-family), for words drawn in 3D. */
+  displayFont?: string;
 }
 
 export interface ConceptScene {

@@ -23,7 +23,7 @@ export type SeatStatus =
   | "choosing"
   | "away";
 
-const STATUS: Record<
+export const STATUS: Record<
   SeatStatus,
   { label: string; tone: string; icon: (props: { size?: number }) => ReactNode }
 > = {

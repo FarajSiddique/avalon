@@ -61,7 +61,8 @@ component tokens. A theme sets the semantic layer.
 - Fonts are open-licensed and self-hosted with Fontsource packages. Artwork is original CSS and
   inline SVG, or open-licensed with the licence noted in the spec. No emoji as icons.
 - The one exception: the landing hero, and the stage the landing shares with the lobby,
-  may be a WebGL scene built with three.js (the 3D concepts in
+  the role card and the table (one scene, see "The game at the table" in
+  `docs/design/starlit.md`), may be a WebGL scene built with three.js (the 3D concepts in
   `src/routes/design/starlit/-components/three`, the stage in `-components/stage`). It is
   loaded lazily in the browser only, colours come from the `--art-*` tokens at runtime, it
   holds still (and cuts instead of flying) under reduced motion, it is decorative (what it

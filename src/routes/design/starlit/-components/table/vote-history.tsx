@@ -34,7 +34,14 @@ export function TallyChip({ record }: { record: ProposalRecord }) {
 }
 
 /** Every finished team vote, newest first, with how each player voted. */
-export function VoteHistory({ view }: { view: GameView }) {
+export function VoteHistory({
+  view,
+  bare = false,
+}: {
+  view: GameView;
+  /** Inside another section (a disclosure): no panel and no heading. */
+  bare?: boolean;
+}) {
   const attempts = new Map<number, number>();
   const records = view.proposals.map((record) => {
     const attempt = (attempts.get(record.questIndex) ?? 0) + 1;
@@ -43,10 +50,19 @@ export function VoteHistory({ view }: { view: GameView }) {
   });
 
   return (
-    <section aria-label="Vote history" className="sl-panel p-4 lg:p-5">
-      <h2 className="font-display text-[1.375rem] font-medium">Vote history</h2>
+    <section
+      aria-label="Vote history"
+      className={bare ? undefined : "sl-panel p-4 lg:p-5"}
+    >
+      {bare ? null : (
+        <h2 className="font-display text-[1.375rem] font-medium">
+          Vote history
+        </h2>
+      )}
       {records.length === 0 ? (
-        <p className="text-ink-muted mt-2 text-base">No team votes yet.</p>
+        <p className={`text-ink-muted text-base ${bare ? "" : "mt-2"}`}>
+          No team votes yet.
+        </p>
       ) : (
         <ol className="mt-1" reversed>
           {[...records].reverse().map(({ record, attempt }) => (

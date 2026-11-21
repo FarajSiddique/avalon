@@ -13,6 +13,8 @@ import { readPalette, readPaletteSource } from "./palette";
 import type {
   ConceptScene,
   CreateConcept,
+  Flight,
+  FlightPath,
   Layout,
   Pointer,
   TablePlayer,
@@ -47,13 +49,53 @@ export interface MountOptions {
    * a player id. Each is moved above that player's head every frame.
    */
   overlay?: HTMLElement | null;
+  /**
+   * The stage: one Star Table shared by the landing (blend 0) and the lobby
+   * (blend 1). `setTarget` moves it between them.
+   */
+  stage?: { blend: 0 | 1; onPhase?: (phase: StagePhase) => void };
+}
+
+/** A rectangle in the canvas, in CSS pixels from its top left. */
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Where the stage is: settled on one framing, or flying between them. */
+export type StagePhase = "hero" | "lobby" | "flying";
+
+/** What the stage should show. Null rects mean the whole canvas. */
+export interface StageTarget {
+  mode: "hero" | "lobby";
+  /** The way to fly there. Defaults to "create" (to the lobby) or "back". */
+  path?: FlightPath;
+  /** Where the scene's own frame sits in the canvas: the open space. */
+  focus: Rect | null;
+  /** The part of the canvas that shows; the rest is masked away. */
+  reveal: Rect | null;
+  /** Pixels of soft fade at the top of the revealed part. */
+  fade: number;
+  /** Fly there (false: cut, as on a first load). */
+  animate: boolean;
 }
 
 export interface Mounted {
   stop(): void;
   /** Lobby: change who is at the table without remounting. */
   setPlayers(players: readonly TablePlayer[]): void;
+  /** The stage only: change framing, flying when asked to. */
+  setTarget(target: StageTarget): void;
 }
+
+/** Seconds each flight takes, by the wall clock. */
+const FLIGHT_SECONDS: Record<FlightPath, number> = {
+  create: 3,
+  join: 3.4,
+  back: 1.9,
+};
 
 /**
  * Put a 3D concept into `host`. Returns its controls, or null when the
@@ -122,6 +164,101 @@ export async function mountConcept(
   applyBloom();
 
   let layout: Layout = { width: 1, height: 1, aspect: 1, wide: false };
+  /** The canvas, in CSS pixels. */
+  const size = { width: 1, height: 1 };
+
+  /* ---- the stage: framing, flights, the reveal mask ---- */
+  const stage = options.stage;
+  let blend: number = stage?.blend ?? 0;
+  let aim: StageTarget | null = null;
+  let flight:
+    | (Flight & {
+        from: number;
+        to: number;
+        seconds: number;
+        focusFrom: Rect;
+        revealFrom: Rect;
+        fadeFrom: number;
+      })
+    | null = null;
+  const whole = (): Rect => ({ x: 0, y: 0, w: size.width, h: size.height });
+  let focus: Rect = whole();
+  let reveal: Rect = whole();
+  let fade = 0;
+  let phase: StagePhase | null = null;
+  const report = (next: StagePhase) => {
+    if (next === phase) return;
+    phase = next;
+    host.dataset.stage = next;
+    stage?.onPhase?.(next);
+  };
+  const frameInfo = () => ({
+    blend: stage ? blend : undefined,
+    flight: flight ? { path: flight.path, progress: flight.progress } : null,
+  });
+  /** Advance the flight by `seconds` of wall clock, then frame the camera. */
+  const applyStage = (seconds: number, force = false) => {
+    if (!stage) return;
+    if (flight)
+      flight.progress = Math.min(1, flight.progress + seconds / flight.seconds);
+    const progress = flight?.progress ?? 1;
+    const along = easeInOut(progress);
+    // The reveal opens faster than the camera travels.
+    const opening = easeInOut(Math.min(1, progress * 1.6));
+    const toFocus = aim?.focus ?? whole();
+    const toReveal = aim?.reveal ?? whole();
+    const toFade = aim?.fade ?? 0;
+    if (flight) {
+      blend = flight.from + (flight.to - flight.from) * along;
+      focus = mixRect(flight.focusFrom, toFocus, opening);
+      reveal = mixRect(flight.revealFrom, toReveal, opening);
+      fade = flight.fadeFrom + (toFade - flight.fadeFrom) * opening;
+      if (flight.progress >= 1) {
+        blend = flight.to;
+        flight = null;
+        report(blend >= 1 ? "lobby" : "hero");
+      }
+    } else {
+      focus = toFocus;
+      reveal = toReveal;
+      fade = toFade;
+    }
+    const w = Math.max(1, focus.w);
+    const h = Math.max(1, focus.h);
+    const aspect = w / h;
+    const next: Layout = {
+      width: w,
+      height: h,
+      aspect,
+      wide: options.backdrop && aspect > 1.25 && w >= 1024,
+    };
+    if (
+      force ||
+      next.width !== layout.width ||
+      next.height !== layout.height ||
+      next.wide !== layout.wide
+    ) {
+      layout = next;
+      concept.resize(layout);
+    }
+    // The scene frames itself for the focus; this places that frame in the
+    // canvas, and the rest of the canvas shows the world around it.
+    concept.camera.setViewOffset(
+      w,
+      h,
+      -focus.x,
+      -focus.y,
+      size.width,
+      size.height,
+    );
+    const style = host.style;
+    style.setProperty("--reveal-x", `${reveal.x.toFixed(1)}px`);
+    style.setProperty("--reveal-y", `${reveal.y.toFixed(1)}px`);
+    style.setProperty("--reveal-w", `${reveal.w.toFixed(1)}px`);
+    style.setProperty("--reveal-h", `${reveal.h.toFixed(1)}px`);
+    style.setProperty("--reveal-fade", `${fade.toFixed(1)}px`);
+  };
+
   const resize = () => {
     const width = Math.max(1, host.clientWidth);
     const height = Math.max(1, host.clientHeight);
@@ -131,14 +268,19 @@ export async function mountConcept(
     composer.setPixelRatio(dpr);
     composer.setSize(width, height);
     bloom.resolution.set((width * dpr) / 2, (height * dpr) / 2);
-    const aspect = width / height;
-    layout = {
-      width,
-      height,
-      aspect,
-      wide: options.backdrop && aspect > 1.25 && width >= 1024,
-    };
-    concept.resize(layout);
+    size.width = width;
+    size.height = height;
+    if (stage) applyStage(0, true);
+    else {
+      const aspect = width / height;
+      layout = {
+        width,
+        height,
+        aspect,
+        wide: options.backdrop && aspect > 1.25 && width >= 1024,
+      };
+      concept.resize(layout);
+    }
     if (!running) renderOnce();
   };
 
@@ -181,12 +323,15 @@ export async function mountConcept(
       }
       tags.push({
         el,
-        x: ((projected.x + 1) / 2) * layout.width,
-        y: ((1 - projected.y) / 2) * layout.height,
+        x: ((projected.x + 1) / 2) * size.width,
+        y: ((1 - projected.y) / 2) * size.height,
         depth: projected.z,
       });
     }
     tags.sort((a, b) => a.depth - b.depth);
+    // On the stage, tags come in as the camera arrives at the table.
+    const arrived = stage ? Math.min(1, Math.max(0, (blend - 0.7) / 0.3)) : 1;
+    const tagOpacity = arrived.toFixed(2);
     const placed: {
       left: number;
       right: number;
@@ -208,8 +353,8 @@ export async function mountConcept(
         if (!hit) break;
         bottom = hit.top - 3;
       }
-      // Never off the top of the canvas.
-      bottom = Math.max(bottom, h + 4);
+      // Never off the top of the open space.
+      bottom = Math.max(bottom, (stage ? focus.y : 0) + h + 4);
       placed.push({
         left: tag.x - w / 2,
         right: tag.x + w / 2,
@@ -217,7 +362,7 @@ export async function mountConcept(
         bottom,
       });
       tag.el.style.transform = `translate(${tag.x.toFixed(1)}px, ${bottom.toFixed(1)}px) translate(-50%, -100%)`;
-      tag.el.style.opacity = "1";
+      tag.el.style.opacity = tagOpacity;
     }
     host.dataset.seated = String(concept.seated?.() ?? 0);
   };
@@ -229,8 +374,10 @@ export async function mountConcept(
 
   const tick = (now: number) => {
     frameId = requestAnimationFrame(tick);
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const elapsed = (now - last) / 1000;
+    const dt = Math.min(0.05, elapsed);
     last = now;
+    applyStage(Math.min(0.25, elapsed));
     time += dt / tempoOf();
     if (options.interactive && coarse) {
       target.x = Math.sin(time * 0.13) * 0.6;
@@ -239,7 +386,7 @@ export async function mountConcept(
     const ease = 1 - Math.exp(-dt * 2.5);
     pointer.x += (target.x - pointer.x) * ease;
     pointer.y += (target.y - pointer.y) * ease;
-    concept.update({ time, dt, pointer });
+    concept.update({ time, dt, pointer, ...frameInfo() });
     renderOnce();
   };
 
@@ -251,12 +398,14 @@ export async function mountConcept(
         time: concept.posterTime - (steps - i) / 30,
         dt: 1 / 30,
         pointer: { x: 0, y: 0 },
+        ...frameInfo(),
       });
     concept.settle?.();
     concept.update({
       time: concept.posterTime,
       dt: 1 / 30,
       pointer: { x: 0, y: 0 },
+      ...frameInfo(),
     });
     renderOnce();
   };
@@ -294,6 +443,7 @@ export async function mountConcept(
     renderPass.camera = concept.camera;
     applyBloom();
     concept.resize(layout);
+    applyStage(0, true);
     if (!running) still();
   };
 
@@ -312,7 +462,11 @@ export async function mountConcept(
     renderer.dispose();
     renderer.forceContextLoss();
     canvas.remove();
-    return { stop: () => image.remove(), setPlayers: () => undefined };
+    return {
+      stop: () => image.remove(),
+      setPlayers: () => undefined,
+      setTarget: () => undefined,
+    };
   }
 
   const resizeObserver = new ResizeObserver(resize);
@@ -356,8 +510,39 @@ export async function mountConcept(
     concept.setPlayers?.(next);
     if (running) return;
     if (motion.matches) concept.settle?.();
-    concept.update({ time, dt: 0, pointer });
+    concept.update({ time, dt: 0, pointer, ...frameInfo() });
     renderOnce();
+  };
+
+  const setTarget = (next: StageTarget) => {
+    if (!stage) return;
+    const was = aim?.mode ?? (blend >= 0.5 ? "lobby" : "hero");
+    aim = next;
+    const to = next.mode === "lobby" ? 1 : 0;
+    if (next.mode !== was || (!flight && blend !== to)) {
+      if (next.animate && !motion.matches) {
+        const path = next.path ?? (to === 1 ? "create" : "back");
+        flight = {
+          path,
+          progress: 0,
+          from: blend,
+          to,
+          seconds: FLIGHT_SECONDS[path] * Math.max(0.4, Math.abs(to - blend)),
+          focusFrom: { ...focus },
+          revealFrom: { ...reveal },
+          fadeFrom: fade,
+        };
+        report("flying");
+      } else {
+        flight = null;
+        blend = to;
+        report(next.mode);
+      }
+    } else if (flight && next.path) flight.path = next.path;
+    applyStage(0);
+    if (running) return;
+    if (motion.matches) still();
+    else renderOnce();
   };
 
   const stop = () => {
@@ -377,5 +562,19 @@ export async function mountConcept(
     renderer.forceContextLoss();
     canvas.remove();
   };
-  return { stop, setPlayers };
+  if (stage) report(blend >= 1 ? "lobby" : "hero");
+  return { stop, setPlayers, setTarget };
+}
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
+function mixRect(a: Rect, b: Rect, t: number): Rect {
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+    w: a.w + (b.w - a.w) * t,
+    h: a.h + (b.h - a.h) * t,
+  };
 }

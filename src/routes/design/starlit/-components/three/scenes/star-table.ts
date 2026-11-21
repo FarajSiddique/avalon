@@ -66,6 +66,8 @@ export const createStarTable: CreateConcept = ({
   lite,
   variant,
 }) => {
+  // The lobby framing as a fixed scene (thumbnails, the old lobby panel).
+  // The stage passes a blend instead, and flies between the two.
   const lobby = variant === "lobby";
   const bin = new Bin();
   const scene = new Scene();
@@ -94,12 +96,10 @@ export const createStarTable: CreateConcept = ({
   const moonLight = new DirectionalLight(p.moon, 1.4);
   moonLight.position.set(-10, 40, -6);
   scene.add(moonLight);
-  if (lobby) {
-    // A soft light from the viewer's side, so the figures read clearly.
-    const front = new DirectionalLight(p.moon, 1.3);
-    front.position.set(0, 14, 18);
-    scene.add(front);
-  }
+  // A soft light from the viewer's side in the lobby, so the figures read.
+  const front = new DirectionalLight(p.moon, lobby ? 1.3 : 0);
+  front.position.set(0, 14, 18);
+  scene.add(front);
 
   /* ---- the clearing ---- */
   scene.add(clearing(bin, p));
@@ -166,7 +166,16 @@ export const createStarTable: CreateConcept = ({
 
   /* ---- the ten seat stones, each with a rune ---- */
   const runeTexture = runeMap(bin);
-  const seats: { rune: Mesh; glow: Sprite; spoke: Mesh; phase: number }[] = [];
+  const seats: {
+    rune: Mesh;
+    glow: Sprite;
+    spoke: Mesh;
+    slab: Mesh;
+    /** Stone height on the landing, and lower in the lobby. */
+    tall: number;
+    low: number;
+    phase: number;
+  }[] = [];
   const spokeMat = bin.add(
     new ShaderMaterial({
       transparent: true,
@@ -192,8 +201,10 @@ export const createStarTable: CreateConcept = ({
     const seat = new Group();
     seat.position.set(Math.cos(a) * 6.4, 0, Math.sin(a) * 6.4);
     seat.lookAt(0, 0, 0);
-    // In the lobby the stones are low, so the figures stand clear of them.
-    const h = (lobby ? 1.0 : 1.6) + random() * (lobby ? 0.25 : 0.5);
+    // In the lobby the stones sink low, so the figures stand clear of them.
+    const r = random();
+    const h = 1.6 + r * 0.5;
+    const low = 1.0 + r * 0.25;
     const slab = new Mesh(
       bin.add(jitter(new BoxGeometry(1.3, h, 0.7, 2, 3, 1), 0.12, 60 + i)),
       i % 3 ? stone : shade,
@@ -226,7 +237,7 @@ export const createStarTable: CreateConcept = ({
     spoke.rotation.set(-Math.PI / 2, 0, -a);
     spoke.position.set(Math.cos(a) * 2.25, 1.13, Math.sin(a) * 2.25);
     table.add(spoke);
-    seats.push({ rune, glow, spoke, phase: i });
+    seats.push({ rune, glow, spoke, slab, tall: h, low, phase: i });
   }
 
   /* ---- the moonbeam, its dust, the mist and fireflies ---- */
@@ -283,21 +294,24 @@ export const createStarTable: CreateConcept = ({
   }
 
   // In the lobby, players stand at the seats, starting across the table.
-  const seating = lobby
-    ? new Seating(
-        p,
-        bin,
-        scene,
-        Array.from(
-          { length: SEATS },
-          (_, i) => (i / SEATS) * Math.PI * 2 + Math.PI / SEATS,
-        ),
-        7,
-      )
-    : null;
+  const seating = new Seating(
+    p,
+    bin,
+    scene,
+    Array.from(
+      { length: SEATS },
+      (_, i) => (i / SEATS) * Math.PI * 2 + Math.PI / SEATS,
+    ),
+    7,
+  );
 
   let layout: Layout = { width: 1, height: 1, aspect: 1, wide: false };
-  const look = lobby ? new Vector3(0, 1.5, -0.7) : new Vector3(0, 6.2, 0);
+  const look = new Vector3();
+  const heroLook = new Vector3(0, 6.2, 0);
+  const lobbyLook = new Vector3(0, 1.5, -0.7);
+  // Which turn of the landing orbit the flight starts from, fixed while
+  // flying so the camera takes the short way round and never jumps.
+  let turns = 0;
 
   const concept: ConceptScene = {
     scene,
@@ -306,77 +320,110 @@ export const createStarTable: CreateConcept = ({
     posterTime: 21,
     resize(next) {
       layout = next;
-      if (lobby)
-        frameCamera(camera, layout, { fov: 38, tallFov: 52, shift: 0 });
-      else frameCamera(camera, layout, { fov: 54, tallFov: 66, shift: 0.16 });
+      frame(lobby ? 1 : 0);
     },
-    update({ time, dt, pointer }) {
-      if (lobby) {
-        // Looking down on the whole table, with a gentle sway.
-        const sway = Math.sin(time * 0.06) * 0.14 + pointer.x * 0.3;
-        const distance = layout.aspect < 1.4 ? 15.5 : 14.5;
-        camera.position.set(
-          Math.sin(sway) * distance,
-          (layout.aspect < 1.4 ? 15 : 11.5) + pointer.y * 1.2,
-          Math.cos(sway) * distance,
-        );
-        camera.lookAt(look);
-        seating!.update(dt, time);
-        seats.forEach((seat, i) => {
-          const s = seating!.state(i);
-          const level =
-            !s.present || s.away ? 0.05 : s.ready ? s.arrive : 0.3 * s.arrive;
-          (seat.rune.material as MeshBasicMaterial).opacity =
-            0.12 + level * 0.88;
-          seat.glow.material.opacity = level * 0.5;
-          (seat.spoke.material as ShaderMaterial).uniforms.uLevel!.value =
-            level * 0.9;
-        });
-        ringMat.opacity = 0.55;
-        tick(time, dt);
-        return;
-      }
-      const azimuth = -0.4 + time * 0.03 + pointer.x * 0.45;
-      const distance = layout.aspect < 1 ? 24 : 20;
-      const height = 6.5 + pointer.y * 1.8 + Math.sin(time * 0.08) * 0.5;
+    update({ time, dt, pointer, blend, flight }) {
+      const b = blend ?? (lobby ? 1 : 0);
+      frame(b);
+      const tall = layout.aspect < 1.4;
+      // The landing: a slow orbit, low and wide.
+      const heroAz = -0.4 + time * 0.03 + pointer.x * 0.45;
+      const heroDist = layout.aspect < 1 ? 24 : 20;
+      const heroH = 6.5 + pointer.y * 1.8 + Math.sin(time * 0.08) * 0.5;
+      // The lobby: looking down on the whole table, with a gentle sway.
+      const lobbyAz = Math.sin(time * 0.06) * 0.14 + pointer.x * 0.3;
+      const lobbyDist = tall ? 15.5 : 14.5;
+      const lobbyH = (tall ? 15 : 11.5) + pointer.y * 1.2;
+      if (b <= 0 || b >= 1)
+        turns = Math.round((heroAz - lobbyAz) / (Math.PI * 2));
+      const fromAz = heroAz - turns * Math.PI * 2;
+      // Mid-flight the path bows: creating a room rises over the table and
+      // drops onto it through the moonbeam; joining sweeps round low along
+      // the edge of the clearing (inside the trees, which start at 27), as
+      // if walking up to the fire.
+      const bow = Math.sin(Math.PI * b);
+      const path = flight?.path;
+      const lift = path === "create" ? 15 : path === "join" ? -3.5 : 2;
+      const reach = path === "create" ? -7 : path === "join" ? 3 : 3;
+      const swing = path === "join" ? 1.1 : 0;
+      const az = mix(fromAz, lobbyAz, b) + swing * bow;
+      const distance = mix(heroDist, lobbyDist, b) + reach * bow;
+      const height = Math.max(2.4, mix(heroH, lobbyH, b) + lift * bow);
       camera.position.set(
-        Math.sin(azimuth) * distance,
+        Math.sin(az) * distance,
         height,
-        Math.cos(azimuth) * distance,
+        Math.cos(az) * distance,
       );
+      look.lerpVectors(heroLook, lobbyLook, b);
+      if (path === "create") look.y += 1.5 * bow;
       camera.lookAt(look);
 
-      // Runes light one by one round the table, hold, then all dim together.
+      front.intensity = 1.3 * b;
+      seating.update(dt, time);
+
+      // On the landing, runes light one by one round the table, hold, then
+      // all dim together. In the lobby they show who is seated and ready.
       const cycle = (time % 16) / 16;
-      for (const seat of seats) {
+      const flare =
+        path === "create"
+          ? smooth(0.72, 0.86, flight!.progress) *
+            (1 - smooth(0.86, 1, flight!.progress))
+          : 0;
+      for (let i = 0; i < seats.length; i++) {
+        const seat = seats[i]!;
         const on = Math.min(1, Math.max(0, (cycle * 14 - seat.phase) / 1.2));
-        const level = cycle > 0.85 ? on * (1 - (cycle - 0.85) / 0.15) : on;
-        (seat.rune.material as MeshBasicMaterial).opacity = 0.15 + level * 0.85;
-        seat.glow.material.opacity = level * 0.55;
+        const heroLevel = cycle > 0.85 ? on * (1 - (cycle - 0.85) / 0.15) : on;
+        const s = seating.state(i);
+        const lobbyLevel =
+          !s.present || s.away ? 0.05 : s.ready ? s.arrive : 0.3 * s.arrive;
+        const level = Math.min(1, mix(heroLevel, lobbyLevel, b) + flare);
+        const base = mix(0.15, 0.12, b);
+        (seat.rune.material as MeshBasicMaterial).opacity =
+          base + level * (1 - base);
+        seat.glow.material.opacity = level * mix(0.55, 0.5, b);
         (seat.spoke.material as ShaderMaterial).uniforms.uLevel!.value =
           level * 0.9;
+        // The stones sink as the camera comes down to the table.
+        const h = mix(seat.tall, seat.low, b);
+        seat.slab.scale.y = h / seat.tall;
+        seat.slab.position.y = h / 2 - 0.1;
+        seat.rune.position.y = h * 0.62;
+        seat.glow.position.y = h * 0.62;
       }
-      ringMat.opacity = 0.35 + 0.35 * Math.min(1, cycle * 1.3);
+      const heroRing = 0.35 + 0.35 * Math.min(1, cycle * 1.3);
+      ringMat.opacity = Math.min(1, mix(heroRing, 0.55, b) + flare * 0.6);
       tick(time, dt);
     },
     setPlayers(players) {
-      seating?.set(players);
+      seating.set(players);
     },
     settle() {
-      seating?.settle();
+      seating.settle();
     },
     anchors() {
-      return seating?.anchors() ?? new Map();
+      return seating.anchors();
     },
     seated() {
-      return seating?.seated() ?? 0;
+      return seating.seated();
     },
     dispose() {
-      seating?.dispose();
+      seating.dispose();
       bin.addTree(scene);
       bin.dispose();
     },
   };
+
+  /** Lens and framing, from the landing's (0) to the lobby's (1). */
+  function frame(b: number): void {
+    // The lobby's lens: tighter on a phone so the figures read, wider beside
+    // a wide screen's panels so the whole table fits.
+    const lobbyFov = layout.aspect >= 1.7 ? 38 : layout.width < 640 ? 40 : 46;
+    frameCamera(camera, layout, {
+      fov: mix(54, lobbyFov, b),
+      tallFov: mix(66, 52, b),
+      shift: 0.16 * (1 - b),
+    });
+  }
 
   /** The ambient life of the clearing, shared by both framings. */
   function tick(time: number, dt: number): void {
@@ -667,4 +714,13 @@ function shootingStar(bin: Bin, p: Palette) {
       mesh.quaternion.setFromRotationMatrix(basis);
     },
   };
+}
+
+function mix(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function smooth(from: number, to: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - from) / (to - from)));
+  return t * t * (3 - 2 * t);
 }

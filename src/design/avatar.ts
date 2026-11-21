@@ -63,6 +63,13 @@ export const EMBLEM_LABELS: Record<Emblem, string> = {
   key: "Key",
 };
 
+/** "Indigo cloak, hood, star emblem": a look in words, for a closed section. */
+export function lookSummary(look: Avatar): string {
+  const headwear = HEADWEAR_LABELS[look.headwear].toLowerCase();
+  const emblem = EMBLEM_LABELS[look.emblem].toLowerCase();
+  return `${CLOAK_LABELS[look.cloak]} cloak, ${headwear}, ${emblem} emblem`;
+}
+
 /** The art token each cloak is dyed with (never --good or --evil). */
 export const CLOAK_TOKENS: Record<Cloak, string> = {
   rose: "--art-tent-stripe",

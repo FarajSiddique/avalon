@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   CLOAKS,
   CLOAK_LABELS,
@@ -20,13 +20,9 @@ import { IconCheck, IconMoon, IconSun } from "../icons";
  */
 export function AvatarMaker() {
   const look = useAvatar();
-  const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className="sl-panel p-5">
-      <h2 id={headingId} className="font-display text-2xl font-medium">
-        Your look
-      </h2>
-      <p className="text-ink-muted mt-1 text-base leading-snug">
+    <div>
+      <p className="text-ink-muted text-base leading-snug">
         How you appear at the table. Nobody can tell anything about your role
         from it.
       </p>
@@ -79,7 +75,7 @@ export function AvatarMaker() {
           </button>
         ))}
       </Picker>
-    </section>
+    </div>
   );
 }
 

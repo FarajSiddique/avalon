@@ -13,6 +13,8 @@ import {
 import { NightSky } from "./-components/art/night-sky";
 import { SceneArtContext } from "./-components/art/scene-context";
 import { SoundToggle } from "./-components/sound-toggle";
+import { Stage } from "./-components/stage/stage";
+import { StageProvider } from "./-components/stage/stage-context";
 import "./-fonts.css";
 import "./-theme.css";
 import "./-motion.css";
@@ -34,9 +36,12 @@ function Layout() {
     <div className="theme-starlit bg-canvas font-body text-ink relative isolate flex min-h-dvh flex-1 flex-col">
       <DesignNav direction="starlit" extra={EXTRA_SCREENS} />
       <TweakedSky />
-      <TweakedArt>
-        <Outlet />
-      </TweakedArt>
+      <StageProvider>
+        <Stage />
+        <TweakedArt>
+          <Outlet />
+        </TweakedArt>
+      </StageProvider>
       <SoundToggle />
     </div>
   );

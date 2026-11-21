@@ -356,6 +356,22 @@ test("a 3D landing hero mounts its canvas without errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+/** Open a collapsible lobby section if it is closed. */
+async function openSection(page: Page, name: string): Promise<void> {
+  const summary = page.locator(
+    `[data-section="${name}"] button[aria-expanded]`,
+  );
+  if ((await summary.getAttribute("aria-expanded")) !== "true")
+    await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "true");
+}
+
+const TABLE_HERO = JSON.stringify({
+  version: 1,
+  name: "x",
+  scene: { hero: "table" },
+});
+
 test("the lobby table seats everyone, takes newcomers and keeps your look", async ({
   page,
 }) => {
@@ -365,32 +381,139 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
   await page.goto("/design/starlit/lobby");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  const table = page.locator('section[aria-label="The table"]');
-  const stage = table.locator("[data-concept]");
+  const stage = page.locator("[data-stage-host]");
   await expect(stage.locator("canvas")).toBeVisible({ timeout: 60_000 });
+  // Opened directly, the lobby is already settled: no flight.
+  await expect(stage).toHaveAttribute("data-stage", "lobby");
   // The mock lobby has seven players; the engine reports who is standing.
   await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
-  await expect(table.locator("[data-tag]")).toHaveCount(7);
-  await expect(table.locator('[data-tag="p-wren"]')).toContainText("You");
+  await expect(page.locator("[data-tag]")).toHaveCount(7);
+  await expect(page.locator('[data-tag="p-wren"]')).toContainText("You");
 
+  await openSection(page, "players");
   await page.getByRole("button", { name: "Prototype: someone joins" }).click();
-  await table.scrollIntoViewIfNeeded();
   await expect(stage).toHaveAttribute("data-seated", "8", { timeout: 60_000 });
   await page.getByRole("button", { name: "Prototype: someone leaves" }).click();
-  await table.scrollIntoViewIfNeeded();
   await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
 
   // A look chosen in "Your look" is kept for next time.
+  await openSection(page, "look");
   const helm = page.locator('[data-look="headwear:helm"]');
   await helm.click();
   await page.locator('[data-look="cloak:moss"]').click();
   await expect(helm).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.locator('[data-section="look"] button[aria-expanded]'),
+  ).toContainText("Moss cloak, helm");
   await page.reload();
+  await openSection(page, "look");
   await expect(helm).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-look="cloak:moss"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
+  expect(errors).toEqual([]);
+});
+
+test("lobby sections open and close, and say their state when closed", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/design/starlit/lobby");
+  const players = page.locator('[data-section="players"]');
+  const summary = players.locator("button[aria-expanded]");
+  // On a phone every section starts closed, so the table shows.
+  await expect(summary).toHaveAttribute("aria-expanded", "false");
+  await expect(summary).toContainText("7 of 10, 5 ready, 1 away");
+  await expect(
+    players.getByRole("button", { name: "Prototype: someone joins" }),
+  ).toBeHidden();
+  await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    players.getByRole("button", { name: "Prototype: someone joins" }),
+  ).toBeVisible();
+  await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "false");
+  // The room code, the blockers and the actions are always in view.
+  await expect(
+    page.locator('section[aria-label="Room code"]:visible'),
+  ).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "I'm ready" })).toBeVisible();
+});
+
+test("creating a room flies the camera from the landing into a new lobby", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto("/design/starlit");
+  await page.evaluate((t) => {
+    localStorage.clear();
+    localStorage.setItem("avalon:starlit-tweaks:v1", t);
+  }, TABLE_HERO);
+  await page.reload();
+  const stage = page.locator("[data-stage-host]");
+  await expect(stage).toHaveAttribute("data-stage", "hero", {
+    timeout: 60_000,
+  });
+  await page.getByLabel("Your name").fill("Faraj");
+  await page.getByRole("link", { name: "Create a room" }).click();
+  // The same scene flies on: it never unmounts on the way.
+  await expect(stage).toHaveAttribute("data-stage", "flying");
+  await expect(
+    page.getByRole("heading", { name: "Gather at the fire" }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page).toHaveURL(/via=create/);
+  await expect(stage).toHaveAttribute("data-stage", "lobby", {
+    timeout: 60_000,
+  });
+  // You host a new room; friends arrive one by one.
+  await expect(page.locator('[data-tag="p-wren"]')).toContainText("Faraj");
+  await expect(page.getByText("4 more players are needed.")).toBeVisible();
+  await expect(page.locator("[data-tag]")).toHaveCount(2, { timeout: 30_000 });
+
+  // Back to the landing: the camera flies back out.
+  await page.getByRole("link", { name: "Landing", exact: true }).click();
+  await expect(stage).toHaveAttribute("data-stage", "hero", {
+    timeout: 60_000,
+  });
+  await expect(page.getByRole("link", { name: "Create a room" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("joining a room flies in to someone else's table as a guest", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto("/design/starlit");
+  await page.evaluate((t) => {
+    localStorage.clear();
+    localStorage.setItem("avalon:starlit-tweaks:v1", t);
+  }, TABLE_HERO);
+  await page.reload();
+  const stage = page.locator("[data-stage-host]");
+  await expect(stage).toHaveAttribute("data-stage", "hero", {
+    timeout: 60_000,
+  });
+  await page.getByLabel("Room code").fill("rose");
+  await page.getByRole("link", { name: "Join" }).click();
+  await expect(page).toHaveURL(/via=join/, { timeout: 30_000 });
+  await expect(stage).toHaveAttribute("data-stage", "lobby", {
+    timeout: 60_000,
+  });
+  await expect(page.getByText("You joined")).toBeVisible();
+  await expect(page.getByLabel("R O S E").first()).toBeAttached();
+  // A guest sees the settings but cannot change them, and cannot start.
+  await openSection(page, "settings");
+  await expect(page.getByRole("switch")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start" })).toHaveCount(0);
+  await expect(page.getByText("Ansel starts the game.").first()).toBeVisible();
+  // You arrive last, once the camera has landed.
+  await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
   expect(errors).toEqual([]);
 });
 

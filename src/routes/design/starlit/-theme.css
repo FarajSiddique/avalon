@@ -362,6 +362,128 @@
     mask-image: none;
   }
 
+  /*
+   * The stage: one live Star Table behind the landing and the lobby. The
+   * canvas is always the size of the screen; the engine moves a mask (the
+   * --reveal-* box) from the landing band to the whole screen as it flies.
+   */
+  .sl-backstage {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 0;
+    height: 100dvh;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .sl-backstage__canvas {
+    position: absolute;
+    inset: 0;
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      black var(--reveal-fade, 0px)
+    );
+    mask-position: var(--reveal-x, 0) var(--reveal-y, 0);
+    mask-size: var(--reveal-w, 100%) var(--reveal-h, 100%);
+    mask-repeat: no-repeat;
+  }
+
+  .sl-backstage__canvas canvas {
+    opacity: 0;
+    transition: opacity 900ms var(--ease-out);
+  }
+
+  .sl-backstage__canvas[data-stage] canvas {
+    opacity: 1;
+  }
+
+  .sl-backstage__tags {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* The landing steps aside while the camera flies to the lobby. */
+  .sl-landing > * {
+    transition:
+      opacity 360ms var(--ease-out),
+      transform 360ms var(--ease-out);
+  }
+
+  .sl-landing[data-leaving="true"] > * {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+  }
+
+  /* Lobby overlays arrive as the camera lands. */
+  .sl-overlay-in {
+    animation: sl-rise 600ms var(--ease-out) var(--arrive-at, 0ms) backwards;
+  }
+
+  /* Text straight over the 3D scene, kept readable without a panel. */
+  .sl-over-scene {
+    text-shadow:
+      0 1px 2px var(--starlit-night-950),
+      0 0 18px var(--starlit-night-950);
+  }
+
+  /* A collapsible section: a full-width summary row and a sliding body. */
+  .sl-disclosure + .sl-disclosure {
+    border-top: 1px dashed var(--line);
+  }
+
+  .sl-disclosure__summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 3.25rem;
+    padding: 0.5rem 0.25rem;
+    text-align: left;
+    color: var(--ink);
+    border-radius: var(--corner-sm);
+  }
+
+  .sl-disclosure__summary:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .sl-disclosure__chevron {
+    flex: none;
+    color: var(--ink-muted);
+    transition: transform 280ms var(--ease-out);
+  }
+
+  .sl-disclosure[data-open="true"] .sl-disclosure__chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Closed, the body is hidden outright once it has finished sliding shut. */
+  .sl-disclosure__body {
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-rows 320ms var(--ease-out),
+      visibility 0s linear 320ms;
+  }
+
+  .sl-disclosure[data-open="true"] > .sl-disclosure__body {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition:
+      grid-template-rows 320ms var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  .sl-disclosure__inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
   /* A player's name over their figure at the lobby table. */
   .sl-name-tag {
     display: flex;
@@ -1460,6 +1582,11 @@
     /* Pull back the trailing letter-space so the code sits optically centred. */
     margin-right: calc(var(--code-tracking) * -1);
     color: var(--ink);
+  }
+
+  .sl-code--compact {
+    font-size: 1.875rem;
+    white-space: nowrap;
   }
 }
 

@@ -488,6 +488,39 @@ to Claude. Code: `src/design/tweaks/`.
   `scenes/star-table.ts`. Player changes go to the running scene, so it is
   never rebuilt; a dial change rebuilds it with everyone already standing.
   Without WebGL the drawn campfire stands in.
+- **Landing to lobby: one stage, one flight.** With The Star Table as the
+  landing hero, the landing and the lobby share one live scene, mounted in
+  the Starlit layout (`-components/stage/`), so going from one to the other
+  is a camera flight rather than a page change. The canvas is always the
+  size of the screen. The scene frames itself for a "focus" box (the landing
+  band, or the open space beside the lobby's panels), and the camera's view
+  offset places that frame in the canvas. A CSS mask (`--reveal-*`, set by
+  the engine) shows only the band on the landing and opens to the whole
+  screen as the camera flies, so the renderer is never resized mid-flight.
+  On the way the seat stones sink, the front light comes up, the runes hand
+  over from their landing cycle to who is seated, and name tags fade in as
+  the camera arrives. **Create a room**: the camera rises over the table and
+  drops onto it through the moonbeam (3s); the room opens with only you,
+  you rise once the camera lands, and friends arrive one by one. **Join**:
+  the camera sweeps round low inside the clearing (3.4s), everyone is
+  already standing, and you rise last at your seat as a guest (no Start,
+  settings read-only). Going back flies out again (1.9s). Flights run on
+  the wall clock, so a slow device drops frames rather than slowing down.
+  The landing steps aside (360ms) before the lobby mounts mid-flight, and
+  the lobby's overlays rise in as the camera lands. A direct load or reload
+  of the lobby starts settled, with no flight; under reduced motion every
+  change is a cut. How you arrived is in the address (`?via=create|join`,
+  with `name` and `code`). With any other hero, the lobby mounts its own
+  stage and fades in.
+- **Lobby over the scene.** The table fills the screen. On a phone, the
+  title sits over the sky and a bottom sheet holds the room code, the
+  sections and the action bar; on a wide screen the title and code sit top
+  left and a rail on the right holds the sections. "Around the fire", "Your
+  look" and "Host settings" (a guest's "Game settings") open and close; each
+  says its state in words when closed ("7 of 10, 5 ready, 1 away"), since
+  the canvas and tags are decorative. The room code, the start blockers, I'm
+  ready and Start are always in view. On a phone every section starts
+  closed so the table shows; a wide screen opens the player list.
 - **Tuning tokens.** Values that were hardcoded are now tokens at their old
   values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel

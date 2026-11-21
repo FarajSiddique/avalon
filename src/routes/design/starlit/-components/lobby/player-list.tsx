@@ -44,14 +44,34 @@ export function PlayerList({
   view,
   onToggleReady,
   allReady = false,
+  bare = false,
 }: {
   view: LobbyView;
   onToggleReady: () => void;
   allReady?: boolean;
+  /**
+   * Inside a lobby section that has its own heading, and with the Ready
+   * button in the lobby's action bar instead.
+   */
+  bare?: boolean;
 }) {
   const you = view.players.find((player) => player.id === view.you.id);
   const youReady = you?.ready ?? false;
   const headingId = useId();
+
+  const list = (
+    <ul className={bare ? "" : "mt-3"} data-all-ready={allReady}>
+      {view.players.map((player, index) => (
+        <PlayerRow
+          key={player.id}
+          player={player}
+          index={index}
+          isYou={player.id === view.you.id}
+        />
+      ))}
+    </ul>
+  );
+  if (bare) return list;
 
   return (
     <section aria-labelledby={headingId} className="sl-panel p-5">
@@ -64,40 +84,7 @@ export function PlayerList({
         </p>
       </div>
 
-      <ul className="mt-3" data-all-ready={allReady}>
-        {view.players.map((player, index) => {
-          const isYou = player.id === view.you.id;
-          return (
-            <li
-              key={player.id}
-              className="border-line flex min-h-[3.75rem] items-center gap-3 border-t border-dashed py-2 first:border-t-0"
-            >
-              <span
-                aria-hidden="true"
-                style={{ "--i": index } as CSSProperties}
-                className={`sl-avatar sl-seq font-display grid size-11 flex-none place-items-center rounded-full border-[1.5px] text-xl font-semibold ${
-                  player.connected
-                    ? "border-line-strong bg-well text-ink"
-                    : "border-line bg-well text-ink-muted border-dashed"
-                }`}
-              >
-                {initialOf(player.name)}
-              </span>
-              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-lg font-bold">{player.name}</span>
-                {isYou && <span className="sl-chip text-accent-cool">You</span>}
-                {player.isHost && (
-                  <span className="sl-chip text-accent">
-                    <IconCrown size={14} />
-                    Host
-                  </span>
-                )}
-              </span>
-              <PlayerState key={stateKey(player)} player={player} />
-            </li>
-          );
-        })}
-      </ul>
+      {list}
 
       <button
         type="button"
@@ -116,5 +103,44 @@ export function PlayerList({
         I&apos;m ready
       </button>
     </section>
+  );
+}
+
+function PlayerRow({
+  player,
+  index,
+  isYou,
+}: {
+  player: SeatView;
+  index: number;
+  isYou: boolean;
+}) {
+  return (
+    <li className="border-line flex min-h-[3.75rem] items-center gap-3 border-t border-dashed py-2 first:border-t-0">
+      <span
+        aria-hidden="true"
+        style={{ "--i": index } as CSSProperties}
+        className={`sl-avatar sl-seq font-display grid size-11 flex-none place-items-center rounded-full border-[1.5px] text-xl font-semibold ${
+          player.connected
+            ? "border-line-strong bg-well text-ink"
+            : "border-line bg-well text-ink-muted border-dashed"
+        }`}
+      >
+        {initialOf(player.name)}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="min-w-0 truncate text-lg font-bold">
+          {player.name}
+        </span>
+        {isYou && <span className="sl-chip text-accent-cool">You</span>}
+        {player.isHost && (
+          <span className="sl-chip text-accent">
+            <IconCrown size={14} />
+            Host
+          </span>
+        )}
+      </span>
+      <PlayerState key={stateKey(player)} player={player} />
+    </li>
   );
 }

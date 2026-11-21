@@ -115,7 +115,7 @@ export function Hero3D({
  * A name over a figure's head. Positioned by the engine every frame. The
  * state is an icon, never colour alone; the player list says it in words.
  */
-function NameTag({ player }: { player: TablePlayer }) {
+export function NameTag({ player }: { player: TablePlayer }) {
   const icon = !player.connected ? (
     <IconMoon size={13} className="text-ink-muted shrink-0" />
   ) : player.ready ? (

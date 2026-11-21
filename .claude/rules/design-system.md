@@ -60,8 +60,10 @@ component tokens. A theme sets the semantic layer.
 - All motion stops under `prefers-reduced-motion: reduce`.
 - Fonts are open-licensed and self-hosted with Fontsource packages. Artwork is original CSS and
   inline SVG, or open-licensed with the licence noted in the spec. No emoji as icons.
-- The one exception: the landing hero may be a WebGL scene built with three.js (the 3D
-  concepts in `src/routes/design/starlit/-components/three`). It is loaded lazily in the
-  browser only, colours come from the `--art-*` tokens at runtime, it holds still under
-  reduced motion, and without WebGL it falls back to the drawn scene.
+- The one exception: the landing hero, and the stage the landing shares with the lobby,
+  may be a WebGL scene built with three.js (the 3D concepts in
+  `src/routes/design/starlit/-components/three`, the stage in `-components/stage`). It is
+  loaded lazily in the browser only, colours come from the `--art-*` tokens at runtime, it
+  holds still (and cuts instead of flying) under reduced motion, it is decorative (what it
+  shows is also said in text), and without WebGL it falls back to the drawn scene.
 - No UI kit. Components are hand-built on the tokens with native elements.

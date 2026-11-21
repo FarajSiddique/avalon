@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LandingArt } from "./-components/landing-art";
 import { LandingForm } from "./-components/landing-form";
+import { useStage } from "./-components/stage/stage-context";
 import { TitleMark } from "./-components/title-mark";
 
 function StarlitLandingPage() {
+  const { leaving } = useStage();
   return (
-    <main className="relative flex flex-1 flex-col lg:justify-center">
+    <main
+      className="sl-landing relative flex flex-1 flex-col lg:justify-center"
+      data-leaving={leaving}
+    >
       <header className="relative z-10 px-4 pt-7 pb-1 lg:px-[max(4rem,7vw)] lg:pt-0">
         <TitleMark />
         <p className="text-ink sl-rise sl-seq sl-title__lead mt-3 max-w-[30rem] text-[1.0625rem] leading-relaxed lg:text-xl">

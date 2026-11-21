@@ -145,8 +145,7 @@ for (const viewport of [
         );
       });
       await page.reload();
-      const table = page.locator('section[aria-label="The table"]');
-      const stage = table.locator("[data-concept]");
+      const stage = page.locator("[data-stage-host]");
       await expect(stage).toHaveAttribute("data-seated", "7", {
         timeout: 90_000,
       });
@@ -154,16 +153,20 @@ for (const viewport of [
       await page.screenshot({
         path: path.join(OUT, `13-lobby-${viewport.width}.png`),
       });
+      const players = page.locator(
+        '[data-section="players"] button[aria-expanded]',
+      );
+      if ((await players.getAttribute("aria-expanded")) !== "true")
+        await players.click();
       for (let i = 0; i < 3; i++)
         await page
           .getByRole("button", { name: "Prototype: someone joins" })
           .click();
-      await table.scrollIntoViewIfNeeded();
       await expect(stage).toHaveAttribute("data-seated", "10", {
         timeout: 90_000,
       });
       await page.waitForTimeout(1500);
-      await table.screenshot({
+      await page.screenshot({
         path: path.join(OUT, `13-lobby-ten-${viewport.width}.png`),
       });
     });

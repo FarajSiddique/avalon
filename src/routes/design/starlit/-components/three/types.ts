@@ -20,12 +20,28 @@ export interface Pointer {
   y: number;
 }
 
+/** How the camera travels from the landing to the lobby, or back. */
+export type FlightPath = "create" | "join" | "back";
+
+export interface Flight {
+  path: FlightPath;
+  /** 0 to 1 along the flight, by the wall clock. */
+  progress: number;
+}
+
 export interface Frame {
   /** Seconds since the scene started (scaled by the ambient tempo). */
   time: number;
   /** Seconds since the last frame, clamped. */
   dt: number;
   pointer: Pointer;
+  /**
+   * The stage only: 0 is the landing framing, 1 the lobby framing, and
+   * anything between is mid-flight. Unset, the variant decides.
+   */
+  blend?: number;
+  /** The stage only: the flight under way, if any. */
+  flight?: Flight | null;
 }
 
 export interface Layout {

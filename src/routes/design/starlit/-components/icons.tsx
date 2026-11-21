@@ -125,6 +125,14 @@ export function IconStar(props: IconProps) {
   );
 }
 
+export function IconChevronDown(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6 9.5l6 6 6-6" strokeWidth={2.2} />
+    </Icon>
+  );
+}
+
 export function IconCopy(props: IconProps) {
   return (
     <Icon {...props}>

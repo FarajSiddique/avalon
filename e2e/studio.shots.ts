@@ -1,6 +1,14 @@
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
+// Software WebGL, so the 3D landing concepts render in headless runs. Only
+// these files: it slows every other page's painting.
+test.use({
+  launchOptions: {
+    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+  },
+});
+
 /**
  * Screenshots of the tweak studio for docs/evidence/tweak-studio. Run with
  * `pnpm build && pnpm screenshots`.
@@ -107,6 +115,17 @@ test.describe("a shared dial on a phone", () => {
   });
 });
 
+/**
+ * The artwork contact sheet, once its three 3D thumbnails are drawn. In
+ * headless runs WebGL is software-rendered and each one takes seconds.
+ */
+async function openArtwork(page: Page): Promise<void> {
+  await page.goto("/design/starlit/artwork");
+  await expect(page.locator("[data-concept] img")).toHaveCount(3, {
+    timeout: 90_000,
+  });
+}
+
 /** Every artwork version, then a few combinations on the landing scene. */
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -116,10 +135,10 @@ for (const viewport of [
     test.use({ viewport });
 
     test("contact sheet and combinations", async ({ page }) => {
+      test.setTimeout(600_000);
       await page.goto("/design/starlit/artwork");
       await page.evaluate(() => localStorage.clear());
-      await page.reload();
-      await expect(page.locator("[data-variant]").first()).toBeVisible();
+      await openArtwork(page);
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(500);
       await page.screenshot({
@@ -145,8 +164,7 @@ for (const viewport of [
             `10-landing-${tent}-${fire}-${castle}-${viewport.width}.png`,
           ),
         });
-        await page.goto("/design/starlit/artwork");
-        await expect(page.locator("[data-variant]").first()).toBeVisible();
+        await openArtwork(page);
       }
 
       // Each whole-scene backdrop, with the original tent, fire and castle.
@@ -161,8 +179,21 @@ for (const viewport of [
         await page.screenshot({
           path: path.join(OUT, `11-backdrop-${backdrop}-${viewport.width}.png`),
         });
-        await page.goto("/design/starlit/artwork");
-        await expect(page.locator("[data-variant]").first()).toBeVisible();
+        await openArtwork(page);
+      }
+
+      // The three 3D concepts, as the still frame shown under reduced motion.
+      for (const hero of ["isle", "lake", "table"]) {
+        await page.locator(`[data-variant="hero:${hero}"]`).click();
+        await page.goto("/design/starlit");
+        await expect(
+          page.locator(`[data-concept="${hero}"] canvas`),
+        ).toBeVisible();
+        await page.waitForTimeout(2500);
+        await page.screenshot({
+          path: path.join(OUT, `12-hero-${hero}-${viewport.width}.png`),
+        });
+        await openArtwork(page);
       }
     });
   });

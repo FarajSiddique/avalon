@@ -249,6 +249,7 @@ describe("artwork versions", () => {
 
   it("default to the original drawings and reject unknown versions", () => {
     expect(sanitizeState({}).scene).toEqual({
+      hero: "drawn",
       backdrop: "vale",
       tent: "pavilion",
       fire: "crossed",
@@ -258,6 +259,7 @@ describe("artwork versions", () => {
       sanitizeState({ scene: { tent: "bell", fire: "dragon", castle: 3 } })
         .scene,
     ).toEqual({
+      hero: "drawn",
       backdrop: "vale",
       tent: "bell",
       fire: "crossed",
@@ -265,6 +267,10 @@ describe("artwork versions", () => {
     });
     expect(sanitizeState({ scene: { backdrop: "moon" } }).scene.backdrop).toBe(
       "vale",
+    );
+    expect(sanitizeState({ scene: { hero: "lake" } }).scene.hero).toBe("lake");
+    expect(sanitizeState({ scene: { hero: "webgpu" } }).scene.hero).toBe(
+      "drawn",
     );
   });
 

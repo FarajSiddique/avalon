@@ -352,6 +352,16 @@
     animation-direction: alternate-reverse;
   }
 
+  /* A 3D hero fades into the page's sky at its top edge. */
+  .sl-hero-3d {
+    overflow: hidden;
+    mask-image: linear-gradient(to bottom, transparent 0, black 16%);
+  }
+
+  .sl-hero-3d--flush {
+    mask-image: none;
+  }
+
   /* ----------------------------------------------------------- the fire */
 
   .sl-fire-glow {

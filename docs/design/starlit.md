@@ -451,6 +451,24 @@ to Claude. Code: `src/design/tweaks/`.
   form at 1440, inside the phone's crop at 390), and dark ground along the
   bottom edge. Only the landing and the motion gallery's arrival scene draw a
   backdrop; the seat ring and the other motion scenes pick up the fire alone.
+- **3D landing heroes.** Three WebGL concepts built with three.js, picked as
+  "Landing hero" (the drawn scene stays the default): Ember Isle (the camp on
+  a floating island above a sea of cloud, a waterfall spilling into the void,
+  the castle on a second island, circling stones), Lantern Lake (a mirror lake
+  with a true reflection, paper lanterns rising off the water, an aurora, the
+  castle lit on the far shore) and The Star Table (a round stone table for ten
+  in a clearing, seat runes lighting one by one, a moonbeam, a turning dome of
+  constellations). Code is in `-components/three`: `engine.ts` (renderer,
+  bloom, pointer parallax, pausing off-screen, a still frame under reduced
+  motion, rebuilding when a dial changes the colours), `kit.ts` and `props.ts`
+  (sky, stars, flame, embers, pine, pavilion, castle, campfire) and one file
+  per scene. Every colour is read from the `--art-*` tokens at runtime, so the
+  palette and the studio's dials apply. three.js is about 143 KB gzip, in a
+  chunk loaded only when a 3D hero is chosen, and never in the Worker. On a
+  wide screen the camera's film offset slides the subject right of the title.
+  Thumbnails on the artwork page draw one frame, keep it as an image and free
+  the GPU. Not yet checked on a real phone or Safari: frame rate and battery
+  there are the open question.
 - **Tuning tokens.** Values that were hardcoded are now tokens at their old
   values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel

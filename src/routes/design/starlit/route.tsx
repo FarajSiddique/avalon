@@ -61,13 +61,13 @@ function TweakedSky() {
   );
 }
 
-/** Hands the dial's backdrop, tent, campfire and castle choice to every drawing. */
+/** Hands the dial's hero, backdrop, tent, campfire and castle choice to every drawing. */
 function TweakedArt({ children }: { children: ReactNode }) {
   const scene = useSceneTweak();
-  const { backdrop, tent, fire, castle } = scene;
+  const { hero, backdrop, tent, fire, castle } = scene;
   const value = useMemo(
-    () => ({ backdrop, tent, fire, castle }),
-    [backdrop, tent, fire, castle],
+    () => ({ hero, backdrop, tent, fire, castle }),
+    [hero, backdrop, tent, fire, castle],
   );
   return (
     <SceneArtContext.Provider value={value}>

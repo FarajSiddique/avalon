@@ -1018,7 +1018,7 @@ export function TweakStudio() {
                   </Section>
                   <Section
                     title="Artwork"
-                    blurb="Which backdrop, tent, campfire and castle the scene draws"
+                    blurb="The landing hero, drawn or 3D, and the drawn scene parts"
                     badge={sceneChanges(state).length}
                     defaultOpen
                   >

@@ -3,6 +3,7 @@
  * each list is the original drawing.
  */
 
+export const HERO_STYLES = ["drawn", "isle", "lake", "table"] as const;
 export const BACKDROP_STYLES = [
   "vale",
   "lake",
@@ -20,12 +21,14 @@ export const CASTLE_STYLES = [
   "none",
 ] as const;
 
+export type HeroStyle = (typeof HERO_STYLES)[number];
 export type BackdropStyle = (typeof BACKDROP_STYLES)[number];
 export type TentStyle = (typeof TENT_STYLES)[number];
 export type FireStyle = (typeof FIRE_STYLES)[number];
 export type CastleStyle = (typeof CASTLE_STYLES)[number];
 
 export interface SceneOptions {
+  hero: HeroStyle;
   backdrop: BackdropStyle;
   tent: TentStyle;
   fire: FireStyle;
@@ -33,6 +36,7 @@ export interface SceneOptions {
 }
 
 export const DEFAULT_SCENE: SceneOptions = {
+  hero: "drawn",
   backdrop: "vale",
   tent: "pavilion",
   fire: "crossed",
@@ -40,6 +44,29 @@ export const DEFAULT_SCENE: SceneOptions = {
 };
 
 export const SCENE_PARTS = [
+  {
+    key: "hero",
+    title: "Landing hero",
+    styles: HERO_STYLES,
+    labels: {
+      drawn: [
+        "Drawn scene",
+        "The flat illustrated scene, built from the backdrop and parts below.",
+      ],
+      isle: [
+        "Ember Isle (3D)",
+        "A camp on a floating island above a sea of cloud, a waterfall spilling into the void.",
+      ],
+      lake: [
+        "Lantern Lake (3D)",
+        "Lanterns drifting over a mirror lake towards a lit castle, under an aurora.",
+      ],
+      table: [
+        "The Star Table (3D)",
+        "A round stone table for ten under a turning dome of constellations.",
+      ],
+    },
+  },
   {
     key: "backdrop",
     title: "Backdrop",
@@ -148,6 +175,7 @@ export function sanitizeScene(input: unknown): SceneOptions {
       ? (input as Record<string, unknown>)
       : {};
   return {
+    hero: pick(HERO_STYLES, v.hero, DEFAULT_SCENE.hero),
     backdrop: pick(BACKDROP_STYLES, v.backdrop, DEFAULT_SCENE.backdrop),
     tent: pick(TENT_STYLES, v.tent, DEFAULT_SCENE.tent),
     fire: pick(FIRE_STYLES, v.fire, DEFAULT_SCENE.fire),

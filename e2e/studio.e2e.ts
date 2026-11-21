@@ -1,5 +1,13 @@
 import { expect, test, type FrameLocator, type Page } from "@playwright/test";
 
+// Software WebGL, so the 3D landing concepts render in headless runs. Only
+// these files: it slows every other page's painting.
+test.use({
+  launchOptions: {
+    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+  },
+});
+
 /**
  * The Starlit tweak studio: a dial change reaches the real prototype screens
  * in the preview iframes, survives a reload, travels in a share link and
@@ -30,6 +38,17 @@ function tweakCss(page: Page): Promise<string> {
     () =>
       document.querySelector("style[data-starlit-tweaks]")?.textContent ?? "",
   );
+}
+
+/**
+ * The artwork contact sheet, once its three 3D thumbnails are drawn. In
+ * headless runs WebGL is software-rendered and each one takes seconds.
+ */
+async function openArtwork(page: Page): Promise<void> {
+  await page.goto("/design/starlit/artwork");
+  await expect(page.locator("[data-concept] img")).toHaveCount(3, {
+    timeout: 90_000,
+  });
 }
 
 async function openStudio(page: Page): Promise<void> {
@@ -283,9 +302,10 @@ test("unsafe values in a share link are dropped", async ({ page }) => {
 test("an artwork version chosen on the contact sheet sticks and reaches the studio", async ({
   page,
 }) => {
+  test.setTimeout(240_000);
   await page.goto("/design/starlit/artwork");
   await page.evaluate(() => localStorage.clear());
-  await page.reload();
+  await openArtwork(page);
   const bell = page.locator('[data-variant="tent:bell"]');
   const pavilion = page.locator('[data-variant="tent:pavilion"]');
   await expect(pavilion).toHaveAttribute("aria-pressed", "true");
@@ -296,7 +316,7 @@ test("an artwork version chosen on the contact sheet sticks and reaches the stud
   const forest = page.locator('[data-variant="backdrop:forest"]');
   await forest.click();
 
-  await page.reload();
+  await openArtwork(page);
   await expect(bell).toHaveAttribute("aria-pressed", "true");
   await expect(forest).toHaveAttribute("aria-pressed", "true");
 
@@ -312,4 +332,58 @@ test("an artwork version chosen on the contact sheet sticks and reaches the stud
       .getByRole("group", { name: "Tent" })
       .getByRole("button", { name: "Bell tent" }),
   ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a 3D landing hero mounts its canvas without errors", async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
+  await page.goto("/design/starlit");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "avalon:starlit-tweaks:v1",
+      JSON.stringify({ version: 1, name: "x", scene: { hero: "lake" } }),
+    ),
+  );
+  await page.reload();
+  await expect(page.locator('[data-concept="lake"] canvas')).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.waitForTimeout(1500);
+  expect(errors).toEqual([]);
+});
+
+test("without WebGL, a 3D hero falls back to the drawn scene", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      type: string,
+      ...rest: unknown[]
+    ) {
+      if (type.startsWith("webgl")) return null;
+      return (original as (...a: unknown[]) => unknown).call(
+        this,
+        type,
+        ...rest,
+      );
+    } as typeof original;
+  });
+  await page.goto("/design/starlit");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "avalon:starlit-tweaks:v1",
+      JSON.stringify({ version: 1, name: "x", scene: { hero: "isle" } }),
+    ),
+  );
+  await page.reload();
+  await expect(
+    page.locator('main svg[preserveAspectRatio="xMaxYMax slice"]'),
+  ).toBeVisible();
+  await expect(page.locator("[data-concept] canvas")).toHaveCount(0);
 });

@@ -6,9 +6,11 @@ import { cropFor } from "./-components/art/backdrop-layout";
 import {
   SCENE_PARTS,
   type BackdropStyle,
+  type HeroStyle,
   type SceneOptions,
 } from "./-components/art/scene-options";
 import { IconCheck } from "./-components/icons";
+import { Hero3D } from "./-components/three/hero-3d";
 
 export const Route = createFileRoute("/design/starlit/artwork")({
   head: () => ({ meta: [{ title: "Artwork variants · Starlit Vale" }] }),
@@ -18,6 +20,7 @@ export const Route = createFileRoute("/design/starlit/artwork")({
 /** How each kind of card frames the drawing. */
 function framing(part: keyof SceneOptions, backdrop: BackdropStyle) {
   switch (part) {
+    case "hero":
     case "backdrop":
       return { viewBox: "0 0 1440 700", aspect: "aspect-[1440/700]" };
     case "tent":
@@ -30,6 +33,29 @@ function framing(part: keyof SceneOptions, backdrop: BackdropStyle) {
         aspect: "aspect-[22/15]",
       };
   }
+}
+
+const WIDE = "block aspect-[1440/700] w-full";
+
+/** A full-width picture of a hero: the drawing, or a live 3D concept. */
+function HeroPicture({ hero, live }: { hero: HeroStyle; live: boolean }) {
+  const drawn = (
+    <CampScene
+      className={`${WIDE} bg-[var(--art-sky-mid)]`}
+      preserveAspectRatio="xMidYMid slice"
+    />
+  );
+  if (hero === "drawn") return drawn;
+  return (
+    <Hero3D
+      concept={hero}
+      className={`${WIDE} sl-hero-3d--flush`}
+      interactive={live}
+      snapshot={!live}
+      backdrop={false}
+      fallback={drawn}
+    />
+  );
 }
 
 function choose(part: keyof SceneOptions, style: string): void {
@@ -48,14 +74,15 @@ function ArtworkPage() {
       <header className="max-w-[40rem]">
         <p className="sl-eyebrow">Artwork variants</p>
         <h1 className="font-display mt-1 text-4xl font-medium">
-          Backdrop, tent, campfire and castle
+          Landing hero and drawn scene
         </h1>
         <p className="text-ink-muted mt-2 text-[1.0625rem] leading-relaxed">
-          Every version, drawn in place. A backdrop is a whole new scene; the
-          tent, campfire and castle are drawn inside whichever backdrop is
-          chosen. A choice is used on every Starlit screen: the landing scene,
-          the fire in the seat ring and the motion gallery. The tweak studio
-          shows the same choice under Artwork.
+          The landing hero is either the drawn scene or one of three live 3D
+          concepts (move the pointer over the one at the top). The drawn scene
+          is built from a backdrop, a tent, a campfire and a castle, and it is
+          also used on the other Starlit screens: the fire in the seat ring and
+          the motion gallery. The tweak studio shows the same choices under
+          Artwork.
         </p>
       </header>
 
@@ -63,10 +90,7 @@ function ArtworkPage() {
         aria-label="The current combination"
         className="sl-panel overflow-hidden"
       >
-        <CampScene
-          className="block aspect-[1440/700] w-full"
-          preserveAspectRatio="xMidYMid slice"
-        />
+        <HeroPicture hero={scene.hero} live />
       </section>
 
       {SCENE_PARTS.map((part) => (
@@ -79,7 +103,7 @@ function ArtworkPage() {
           </h2>
           <ul
             className={`grid gap-3 ${
-              part.key === "backdrop"
+              part.key === "backdrop" || part.key === "hero"
                 ? "grid-cols-1 md:grid-cols-2"
                 : "grid-cols-2 md:grid-cols-3 xl:grid-cols-5"
             }`}
@@ -103,12 +127,16 @@ function ArtworkPage() {
                         : "hover:border-line-strong!"
                     }`}
                   >
-                    <CampScene
-                      scene={{ [part.key]: style }}
-                      viewBox={frame.viewBox}
-                      preserveAspectRatio="xMidYMid slice"
-                      className={`block w-full bg-[var(--art-sky-mid)] ${frame.aspect}`}
-                    />
+                    {part.key === "hero" ? (
+                      <HeroPicture hero={style as HeroStyle} live={false} />
+                    ) : (
+                      <CampScene
+                        scene={{ [part.key]: style }}
+                        viewBox={frame.viewBox}
+                        preserveAspectRatio="xMidYMid slice"
+                        className={`block w-full bg-[var(--art-sky-mid)] ${frame.aspect}`}
+                      />
+                    )}
                     <span className="flex flex-1 flex-col gap-1 p-3">
                       <span className="flex flex-wrap items-center gap-x-1.5 font-bold">
                         {name}

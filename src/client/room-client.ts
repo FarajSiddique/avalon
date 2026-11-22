@@ -3,10 +3,11 @@
  * nothing else: the browser never computes game state on its own.
  */
 
-import { createStore } from "zustand/vanilla";
+import type { StoreApi } from "zustand/vanilla";
 import type { ProtocolError } from "@/shared/protocol";
 import type { RoomCode, RoomView } from "@/shared/views";
 import { RoomConnection } from "./connection";
+import { createDevStore } from "./dev-store";
 import { clearToken, loadToken, saveToken } from "./session";
 
 export type RoomStatus =
@@ -42,11 +43,12 @@ const initial: RoomSnapshot = {
  * commit and that must not drop the socket.
  */
 export class RoomClient {
-  private readonly store = createStore<RoomSnapshot>()(() => initial);
+  private readonly store: StoreApi<RoomSnapshot>;
   private readonly connection: RoomConnection;
   private subscribers = 0;
 
   constructor(private readonly code: RoomCode) {
+    this.store = createDevStore<RoomSnapshot>(`room:${code}`, () => initial);
     this.connection = new RoomConnection(code, {
       onOpen: this.onOpen,
       onDrop: () => this.set({ online: false }),

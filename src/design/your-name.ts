@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { createStore } from "zustand/vanilla";
+import { createDevStore } from "@/client/dev-store";
 
 /**
  * The name you typed on the landing, kept for the rest of the visit so the
@@ -16,7 +16,7 @@ function load(): string | null {
   }
 }
 
-const store = createStore<string | null>()(() =>
+const store = createDevStore<string | null>("your-name", () =>
   typeof window === "undefined" ? null : load(),
 );
 

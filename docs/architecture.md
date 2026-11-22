@@ -699,6 +699,13 @@ newer client against an older room fails politely.
   sent. TanStack Query is not used: room state is pushed over the socket, not
   fetched, and `createRoom` is a single server function call. (Decided 21
   November 2026, replacing the earlier "no Zustand".)
+- Every store is made with `createDevStore` (`src/client/dev-store.ts`). In
+  development it adds the `devtools` middleware (Redux DevTools extension)
+  and lists the store, with its last 100 states, on
+  `window.__AVALON_STORES__`. A store is listed once it is first subscribed
+  to or written, so a copy React builds and throws away is never shown.
+  `pnpm stores <path>` prints them all from a headless browser. Production
+  builds leave the registry out and devtools off.
 - No shadcn/ui (the chosen direction's components are bespoke; native
   elements such as `<dialog>` cover the rest).
 

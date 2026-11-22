@@ -15,6 +15,7 @@
     "test:e2e": "playwright test --project=e2e",
     "test:restart": "node scripts/restart-check.mjs",
     "test:api": "cd bruno && pnpm dlx @usebruno/cli@4 run --env local",
+    "stores": "node scripts/stores.mjs",
     "screenshots": "playwright test --project=screenshots",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

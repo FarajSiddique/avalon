@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore } from "react";
-import { createStore, type StoreApi } from "zustand/vanilla";
+import type { StoreApi } from "zustand/vanilla";
+import { createDevStore } from "@/client/dev-store";
 import { play } from "@/client/sound";
 import {
   MAX_PLAYERS,
@@ -164,7 +165,9 @@ interface MockLobbyInstance {
  * not changed, so it stays quiet.
  */
 function createMockLobby(options: MockLobbyOptions): MockLobbyInstance {
-  const store = createStore<LobbyView>()(() => openingView(options));
+  const store = createDevStore<LobbyView>("mock-lobby", () =>
+    openingView(options),
+  );
 
   store.subscribe((next, prev) => {
     if (canStartIn(next) && !canStartIn(prev)) {

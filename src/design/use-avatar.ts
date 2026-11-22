@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { createStore } from "zustand/vanilla";
+import { createDevStore } from "@/client/dev-store";
 import { DEFAULT_AVATAR, sanitizeAvatar, type Avatar } from "./avatar";
 
 /** Your look, saved in this browser (the prototype has no account). */
@@ -16,7 +16,7 @@ function load(): Avatar {
   }
 }
 
-const store = createStore<Avatar>()(() =>
+const store = createDevStore<Avatar>("avatar", () =>
   typeof window === "undefined" ? DEFAULT_AVATAR : load(),
 );
 

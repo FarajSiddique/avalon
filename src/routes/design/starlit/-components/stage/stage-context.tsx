@@ -11,7 +11,8 @@ import {
 } from "react";
 import { useStore } from "zustand";
 import { noSnapshot, noop } from "@/client/no-subscription";
-import { createStore, type StoreApi } from "zustand/vanilla";
+import type { StoreApi } from "zustand/vanilla";
+import { createDevStore } from "@/client/dev-store";
 import type { StageMode, StagePhase } from "../three/engine";
 import type { FlightPath, TablePlay, TablePlayer } from "../three/types";
 
@@ -77,7 +78,7 @@ export type StageStore = StoreApi<StageValue>;
  * with React state) readers do not re-render for a value they already have.
  */
 function createStageStore(): StageStore {
-  return createStore<StageValue>()((set) => ({
+  return createDevStore<StageValue>("stage", (set) => ({
     slot: null,
     players: [],
     pending: null,

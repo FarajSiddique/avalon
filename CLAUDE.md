@@ -121,6 +121,12 @@ react to the user in event handlers. See "Effects" in `docs/architecture.md`.
   them but never adds them): before `return`, after `const`/`let` groups, and
   around multi-line blocks. `pnpm lint:fix` adds them.
 - An `oxlint-disable-next-line` comment names the rule and gives a reason after `--`.
+- Every Zustand store is made with `createDevStore(name, ...)` from
+  `src/client/dev-store.ts`, never `createStore` directly. In development each
+  store shows in the Redux DevTools extension and on `window.__AVALON_STORES__`
+  (state plus recent history). To check state, run `pnpm dev`, then
+  `pnpm stores /some/path` (add `--history` for every change), or read the
+  registry from Playwright with `page.evaluate`. Production builds list nothing.
 - Colours, fonts and radii come from the tokens in `src/styles.css` (`bg-canvas`,
   `text-ink`, `border-line`, `font-display`, ...). No raw colour values in
   components.

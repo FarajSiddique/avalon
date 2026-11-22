@@ -506,6 +506,10 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
   test.setTimeout(240_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
+  // This checks who is seated, not how they rise. Arrivals run on frame
+  // time, and CI draws WebGL in software at about one frame a second, so
+  // seven staggered rises never finish there. Reduced motion seats at once.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/design/starlit/lobby");
   await page.evaluate(() => localStorage.clear());
   await page.reload();

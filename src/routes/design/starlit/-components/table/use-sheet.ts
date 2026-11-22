@@ -1,10 +1,11 @@
 import {
-  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type CSSProperties,
   type RefObject,
 } from "react";
+import { cssVars } from "./css-vars";
 
 /**
  * The phone's bottom sheet at the table: open (the whole round) or
@@ -39,6 +40,25 @@ export interface SheetHandle {
   onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => void;
 }
 
+export interface Sheet {
+  collapsed: boolean;
+  dragging: boolean;
+  /** True when it toggled (not the click that ends a drag). */
+  toggle: () => boolean;
+  handle: SheetHandle;
+  /**
+   * For the scope's style prop: `--sheet-p` at rest. A drag sets it on the
+   * element directly; React only writes it again when the resting place
+   * changes, and the drag has set that same value by then.
+   */
+  scopeStyle: CSSProperties;
+}
+
+/** The element a press landed on, if it is one (not text or the window). */
+function isElement(target: EventTarget): target is Element {
+  return "closest" in target && typeof target.closest === "function";
+}
+
 export function useSheet({
   enabled,
   scope,
@@ -51,12 +71,7 @@ export function useSheet({
   scope: RefObject<HTMLElement | null>;
   sheet: RefObject<HTMLElement | null>;
   peek: RefObject<HTMLElement | null>;
-}): {
-  collapsed: boolean;
-  dragging: boolean;
-  toggle: () => boolean;
-  handle: SheetHandle;
-} {
+}): Sheet {
   const [chosen, setChosen] = useState(() => remembered);
   const [dragging, setDragging] = useState(false);
   const collapsed = enabled && chosen;
@@ -68,11 +83,6 @@ export function useSheet({
     setChosen(next);
     scope.current?.style.setProperty("--sheet-p", next && enabled ? "1" : "0");
   };
-
-  // The resting place follows the state (a step mounting, a wide screen).
-  useLayoutEffect(() => {
-    scope.current?.style.setProperty("--sheet-p", collapsed ? "1" : "0");
-  }, [collapsed, scope]);
 
   /** True when it toggled (not the click that ends a drag). */
   const toggle = (): boolean => {
@@ -151,10 +161,9 @@ export function useSheet({
       // Hold the pointer from the start: a fast flick leaves the handle
       // before it has moved far enough to count as a drag. A tap still
       // clicks: the button pressed holds it, so the release lands there too.
-      const held =
-        e.target instanceof Element
-          ? (e.target.closest("button") ?? e.currentTarget)
-          : e.currentTarget;
+      const held = isElement(e.target)
+        ? (e.target.closest("button") ?? e.currentTarget)
+        : e.currentTarget;
 
       held.setPointerCapture(e.pointerId);
     },
@@ -191,5 +200,12 @@ export function useSheet({
     onPointerCancel: (e) => end(e, true),
   };
 
-  return { collapsed, dragging, toggle, handle };
+  return {
+    collapsed,
+    dragging,
+    toggle,
+    handle,
+    // The resting place follows the state (a step mounting, a wide screen).
+    scopeStyle: cssVars({ "--sheet-p": collapsed ? "1" : "0" }),
+  };
 }

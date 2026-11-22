@@ -3,11 +3,13 @@ import type { GameView, ProposalRecord } from "@/shared/views";
 import { IconApprove, IconReject } from "../icons";
 import { initialOf, joinNames } from "../names";
 
-export function tallyOf(record: ProposalRecord): {
+export interface Tally {
   approvals: number;
   rejections: number;
   text: string;
-} {
+}
+
+export function tallyOf(record: ProposalRecord): Tally {
   const votes = Object.values(record.votes);
   const approvals = votes.filter((vote) => vote === "approve").length;
   const rejections = votes.length - approvals;

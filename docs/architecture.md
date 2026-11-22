@@ -291,7 +291,10 @@ avalon/
 │   │   ├── room.$code.tsx       The room: lobby and game, one screen driven by RoomView
 │   │   ├── api/health.ts        Liveness check (a server route)
 │   │   └── design/              The design prototypes (removed after the pick)
-│   ├── components/              Screens and components of the real app
+│   ├── components/              Screens and components of the real app, one folder per area
+│   │   ├── landing/start-form.tsx  Create or join a room
+│   │   └── room/room-screen.tsx    The room screen
+│   ├── styles/                  app.css (Tailwind, base styles), tokens.css (the :root tokens)
 │   ├── functions/rooms.ts       Server functions. `createRoom` is the only one
 │   ├── shared/                  Used by both sides. Plain TypeScript, plus zod in schemas.ts only
 │   │   ├── constants.ts         Game tables: team balance, quest sizes, fail rule, limits

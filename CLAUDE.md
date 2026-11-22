@@ -11,7 +11,7 @@ The full design is in `docs/architecture.md`. Read it before changing structure.
 | Layer      | Technology                                                                 |
 | ---------- | -------------------------------------------------------------------------- |
 | App        | One TanStack Start app: React 19, TypeScript strict, Vite                  |
-| Styling    | Tailwind CSS v4, themed with CSS custom properties (`src/styles.css`)      |
+| Styling    | Tailwind CSS v4, themed with CSS custom properties (`src/styles/`)         |
 | Hosting    | One Cloudflare Worker (`src/server.ts`, `wrangler.jsonc`)                  |
 | Real-time  | Plain WebSockets to one Durable Object per room (`src/server/room`)        |
 | Game logic | A plain typed reducer in `src/server/game` (no XState)                     |
@@ -40,6 +40,7 @@ pnpm test:restart  # proves a room survives a server restart (run pnpm build fir
 pnpm test:api      # bruno collection (server must be running on :3000)
 pnpm screenshots   # regenerate docs/design/screenshots (run pnpm build first)
 pnpm format        # prettier
+pnpm check         # every gate CI runs: format, lint, types, unit, build, e2e, restart
 pnpm run deploy    # build and deploy to Cloudflare. Ask the owner first
 ```
 
@@ -55,7 +56,8 @@ typechecks. Never edit it by hand: after adding, moving or removing a route, run
 wrangler.jsonc     The Worker and its ROOM Durable Object binding
 src/server.ts      Worker entry: /api/socket/CODE goes to the room object, the rest to TanStack Start
 src/routes/        File-based routes. / (landing), /room/$code (lobby and game), /api/health, /design/starlit (prototype)
-src/components/    Screens and components of the real app
+src/components/    Screens and components of the real app, one folder per area (landing, room, ...)
+src/styles/        app.css (Tailwind and base styles) and tokens.css (the :root tokens)
 src/functions/     Server functions (createRoom)
 src/shared/        Types, constants, protocol, validators. Imported by both sides
 src/server/        Room object, room rules, view projection, game engine. Worker only
@@ -116,6 +118,10 @@ react to the user in event handlers. See "Effects" in `docs/architecture.md`.
 
 ## Conventions
 
+Folders, names, exports, tests and pull requests: `.claude/rules/code-standards.md`.
+Run `pnpm check` before pushing; a pre-commit hook checks format and lint on
+staged files.
+
 - TypeScript strict, no `any`. Prettier on every file you touch (`pnpm format`).
 - Blank lines between statements come from oxlint, not Prettier (Prettier keeps
   them but never adds them): before `return`, after `const`/`let` groups, and
@@ -127,7 +133,7 @@ react to the user in event handlers. See "Effects" in `docs/architecture.md`.
   (state plus recent history). To check state, run `pnpm dev`, then
   `pnpm stores /some/path` (add `--history` for every change), or read the
   registry from Playwright with `page.evaluate`. Production builds list nothing.
-- Colours, fonts and radii come from the tokens in `src/styles.css` (`bg-canvas`,
+- Colours, fonts and radii come from the tokens in `src/styles/tokens.css` (`bg-canvas`,
   `text-ink`, `border-line`, `font-display`, ...). No raw colour values in
   components.
 - Links in the real app use the router's typed `Link` (`to="/room/$code"` with

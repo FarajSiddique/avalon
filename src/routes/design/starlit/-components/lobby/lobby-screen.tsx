@@ -79,9 +79,10 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const isHost = view.you.isHost;
   const hostName = view.players.find((p) => p.isHost)?.name ?? "The host";
   useEveryoneReadyChord(canStart);
-  // The game seats you under the name you typed.
+  // The game seats you under the name you typed (or as Wren, with none, so
+  // the lobby and the table always agree).
   useEffect(() => {
-    if (name) setYourName(name);
+    setYourName(name ?? null);
   }, [name]);
 
   // The table's open space, claimed from the shared stage.

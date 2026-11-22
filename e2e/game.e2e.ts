@@ -224,7 +224,10 @@ test("the leader picks the team by tag and by the Team list", async ({
   await expect(bramTag).toHaveAttribute("aria-pressed", "false");
   await expect(bramItem).toHaveAttribute("aria-pressed", "false");
 
-  // A tap on the tag over Bram's head picks him, in the list too.
+  // A tap on the tag over Bram's head picks him, in the list too. The
+  // engine places and shows tags frame by frame, which software WebGL under
+  // load does slowly: wait for it to show.
+  await expect(bramTag).toBeVisible({ timeout: 90_000 });
   await bramTag.click();
   await expect(bramTag).toHaveAttribute("aria-pressed", "true");
   await expect(bramTag).toHaveAttribute("aria-label", "Bram, chosen");

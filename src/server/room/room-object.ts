@@ -52,6 +52,7 @@ const deps: RoomDeps = {
   newId: () => crypto.randomUUID(),
   newSecret: () => {
     const bytes = crypto.getRandomValues(new Uint8Array(32));
+
     return btoa(String.fromCharCode(...bytes))
       .replaceAll("+", "-")
       .replaceAll("/", "_")
@@ -61,6 +62,7 @@ const deps: RoomDeps = {
 
 function seatOf(socket: WebSocket): PlayerId | null {
   const attachment = socket.deserializeAttachment() as SocketAttachment | null;
+
   return attachment?.playerId ?? null;
 }
 
@@ -94,6 +96,7 @@ export class RoomObject extends DurableObject<Env> {
     if (this.room === undefined) {
       this.room = (await this.ctx.storage.get<RoomState>(ROOM_KEY)) ?? null;
     }
+
     return this.room;
   }
 
@@ -109,10 +112,15 @@ export class RoomObject extends DurableObject<Env> {
    * the Worker can try another code.
    */
   async create(code: RoomCode, hostName: string): Promise<SeatGrant | null> {
-    if (await this.load()) return null;
+    if (await this.load()) {
+      return null;
+    }
+
     const seated = createRoom(code, hostName, deps);
+
     await this.save(seated.state);
     await this.scheduleExpiryCheck(seated.state);
+
     return { code, token: seated.token };
   }
 
@@ -121,9 +129,11 @@ export class RoomObject extends DurableObject<Env> {
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return new Response("Expected a WebSocket", { status: 426 });
     }
+
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
+
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ playerId: null } satisfies SocketAttachment);
 
@@ -131,6 +141,7 @@ export class RoomObject extends DurableObject<Env> {
       // A browser cannot read a failed handshake, so accept and then say why.
       this.closeSocket(server, "not_found");
     }
+
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -140,18 +151,28 @@ export class RoomObject extends DurableObject<Env> {
     socket: WebSocket,
     raw: string | ArrayBuffer,
   ): Promise<void> {
-    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_LENGTH) return;
+    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_LENGTH) {
+      return;
+    }
+
     let json: unknown;
+
     try {
       json = JSON.parse(raw);
     } catch {
       return;
     }
+
     const message = clientMessageSchema.safeParse(json);
-    if (!message.success) return;
+
+    if (!message.success) {
+      return;
+    }
+
     const { id, event, payload } = message.data;
 
     const result = await this.handle(socket, event, payload);
+
     send(socket, { type: "ack", id, result });
   }
 
@@ -166,15 +187,22 @@ export class RoomObject extends DurableObject<Env> {
   /** Runs when the room may have expired (see nextExpiryCheck). */
   override async alarm(): Promise<void> {
     const state = await this.load();
-    if (!state) return;
+
+    if (!state) {
+      return;
+    }
+
     if (nextExpiryCheck(state, deps.now()) === "expired") {
       for (const socket of this.ctx.getWebSockets()) {
         this.closeSocket(socket, "expired");
       }
+
       this.room = null;
       await this.ctx.storage.deleteAll();
+
       return;
     }
+
     await this.scheduleExpiryCheck(state);
   }
 
@@ -199,8 +227,12 @@ export class RoomObject extends DurableObject<Env> {
           return fail("NOT_ALLOWED", "That is not available yet.");
       }
     } catch (error) {
-      if (error instanceof RoomError) return fail(error.code, error.message);
+      if (error instanceof RoomError) {
+        return fail(error.code, error.message);
+      }
+
       console.error("[room] request failed", event, error);
+
       return fail("NOT_ALLOWED", "Something went wrong.");
     }
   }
@@ -211,26 +243,34 @@ export class RoomObject extends DurableObject<Env> {
     handler: (input: z.output<S>) => Promise<T>,
   ): Promise<Result<T>> {
     const parsed = schema.safeParse(payload);
+
     if (!parsed.success) {
       return fail("INVALID_PAYLOAD", "That request was not valid.");
     }
+
     return { ok: true, data: await handler(parsed.data) };
   }
 
   private async requireRoom(): Promise<RoomState> {
     const state = await this.load();
-    if (!state) throw new RoomError("ROOM_NOT_FOUND", "That room has ended.");
+
+    if (!state) {
+      throw new RoomError("ROOM_NOT_FOUND", "That room has ended.");
+    }
+
     return state;
   }
 
   private async join(socket: WebSocket, name: string): Promise<SeatGrant> {
     const seated = joinRoom(await this.requireRoom(), name, deps);
+
     return this.seat(socket, seated);
   }
 
   private async resume(socket: WebSocket, token: string): Promise<SeatGrant> {
     const state = await this.requireRoom();
     const player = findSeat(state, token);
+
     return this.seat(socket, { state, player, token });
   }
 
@@ -240,8 +280,10 @@ export class RoomObject extends DurableObject<Env> {
       playerId: seated.player.id,
     } satisfies SocketAttachment);
     const state = withPresence(seated.state, true, deps.now());
+
     await this.save(state);
     this.publish(state);
+
     return { code: state.code, token: seated.token };
   }
 
@@ -250,21 +292,37 @@ export class RoomObject extends DurableObject<Env> {
   /** Ids of the players who have at least one open socket. */
   private connectedIds(except?: WebSocket): Set<PlayerId> {
     const ids = new Set<PlayerId>();
+
     for (const socket of this.ctx.getWebSockets()) {
-      if (socket === except) continue;
+      if (socket === except) {
+        continue;
+      }
+
       const playerId = seatOf(socket);
-      if (playerId) ids.add(playerId);
+
+      if (playerId) {
+        ids.add(playerId);
+      }
     }
+
     return ids;
   }
 
   /** Send every seated socket its own player's view. Never a shared message. */
   private publish(state: RoomState, except?: WebSocket): void {
     const connected = this.connectedIds(except);
+
     for (const socket of this.ctx.getWebSockets()) {
-      if (socket === except) continue;
+      if (socket === except) {
+        continue;
+      }
+
       const playerId = seatOf(socket);
-      if (!playerId) continue;
+
+      if (!playerId) {
+        continue;
+      }
+
       send(socket, {
         type: "state",
         view: projectView(state, playerId, connected),
@@ -278,20 +336,31 @@ export class RoomObject extends DurableObject<Env> {
     } catch {
       // Already closed.
     }
-    if (!seatOf(socket)) return;
+
+    if (!seatOf(socket)) {
+      return;
+    }
+
     const loaded = await this.load();
-    if (!loaded) return;
+
+    if (!loaded) {
+      return;
+    }
+
     const connected = this.connectedIds(socket);
     const state = withPresence(loaded, connected.size > 0, deps.now());
+
     if (state !== loaded) {
       await this.save(state);
       await this.scheduleExpiryCheck(state);
     }
+
     this.publish(state, socket);
   }
 
   private closeSocket(socket: WebSocket, reason: RoomClosedReason): void {
     send(socket, { type: "closed", reason });
+
     try {
       socket.close(CLOSE_ROOM_GONE, reason);
     } catch {
@@ -301,6 +370,7 @@ export class RoomObject extends DurableObject<Env> {
 
   private async scheduleExpiryCheck(state: RoomState): Promise<void> {
     const at = nextExpiryCheck(state, deps.now());
+
     await this.ctx.storage.setAlarm(at === "expired" ? deps.now() : at);
   }
 }

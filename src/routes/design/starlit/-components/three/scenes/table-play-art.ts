@@ -33,29 +33,43 @@ export function hitCylinder(
   const oz = o.z - base.z;
   const a = d.x * d.x + d.z * d.z;
   let best: number | null = null;
+
   if (a > 1e-8) {
     const b = 2 * (ox * d.x + oz * d.z);
     const c = ox * ox + oz * oz - radius * radius;
     const disc = b * b - 4 * a * c;
+
     if (disc >= 0) {
       const root = Math.sqrt(disc);
+
       for (const t of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
-        if (t <= 0) continue;
+        if (t <= 0) {
+          continue;
+        }
+
         const yy = o.y + d.y * t;
-        if (yy >= 0 && yy <= height && (best === null || t < best)) best = t;
+
+        if (yy >= 0 && yy <= height && (best === null || t < best)) {
+          best = t;
+        }
       }
     }
   }
+
   // Looking down, the ray may come in through the top.
   if (Math.abs(d.y) > 1e-8) {
     const t = (height - o.y) / d.y;
+
     if (t > 0) {
       const x = ox + d.x * t;
       const z = oz + d.z * t;
-      if (x * x + z * z <= radius * radius && (best === null || t < best))
+
+      if (x * x + z * z <= radius * radius && (best === null || t < best)) {
         best = t;
+      }
     }
   }
+
   return best;
 }
 
@@ -69,18 +83,24 @@ export function crownMesh(bin: Bin, p: Palette): Group {
     bin.add(new CylinderGeometry(0.34, 0.3, 0.16, 20, 1, true)),
     gold,
   );
+
   band.material.side = DoubleSide;
   g.add(band);
   const point = bin.add(new ConeGeometry(0.075, 0.24, 6));
+
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2;
     const m = new Mesh(point, gold);
+
     m.position.set(Math.cos(a) * 0.32, 0.18, Math.sin(a) * 0.32);
     g.add(m);
   }
+
   const glow = glowSprite(bin, glowTexture(bin, 2.2), p.gold, 1.4, 0.5);
+
   glow.position.y = 0.08;
   g.add(glow);
+
   return g;
 }
 
@@ -97,6 +117,7 @@ export function drawCard(
   const w = 256;
   const h = Math.round((w * CARD_H) / CARD_W);
   const canvas = document.createElement("canvas");
+
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
@@ -104,8 +125,10 @@ export function drawCard(
   const pad = 10;
   const radius = 22;
   const card = new Path2D();
+
   card.roundRect(pad, pad, w - pad * 2, h - pad * 2, radius);
   const inner = new Path2D();
+
   inner.roundRect(pad + 12, pad + 12, w - pad * 2 - 24, h - pad * 2 - 24, 14);
   ctx.lineJoin = ctx.lineCap = "round";
 
@@ -125,28 +148,34 @@ export function drawCard(
       [0.2, 0.5],
       [0.82, 0.44],
     ];
+
     for (const [x, y] of dots) {
       ctx.beginPath();
       ctx.arc(x! * w, y! * h, 3, 0, Math.PI * 2);
       ctx.fill();
     }
+
     ctx.save();
     ctx.translate(w / 2, h / 2);
     ctx.fillStyle = css(p.gold);
     ctx.fill(new Path2D(sparklePath(w * 0.24)));
     ctx.restore();
+
     return canvas;
   }
 
   const success = kind === "success";
+
   ctx.fillStyle = css(success ? p.tent : p.banner);
   ctx.fill(card);
   const ink = success ? p["tent-dark"] : p.moon;
+
   ctx.strokeStyle = css(success ? p.gold : p["star-pink"]);
   ctx.lineWidth = 5;
   ctx.stroke(inner);
   ctx.save();
   ctx.translate(w / 2, h * 0.42);
+
   if (success) {
     // The sun: a disc and twelve rays.
     ctx.fillStyle = css(p["fire-outer"]);
@@ -155,9 +184,11 @@ export function drawCard(
     ctx.fill();
     ctx.strokeStyle = css(p["fire-outer"]);
     ctx.lineWidth = 9;
+
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
       const r = i % 2 ? 72 : 82;
+
       ctx.beginPath();
       ctx.moveTo(Math.cos(a) * 54, Math.sin(a) * 54);
       ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
@@ -166,8 +197,10 @@ export function drawCard(
   } else {
     // The moon: a crescent split by a jagged crack.
     const moon = document.createElement("canvas");
+
     moon.width = moon.height = 200;
     const m = moon.getContext("2d")!;
+
     m.translate(100, 100);
     m.fillStyle = css(p.moon);
     m.beginPath();
@@ -189,11 +222,13 @@ export function drawCard(
     m.stroke();
     ctx.drawImage(moon, -100, -100);
   }
+
   ctx.restore();
   ctx.fillStyle = css(ink);
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.font = `600 44px ${font}`;
   ctx.fillText(success ? "Success" : "Fail", w / 2, h * 0.84);
+
   return canvas;
 }

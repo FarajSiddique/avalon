@@ -19,9 +19,11 @@ export default {
 
     if (pathname.startsWith(socketPrefix)) {
       const code = pathname.slice(socketPrefix.length);
+
       if (!ROOM_CODE_PATTERN.test(code)) {
         return new Response("Not found", { status: 404 });
       }
+
       return env.ROOM.getByName(code).fetch(request);
     }
 

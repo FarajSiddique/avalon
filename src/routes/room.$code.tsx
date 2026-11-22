@@ -19,6 +19,7 @@ export const Route = createFileRoute("/room/$code")({
 function RoomPage() {
   const { code } = Route.useParams();
   const roomCode = normalizeRoomCode(code);
+
   // A new code is a new room: remount so no state carries over.
   return <RoomScreen key={roomCode} code={roomCode} />;
 }

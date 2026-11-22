@@ -9,11 +9,12 @@ interface ValleyLight {
 
 /** Tiny village lights, gathered into clusters like hamlets seen from a hill. */
 export function makeValleyLights(
-  clusters: readonly (readonly [x: number, y: number, count: number])[],
+  clusters: ReadonlyArray<readonly [x: number, y: number, count: number]>,
   seed: number,
   spread: { x: number; y: number } = { x: 34, y: 9 },
-): ValleyLight[] {
+): Array<ValleyLight> {
   const random = seededRandom(seed);
+
   return clusters.flatMap(([cx, cy, count]) =>
     Array.from({ length: count }, () => ({
       x: round(cx + (random() - 0.5) * 2 * spread.x),

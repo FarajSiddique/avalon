@@ -36,7 +36,9 @@ function useWide(): boolean {
   return useSyncExternalStore(
     (change) => {
       const query = window.matchMedia(WIDE);
+
       query.addEventListener("change", change);
+
       return () => query.removeEventListener("change", change);
     },
     () => window.matchMedia(WIDE).matches,
@@ -63,6 +65,7 @@ function useOverlayInsets(): {
   const pinned = useRef<HTMLDivElement>(null);
   const peek = useRef<HTMLDivElement>(null);
   const [sizes, setSizes] = useState({ head: 128, pinned: 200, peek: 120 });
+
   useLayoutEffect(() => {
     const read = () => {
       const next = {
@@ -70,19 +73,26 @@ function useOverlayInsets(): {
         pinned: Math.round(pinned.current?.getBoundingClientRect().height ?? 0),
         peek: Math.round(peek.current?.getBoundingClientRect().height ?? 0),
       };
+
       setSizes((s) =>
         s.head === next.head && s.pinned === next.pinned && s.peek === next.peek
           ? s
           : next,
       );
     };
+
     read();
     const observer = new ResizeObserver(read);
+
     for (const el of [head.current, pinned.current, peek.current]) {
-      if (el) observer.observe(el);
+      if (el) {
+        observer.observe(el);
+      }
     }
+
     return () => observer.disconnect();
   }, []);
+
   return {
     head,
     pinned,
@@ -209,7 +219,7 @@ export function TableShell({
 }: {
   step: TableStep;
   view: GameView;
-  players: readonly TablePlayer[];
+  players: ReadonlyArray<TablePlayer>;
   /** Memoised by the step. */
   play: TablePlay;
   marks: Readonly<Record<string, SeatMark>>;
@@ -219,7 +229,7 @@ export function TableShell({
   /** What the closed Quests section says (held back during a reveal). */
   quests?: Pick<GameView, "score" | "questIndex" | "quests" | "rejections">;
   /** What the closed Vote history says (held back during a reveal). */
-  proposals?: readonly ProposalRecord[];
+  proposals?: ReadonlyArray<ProposalRecord>;
   bumped?: "good" | "evil";
   settled?: number;
   panel: ReactNode;
@@ -235,6 +245,7 @@ export function TableShell({
   const heading = headingFor(step, view);
   const stage = useStage();
   const focus = useRef<HTMLDivElement>(null);
+
   useStageSlot({ mode: "table", reveal: "whole", fade: 0 }, focus);
   useStagePlay(play);
   // The panels rise in only when the table is new (from the role card),
@@ -261,19 +272,26 @@ export function TableShell({
   const hideButton = useRef<HTMLButtonElement>(null);
   const showButton = useRef<HTMLButtonElement>(null);
   const refocus = useRef(false);
+
   const pressHandle = () => {
     refocus.current = toggleSheet();
   };
+
   useLayoutEffect(() => {
-    if (!refocus.current) return;
+    if (!refocus.current) {
+      return;
+    }
+
     refocus.current = false;
     (collapsed ? showButton : hideButton).current?.focus();
   }, [collapsed]);
   // The open space glides to a new size (and the camera with it), but not
   // on the first layout.
   const [glide, setGlide] = useState(false);
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => setGlide(true));
+
     return () => cancelAnimationFrame(frame);
   }, []);
   const [chosen, setChosen] = useState<Partial<Record<Section, boolean>>>({});
@@ -287,20 +305,35 @@ export function TableShell({
   // A tap on a figure picks it; a press that moves (a drag) never does.
   const pickAt = usePickAt();
   const press = useRef<{ x: number; y: number; id: number } | null>(null);
+
   const onFocusDown = (e: ReactPointerEvent) => {
     press.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
   };
+
   const onFocusUp = (e: ReactPointerEvent) => {
     const down = press.current;
+
     press.current = null;
-    if (!pickable || !onPick || !down || down.id !== e.pointerId) return;
+
+    if (!pickable || !onPick || !down || down.id !== e.pointerId) {
+      return;
+    }
+
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-    if (moved > TAP_SLOP_PX) return;
+
+    if (moved > TAP_SLOP_PX) {
+      return;
+    }
+
     const id = pickAt(e.clientX, e.clientY);
-    if (id) onPick(id);
+
+    if (id) {
+      onPick(id);
+    }
   };
 
   const inClass = arrive ? "sl-overlay-in" : "";
+
   return (
     <main
       ref={main}

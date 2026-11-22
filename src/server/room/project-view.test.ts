@@ -4,7 +4,7 @@ import { createRoom, joinRoom, type RoomDeps } from "./state";
 
 let n = 0;
 const deps: RoomDeps = {
-  now: () => 1_000,
+  now: () => 1000,
   newId: () => `p${(n += 1)}`,
   newSecret: () => `secret-${n + 1}`,
 };
@@ -38,9 +38,11 @@ describe("projectView (lobby)", () => {
     ]);
 
     const wire = JSON.stringify([hostView, guestView]);
+
     for (const token of [host.token, guest.token]) {
       expect(wire).not.toContain(token.slice(token.indexOf(".") + 1));
     }
+
     expect(wire).not.toContain("tokenHash");
     expect(wire).not.toContain(guest.player.tokenHash);
   });
@@ -55,7 +57,11 @@ describe("projectView (lobby)", () => {
     );
 
     expect(view.stage).toBe("lobby");
-    if (view.stage !== "lobby") return;
+
+    if (view.stage !== "lobby") {
+      return;
+    }
+
     expect(view.startBlockers).toEqual([
       { kind: "too_few_players", needed: 4 },
       { kind: "not_ready", playerIds: [host.player.id] },

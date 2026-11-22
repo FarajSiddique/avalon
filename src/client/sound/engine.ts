@@ -38,7 +38,7 @@ type ActivationNavigator = Navigator & {
 let enabled: boolean | null = null;
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
-let voices: Voice[] = [];
+let voices: Array<Voice> = [];
 const lastPlayed = new Map<string, number>();
 const listeners = new Set<() => void>();
 let ambienceWanted = 0;
@@ -67,41 +67,60 @@ function writeStored(on: boolean): void {
 /** Browsers refuse to start audio before the first tap; do not even ask. */
 function hasGesture(): boolean {
   const activation = (navigator as ActivationNavigator).userActivation;
+
   return activation ? activation.hasBeenActive : true;
 }
 
 function audio(): { context: AudioContext; master: GainNode } | null {
-  if (!inBrowser() || !hasGesture()) return null;
+  if (!inBrowser() || !hasGesture()) {
+    return null;
+  }
+
   if (!context) {
     const Ctor =
       window.AudioContext ?? (window as WebkitWindow).webkitAudioContext;
-    if (!Ctor) return null;
+
+    if (!Ctor) {
+      return null;
+    }
+
     try {
       context = new Ctor({ latencyHint: "interactive" });
       master = createMasterChain(context);
     } catch {
       context = null;
       master = null;
+
       return null;
     }
   }
-  if (!master) return null;
+
+  if (!master) {
+    return null;
+  }
+
   if (context.state === "suspended") {
     context.resume().catch(() => {});
   }
+
   return { context, master };
 }
 
 function release(voice: Voice, fade: number): void {
-  if (voice.done || !context) return;
+  if (voice.done || !context) {
+    return;
+  }
+
   voice.done = true;
   const now = context.currentTime;
+
   try {
     voice.bus.gain.cancelScheduledValues(now);
     voice.bus.gain.setTargetAtTime(0, now, fade / 3);
   } catch {
     // The node may already be gone.
   }
+
   window.setTimeout(
     () => {
       try {
@@ -120,6 +139,7 @@ function unlock(): void {
     audio();
     syncAmbience();
   }
+
   if (context?.state === "running") {
     window.removeEventListener("pointerdown", unlock, true);
     window.removeEventListener("keydown", unlock, true);
@@ -135,22 +155,33 @@ if (inBrowser()) {
 }
 
 export function isEnabled(): boolean {
-  if (!inBrowser()) return false;
-  if (enabled === null) enabled = readStored();
+  if (!inBrowser()) {
+    return false;
+  }
+
+  if (enabled === null) {
+    enabled = readStored();
+  }
+
   return enabled;
 }
 
 export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
+
   return () => {
     listeners.delete(listener);
   };
 }
 
 export function setEnabled(on: boolean): void {
-  if (!inBrowser()) return;
+  if (!inBrowser()) {
+    return;
+  }
+
   enabled = on;
   writeStored(on);
+
   try {
     if (on) {
       play("sound-on");
@@ -163,39 +194,58 @@ export function setEnabled(on: boolean): void {
   } catch {
     // Sound is a nicety; never let it break the page.
   }
+
   listeners.forEach((listener) => listener());
 }
 
 /** Play a cue. Returns a handle to stop it early (a skipped animation). */
 export function play(cue: CueName, options: CueOptions = {}): CueHandle {
-  if (!isEnabled()) return SILENT_HANDLE;
+  if (!isEnabled()) {
+    return SILENT_HANDLE;
+  }
+
   try {
     const live = audio();
-    if (!live) return SILENT_HANDLE;
+
+    if (!live) {
+      return SILENT_HANDLE;
+    }
+
     const now = live.context.currentTime;
     const delay = Math.max(0, options.delay ?? 0);
     const index = options.index ?? 0;
     const key = `${cue}:${index}:${Math.round(delay * 100)}`;
     const last = lastPlayed.get(key);
-    if (last !== undefined && now - last < DOUBLE_TRIGGER) return SILENT_HANDLE;
+
+    if (last !== undefined && now - last < DOUBLE_TRIGGER) {
+      return SILENT_HANDLE;
+    }
+
     lastPlayed.set(key, now);
 
     voices = voices.filter((voice) => !voice.done && voice.end > now);
+
     while (voices.length >= MAX_VOICES) {
       const oldest = voices.shift();
-      if (oldest) release(oldest, 0.05);
+
+      if (oldest) {
+        release(oldest, 0.05);
+      }
     }
 
     const spec = CUES[cue];
     const at = now + 0.01 + delay;
     const bus = live.context.createGain();
+
     bus.connect(live.master);
     renderCue(live.context, bus, cue, at, index);
     const voice: Voice = { bus, end: at + spec.length + 0.05, done: false };
+
     voices.push(voice);
     window.setTimeout(
       () => {
         voice.done = true;
+
         try {
           bus.disconnect();
         } catch {
@@ -213,6 +263,7 @@ export function play(cue: CueName, options: CueOptions = {}): CueHandle {
       // Android only. iPhones have no Vibration API, so this does nothing there.
       navigator.vibrate([...spec.vibrate]);
     }
+
     return { stop: () => release(voice, 0.06) };
   } catch {
     return SILENT_HANDLE;
@@ -221,9 +272,13 @@ export function play(cue: CueName, options: CueOptions = {}): CueHandle {
 
 function syncAmbience(): void {
   const want = ambienceWanted > 0 && isEnabled();
+
   if (want && !ambience) {
     const live = audio();
-    if (live) ambience = startAmbience(live.context, live.master);
+
+    if (live) {
+      ambience = startAmbience(live.context, live.master);
+    }
   } else if (!want && ambience) {
     ambience.stop();
     ambience = null;
@@ -235,8 +290,12 @@ function syncAmbience(): void {
  * it plays while at least one does and sound is on.
  */
 export function startAmbienceLoop(): void {
-  if (!inBrowser()) return;
+  if (!inBrowser()) {
+    return;
+  }
+
   ambienceWanted += 1;
+
   try {
     syncAmbience();
   } catch {
@@ -245,8 +304,12 @@ export function startAmbienceLoop(): void {
 }
 
 export function stopAmbienceLoop(): void {
-  if (!inBrowser()) return;
+  if (!inBrowser()) {
+    return;
+  }
+
   ambienceWanted = Math.max(0, ambienceWanted - 1);
+
   try {
     syncAmbience();
   } catch {

@@ -44,20 +44,29 @@ interface MockLobbyOptions {
 }
 
 /** The same checks the server will run, so the prototype behaves like the game. */
-function blockersFor(view: LobbyView): StartBlocker[] {
-  const blockers: StartBlocker[] = [];
-  if (view.players.length < MIN_PLAYERS)
+function blockersFor(view: LobbyView): Array<StartBlocker> {
+  const blockers: Array<StartBlocker> = [];
+
+  if (view.players.length < MIN_PLAYERS) {
     blockers.push({
       kind: "too_few_players",
       needed: MIN_PLAYERS - view.players.length,
     });
+  }
+
   const away = view.players.filter((p) => !p.connected).map((p) => p.id);
   const waiting = view.players.filter((p) => !p.ready).map((p) => p.id);
-  if (away.length > 0) blockers.push({ kind: "disconnected", playerIds: away });
+
+  if (away.length > 0) {
+    blockers.push({ kind: "disconnected", playerIds: away });
+  }
+
   if (waiting.length > 0) {
     blockers.push({ kind: "not_ready", playerIds: waiting });
   }
+
   const count = view.players.length;
+
   if (isPlayerCount(count)) {
     // The Assassin is always in, plus every Evil optional role switched on.
     const evilRoles =
@@ -66,10 +75,12 @@ function blockersFor(view: LobbyView): StartBlocker[] {
         (role) => ROLES[role].alignment === "evil",
       ).length;
     const allowed = TEAM_BALANCE[count].evil;
+
     if (evilRoles > allowed) {
       blockers.push({ kind: "too_many_evil_roles", allowed });
     }
   }
+
   return blockers;
 }
 
@@ -93,6 +104,7 @@ export function openingView({ via, name, code }: MockLobbyOptions): LobbyView {
   const named = lobbyView.players.map((p) =>
     p.id === youId && name ? { ...p, name } : p,
   );
+
   if (via === "create") {
     // A new room: only you, the host, until friends type the code.
     return withBlockers({
@@ -100,13 +112,18 @@ export function openingView({ via, name, code }: MockLobbyOptions): LobbyView {
       players: named.filter((p) => p.id === youId),
     });
   }
+
   if (via === "join") {
     // Someone else's room: the first of them hosts, and you arrive last.
     const others = named
       .filter((p) => p.id !== youId)
       .map((p, index) => ({ ...p, isHost: index === 0 }));
     const you = named.find((p) => p.id === youId);
-    if (!you) return lobbyView;
+
+    if (!you) {
+      return lobbyView;
+    }
+
     return withBlockers({
       ...lobbyView,
       code: code ?? lobbyView.code,
@@ -114,6 +131,7 @@ export function openingView({ via, name, code }: MockLobbyOptions): LobbyView {
       you: { id: youId, isHost: false },
     });
   }
+
   return withBlockers({ ...lobbyView, players: named });
 }
 
@@ -123,7 +141,11 @@ export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
     () =>
       setView((current) => {
         const next = missing(current)[0];
-        if (!next || current.players.length >= MAX_PLAYERS) return current;
+
+        if (!next || current.players.length >= MAX_PLAYERS) {
+          return current;
+        }
+
         return withBlockers({
           ...current,
           players: [...current.players, next],
@@ -154,6 +176,7 @@ export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
     toggleRole: (role) =>
       setView((current) => {
         const on = current.settings.optionalRoles.includes(role);
+
         return withBlockers({
           ...current,
           settings: {
@@ -181,11 +204,18 @@ export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
       ),
     addGuest: () =>
       setView((current) => {
-        if (current.players.length >= MAX_PLAYERS) return current;
+        if (current.players.length >= MAX_PLAYERS) {
+          return current;
+        }
+
         const name = GUESTS.find(
           (n) => !current.players.some((p) => p.name === n),
         );
-        if (!name) return current;
+
+        if (!name) {
+          return current;
+        }
+
         return withPlayers(current, [
           ...current.players,
           {
@@ -202,7 +232,11 @@ export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
         const last = [...current.players]
           .reverse()
           .find((p) => p.id.startsWith("p-guest-"));
-        if (!last) return current;
+
+        if (!last) {
+          return current;
+        }
+
         return withPlayers(
           current,
           current.players.filter((p) => p.id !== last.id),

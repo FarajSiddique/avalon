@@ -6,7 +6,9 @@ import { useStage } from "./-components/stage/stage-context";
 
 export const Route = createFileRoute("/design/starlit/role/$role")({
   beforeLoad: ({ params }) => {
-    if (!isRoleVariant(params.role)) throw notFound();
+    if (!isRoleVariant(params.role)) {
+      throw notFound();
+    }
   },
   head: () => ({ meta: [{ title: "Your role · Starlit Vale" }] }),
   component: RolePage,
@@ -15,7 +17,11 @@ export const Route = createFileRoute("/design/starlit/role/$role")({
 function RolePage() {
   const { role } = Route.useParams();
   const { status } = useStage();
-  if (!isRoleVariant(role)) return null;
+
+  if (!isRoleVariant(role)) {
+    return null;
+  }
+
   // A different role is a different screen: remount so nothing carries over.
   // Without WebGL (a failed stage stays failed) the game cannot be shown.
   return status === "failed" ? (

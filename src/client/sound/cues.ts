@@ -78,7 +78,7 @@ interface CueSpec {
   /** Seconds until the last voice has died away. */
   length: number;
   /** A short buzz on phones that support it (not iPhone). */
-  vibrate?: readonly number[];
+  vibrate?: ReadonlyArray<number>;
   render: (
     context: BaseAudioContext,
     out: AudioNode,
@@ -107,7 +107,7 @@ function flick(
 
 /** Notes one after another. */
 function run(
-  degrees: readonly number[],
+  degrees: ReadonlyArray<number>,
   gap: number,
   play: (frequency: number, at: number, index: number) => void,
   at: number,

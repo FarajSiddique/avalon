@@ -19,19 +19,26 @@ const noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
 /** Two seconds of white noise, the same samples every time (seeded). */
 export function noiseBuffer(context: BaseAudioContext): AudioBuffer {
   const cached = noiseBuffers.get(context);
-  if (cached) return cached;
+
+  if (cached) {
+    return cached;
+  }
+
   const length = Math.floor(context.sampleRate * 2);
   const buffer = context.createBuffer(1, length, context.sampleRate);
   const samples = buffer.getChannelData(0);
-  let seed = 0x2f6e2b1;
+  let seed = 0x2_f6_e2_b1;
+
   for (let i = 0; i < length; i += 1) {
     // xorshift32: cheap, deterministic, good enough for noise.
     seed ^= seed << 13;
     seed ^= seed >>> 17;
     seed ^= seed << 5;
-    samples[i] = ((seed >>> 0) / 0xffffffff) * 2 - 1;
+    samples[i] = ((seed >>> 0) / 0xff_ff_ff_ff) * 2 - 1;
   }
+
   noiseBuffers.set(context, buffer);
+
   return buffer;
 }
 
@@ -43,9 +50,11 @@ function envelope(
   decay: number,
 ): GainNode {
   const gain = context.createGain();
+
   gain.gain.setValueAtTime(SILENT, at);
   gain.gain.linearRampToValueAtTime(peak, at + attack);
   gain.gain.exponentialRampToValueAtTime(SILENT, at + attack + decay);
+
   return gain;
 }
 
@@ -58,11 +67,13 @@ function oscillator(
   detune = 0,
 ): OscillatorNode {
   const osc = context.createOscillator();
+
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, at);
   osc.detune.setValueAtTime(detune, at);
   osc.start(at);
   osc.stop(until);
+
   return osc;
 }
 
@@ -91,8 +102,12 @@ export function chime(
     { ratio: 2.005, level: dark ? 0.08 : 0.26, length: 0.5, type: "triangle" },
     { ratio: 3.01, level: dark ? 0 : 0.07, length: 0.22, type: "sine" },
   ] as const;
+
   for (const partial of partials) {
-    if (partial.level === 0) continue;
+    if (partial.level === 0) {
+      continue;
+    }
+
     const env = envelope(
       context,
       at,
@@ -100,6 +115,7 @@ export function chime(
       0.006,
       decay * partial.length,
     );
+
     oscillator(context, partial.type, frequency * partial.ratio, at, until)
       .connect(env)
       .connect(out);
@@ -119,6 +135,7 @@ export function harp(
 ): void {
   const until = at + decay + 0.05;
   const filter = context.createBiquadFilter();
+
   filter.type = "lowpass";
   filter.Q.setValueAtTime(0.7, at);
   filter.frequency.setValueAtTime(frequency * (dark ? 2.2 : 6), at);
@@ -127,6 +144,7 @@ export function harp(
     at + decay * 0.6,
   );
   const env = envelope(context, at, gain * HARP_LEVEL, 0.004, decay);
+
   filter.connect(env).connect(out);
   oscillator(context, "triangle", frequency, at, until, -4).connect(filter);
   oscillator(context, "triangle", frequency, at, until, 5).connect(filter);
@@ -138,6 +156,7 @@ export function harp(
     0.008,
     decay * 0.7,
   );
+
   oscillator(context, "sine", frequency / 2, at, until).connect(body);
   body.connect(out);
 }
@@ -154,26 +173,31 @@ export function pad(
   context: BaseAudioContext,
   out: AudioNode,
   at: number,
-  frequencies: readonly number[],
+  frequencies: ReadonlyArray<number>,
   seconds: number,
   { gain = 0.04, dark = false, attack = 0.3 }: PadOptions = {},
 ): void {
   const until = at + seconds + 0.05;
   const env = context.createGain();
+
   env.gain.setValueAtTime(SILENT, at);
   env.gain.linearRampToValueAtTime(gain, at + seconds * attack);
   env.gain.setValueAtTime(gain, at + seconds * Math.max(attack, 0.55));
   env.gain.linearRampToValueAtTime(SILENT, at + seconds);
   const filter = context.createBiquadFilter();
+
   filter.type = "lowpass";
   filter.frequency.setValueAtTime(dark ? 420 : 1800, at);
   filter.connect(env).connect(out);
+
   for (const frequency of frequencies) {
     oscillator(context, "sine", frequency, at, until, -4).connect(filter);
     oscillator(context, "sine", frequency, at, until, 4).connect(filter);
+
     if (dark) {
       // A touch of triangle makes low notes audible on phone speakers.
       const edge = context.createGain();
+
       edge.gain.setValueAtTime(0.35, at);
       oscillator(context, "triangle", frequency * 2, at, until)
         .connect(edge)
@@ -201,15 +225,18 @@ export function breath(
   { from, to = from, gain = 0.05, q = 1.2, offset = 0 }: NoiseOptions,
 ): void {
   const source = context.createBufferSource();
+
   source.buffer = noiseBuffer(context);
   source.loop = true;
   const filter = context.createBiquadFilter();
+
   filter.type = "bandpass";
   filter.Q.setValueAtTime(q, at);
   filter.frequency.setValueAtTime(from, at);
   filter.frequency.exponentialRampToValueAtTime(to, at + seconds);
   const env = context.createGain();
   const attack = Math.min(0.04, seconds * 0.3);
+
   env.gain.setValueAtTime(SILENT, at);
   env.gain.linearRampToValueAtTime(gain, at + attack);
   env.gain.exponentialRampToValueAtTime(SILENT, at + seconds);
@@ -226,10 +253,12 @@ export function thump(
   { gain = 0.2, frequency = 110 }: { gain?: number; frequency?: number } = {},
 ): void {
   const osc = context.createOscillator();
+
   osc.type = "sine";
   osc.frequency.setValueAtTime(frequency, at);
   osc.frequency.exponentialRampToValueAtTime(frequency * 0.5, at + 0.14);
   const env = envelope(context, at, gain, 0.005, 0.2);
+
   osc.connect(env).connect(out);
   osc.start(at);
   osc.stop(at + 0.25);
@@ -246,10 +275,12 @@ export function glide(
   gain = 0.04,
 ): void {
   const osc = context.createOscillator();
+
   osc.type = "sine";
   osc.frequency.setValueAtTime(from, at);
   osc.frequency.exponentialRampToValueAtTime(to, at + seconds);
   const env = envelope(context, at, gain, 0.03, seconds - 0.03);
+
   osc.connect(env).connect(out);
   osc.start(at);
   osc.stop(at + seconds + 0.05);

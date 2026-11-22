@@ -18,7 +18,11 @@ import { useStage } from "./stage-context";
  */
 export function Stage() {
   const { slot, pending } = useStage();
-  if (!slot && !pending) return null;
+
+  if (!slot && !pending) {
+    return null;
+  }
+
   return <LiveStage />;
 }
 
@@ -39,34 +43,47 @@ function LiveStage() {
   const flow = useRef(false);
   const inFlow = useCallback((): boolean => {
     const now = window.location.pathname;
-    if (lastPath.current === null) lastPath.current = now;
-    else if (now !== lastPath.current) {
+
+    if (lastPath.current === null) {
+      lastPath.current = now;
+    } else if (now !== lastPath.current) {
       flow.current = isNextInFlow(lastPath.current, now);
       lastPath.current = now;
     }
+
     return flow.current;
   }, []);
   // The way this flight is going. Kept after the pending flight is taken,
   // since the engine may still be loading when the lobby mounts.
   const path = useRef<FlightPath | null>(pending);
+
   useEffect(() => {
-    if (pending) path.current = pending;
-    else if (slot?.mode === "hero") path.current = null;
+    if (pending) {
+      path.current = pending;
+    } else if (slot?.mode === "hero") {
+      path.current = null;
+    }
   }, [pending, slot]);
 
   // Where the stage should be now, measured from the claiming screen.
   const mode = pending ? "lobby" : (slot?.mode ?? "hero");
   const measure = useCallback((): StageTarget | null => {
     const el = host.current;
-    if (!el) return null;
+
+    if (!el) {
+      return null;
+    }
+
     const box = el.getBoundingClientRect();
     // On the way out of the landing, the lobby is not there to measure yet:
     // aim for the whole screen and correct when it mounts.
     const live = slot && slot.mode === mode ? slot : null;
     const focusEl = live?.focus.current;
     let focus: Rect | null = null;
+
     if (focusEl) {
       const r = focusEl.getBoundingClientRect();
+
       focus = {
         x: r.left - box.left,
         y: r.top - box.top,
@@ -74,6 +91,7 @@ function LiveStage() {
         h: r.height,
       };
     }
+
     return {
       mode,
       path: pending ?? path.current ?? undefined,
@@ -87,9 +105,14 @@ function LiveStage() {
 
   const push = useCallback(() => {
     const target = measure();
-    if (!target) return;
+
+    if (!target) {
+      return;
+    }
+
     // A band lower than the screen is tall (a short landscape phone).
     const bottom = target.focus ? target.focus.y + target.focus.h : 0;
+
     setHeight(bottom > window.innerHeight ? bottom : null);
     mounted.current?.setTarget(target);
   }, [measure]);
@@ -98,13 +121,19 @@ function LiveStage() {
   // when a flight from it is pending.
   const initial = useRef(pending ? 0 : slot && slot.mode !== "hero" ? 1 : 0);
   const pushRef = useRef(push);
+
   useLayoutEffect(() => {
     pushRef.current = push;
   });
   useEffect(() => {
     const el = host.current;
-    if (!el || import.meta.env.SSR) return;
+
+    if (!el || import.meta.env.SSR) {
+      return;
+    }
+
     let cancelled = false;
+
     setStatus("loading");
     void import("../three/engine")
       .then(({ mountStarTable }) =>
@@ -116,23 +145,31 @@ function LiveStage() {
           stage: {
             blend: initial.current === 1 ? 1 : 0,
             onPhase: (phase) => {
-              if (!cancelled) setPhase(phase);
+              if (!cancelled) {
+                setPhase(phase);
+              }
             },
           },
           onLost: () => {
-            if (!cancelled) setStatus("failed");
+            if (!cancelled) {
+              setStatus("failed");
+            }
           },
         }),
       )
       .then((controls) => {
         if (cancelled) {
           controls?.stop();
+
           return;
         }
+
         if (!controls) {
           setStatus("failed");
+
           return;
         }
+
         mounted.current = controls;
         controls.setPlayers(latestPlayers.current);
         controls.setPlay(latestPlay.current);
@@ -142,8 +179,11 @@ function LiveStage() {
         setStatus("running");
       })
       .catch(() => {
-        if (!cancelled) setStatus("failed");
+        if (!cancelled) {
+          setStatus("failed");
+        }
       });
+
     return () => {
       cancelled = true;
       mounted.current?.stop();
@@ -174,20 +214,33 @@ function LiveStage() {
   // Re-aim whenever the claiming screen or its layout changes. Fonts and
   // late layout move the landing band, so keep measuring for a moment.
   useEffect(() => {
-    if (slot?.mode === "lobby" && pending) takePending();
+    if (slot?.mode === "lobby" && pending) {
+      takePending();
+    }
+
     const focusEl = slot?.focus.current;
     const observer = new ResizeObserver(() => push());
-    if (focusEl) observer.observe(focusEl);
+
+    if (focusEl) {
+      observer.observe(focusEl);
+    }
+
     observer.observe(document.documentElement);
     window.addEventListener("resize", push);
     let frames = 0;
     let raf = 0;
+
     const settle = () => {
       push();
-      if (++frames < 40) raf = requestAnimationFrame(settle);
+
+      if (++frames < 40) {
+        raf = requestAnimationFrame(settle);
+      }
     };
+
     raf = requestAnimationFrame(settle);
     void document.fonts?.ready.then(() => push());
+
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", push);
@@ -222,15 +275,27 @@ function LiveStage() {
 function isNextInFlow(from: string, to: string): boolean {
   const a = screenOf(from);
   const b = screenOf(to);
-  if (!a || !b) return false;
-  if (a === "lobby") return b.startsWith("role/");
+
+  if (!a || !b) {
+    return false;
+  }
+
+  if (a === "lobby") {
+    return b.startsWith("role/");
+  }
+
   // Your own card continues to the table. The Assassin's card is another
   // seat (a prototype detour), so its Continue cuts.
-  if (a === "role/merlin") return b === "table/propose";
+  if (a === "role/merlin") {
+    return b === "table/propose";
+  }
+
   if (a.startsWith("table/") && b.startsWith("table/")) {
     const i = TABLE_STEPS.indexOf(a.slice(6) as (typeof TABLE_STEPS)[number]);
+
     return i >= 0 && b.slice(6) === TABLE_STEPS[(i + 1) % TABLE_STEPS.length];
   }
+
   return false;
 }
 
@@ -238,6 +303,7 @@ function screenOf(path: string): string | null {
   const match = /\/design\/starlit\/(lobby|role\/[^/]+|table\/[^/]+)\/?$/.exec(
     path,
   );
+
   return match?.[1] ?? null;
 }
 
@@ -253,6 +319,7 @@ function NameTag({ player }: { player: TablePlayer }) {
   ) : (
     <IconRing size={13} className="text-warning shrink-0" />
   );
+
   return (
     <div
       data-tag={player.id}

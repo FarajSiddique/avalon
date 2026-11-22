@@ -11,6 +11,7 @@ export function useRoom(code: RoomCode): UseRoom {
 
   useEffect(() => {
     client.start();
+
     return () => client.stop();
   }, [client]);
 

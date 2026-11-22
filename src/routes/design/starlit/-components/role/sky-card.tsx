@@ -20,17 +20,25 @@ const STARS = makeStars({
  * a little less far toward the middle, like stage curtains. The right bank
  * is the same drawing mirrored.
  */
-function bank(x: number, radius: number, step: number, seed: number): Lobe[] {
+function bank(
+  x: number,
+  radius: number,
+  step: number,
+  seed: number,
+): Array<Lobe> {
   const random = seededRandom(seed);
-  const lobes: Lobe[] = [];
+  const lobes: Array<Lobe> = [];
+
   for (let y = -24, index = 0; y < 640; y += step, index += 1) {
     const small = index % 2 === 1;
+
     lobes.push([
       round(x + (small ? 16 : -6) + random() * 8),
       round(y + random() * 10),
       round(radius * (small ? 0.78 : 1) + random() * 6),
     ]);
   }
+
   return lobes;
 }
 
@@ -99,9 +107,14 @@ export function useCardSound(open: boolean): void {
   // Start from the first value, so mounting already open makes no sound.
   const wasOpen = useRef(open);
   const stars = useRef<CueHandle | null>(null);
+
   useEffect(() => {
-    if (open === wasOpen.current) return;
+    if (open === wasOpen.current) {
+      return;
+    }
+
     wasOpen.current = open;
+
     if (open) {
       play("clouds-part");
       stars.current = play("constellation");
@@ -136,9 +149,12 @@ export function SkyCard({
 }) {
   const hold = useHoldToReveal();
   const revealed = hold.revealed;
+
   useCardSound(revealed);
   useEffect(() => {
-    if (revealed) onHold?.();
+    if (revealed) {
+      onHold?.();
+    }
   }, [revealed, onHold]);
 
   return (

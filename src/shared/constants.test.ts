@@ -15,12 +15,18 @@ describe("game tables", () => {
   it("has a balance row for every player count that adds up", () => {
     for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n += 1) {
       expect(isPlayerCount(n)).toBe(true);
-      if (!isPlayerCount(n)) continue;
+
+      if (!isPlayerCount(n)) {
+        continue;
+      }
+
       const { good, evil } = TEAM_BALANCE[n];
+
       expect(good + evil).toBe(n);
       expect(good).toBeGreaterThan(evil);
       expect(QUEST_TEAM_SIZES[n]).toHaveLength(5);
     }
+
     expect(isPlayerCount(4)).toBe(false);
     expect(isPlayerCount(11)).toBe(false);
   });
@@ -44,9 +50,11 @@ describe("game tables", () => {
 describe("input cleanup", () => {
   it("normalizes names and accepts letters in any script", () => {
     expect(normalizeName("  Sir   Kay ")).toBe("Sir Kay");
+
     for (const ok of ["Wren", "José", "李雷", "Anne-Marie", "O'Neil", "A"]) {
       expect(NAME_PATTERN.test(ok)).toBe(true);
     }
+
     for (const bad of ["", " ", "-dash", "tab\tname", "<b>", "trail-"]) {
       expect(NAME_PATTERN.test(bad)).toBe(false);
     }

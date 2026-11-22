@@ -33,7 +33,7 @@ type StageStatus = "idle" | "loading" | "running" | "failed";
 
 interface StageValue {
   slot: StageSlot | null;
-  players: readonly TablePlayer[];
+  players: ReadonlyArray<TablePlayer>;
   /** A flight asked for before the next screen has mounted. */
   pending: FlightPath | null;
   /** The landing is fading out on its way to the lobby. */
@@ -42,7 +42,7 @@ interface StageValue {
   /** Settled on a framing, or flying. Null until the scene runs. */
   phase: StagePhase | null;
   setSlot: (update: (slot: StageSlot | null) => StageSlot | null) => void;
-  setPlayers: (players: readonly TablePlayer[]) => void;
+  setPlayers: (players: ReadonlyArray<TablePlayer>) => void;
   /** Start the flight to the lobby now; the caller navigates shortly after. */
   depart: (path: FlightPath) => void;
   /** The stage has taken the pending flight. */
@@ -68,7 +68,7 @@ const StageContext = createContext<StageValue | null>(null);
 
 export function StageProvider({ children }: { children: ReactNode }) {
   const [slot, setSlot] = useState<StageSlot | null>(null);
-  const [players, setPlayers] = useState<readonly TablePlayer[]>([]);
+  const [players, setPlayers] = useState<ReadonlyArray<TablePlayer>>([]);
   const [pending, setPending] = useState<FlightPath | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [status, setStatus] = useState<StageStatus>("idle");
@@ -121,6 +121,7 @@ export function StageProvider({ children }: { children: ReactNode }) {
       tagLayer,
     ],
   );
+
   return (
     <StageContext.Provider value={value}>{children}</StageContext.Provider>
   );
@@ -128,7 +129,11 @@ export function StageProvider({ children }: { children: ReactNode }) {
 
 export function useStage(): StageValue {
   const value = useContext(StageContext);
-  if (!value) throw new Error("useStage needs a StageProvider");
+
+  if (!value) {
+    throw new Error("useStage needs a StageProvider");
+  }
+
   return value;
 }
 
@@ -141,10 +146,16 @@ export function useStageSlot(
   const mode = options?.mode;
   const reveal = options?.reveal;
   const fade = options?.fade;
+
   useEffect(() => {
-    if (!mode || !reveal || fade === undefined) return;
+    if (!mode || !reveal || fade === undefined) {
+      return;
+    }
+
     const slot: StageSlot = { mode, reveal, fade, focus };
+
     setSlot(() => slot);
+
     return () => setSlot((current) => (current === slot ? null : current));
   }, [mode, reveal, fade, focus, setSlot]);
 }
@@ -156,6 +167,7 @@ export function useStageSlot(
  */
 export function useStagePlay(play: TablePlay | null): void {
   const { setPlay } = useStage();
+
   useEffect(() => {
     setPlay(play);
   }, [play, setPlay]);
@@ -165,9 +177,12 @@ export function useStagePlay(play: TablePlay | null): void {
 /** Give the stage this screen's tag layer while it is mounted. */
 export function useTagLayer(layer: RefObject<HTMLElement | null>): void {
   const { setTagLayer } = useStage();
+
   useEffect(() => {
     const el = layer.current;
+
     setTagLayer(el);
+
     return () => setTagLayer(null);
   }, [layer, setTagLayer]);
 }
@@ -182,6 +197,7 @@ export function usePickAt(): (
   clientY: number,
 ) => string | null {
   const { picker } = useStage();
+
   return useCallback(
     (clientX: number, clientY: number) =>
       picker.current?.(clientX, clientY) ?? null,
@@ -190,8 +206,9 @@ export function usePickAt(): (
 }
 
 /** Who stands at the table while this screen is mounted. */
-export function useStagePlayers(players: readonly TablePlayer[]): void {
+export function useStagePlayers(players: ReadonlyArray<TablePlayer>): void {
   const { setPlayers } = useStage();
+
   useEffect(() => {
     setPlayers(players);
   }, [players, setPlayers]);

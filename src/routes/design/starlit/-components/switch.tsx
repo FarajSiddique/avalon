@@ -21,6 +21,7 @@ export function Switch({
   description: string;
 }) {
   const id = useId();
+
   return (
     <button
       type="button"

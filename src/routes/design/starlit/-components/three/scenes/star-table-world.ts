@@ -27,34 +27,51 @@ import { standard } from "../props";
 /** The forest floor: dark, faceted, lit warm round the table. */
 export function clearing(bin: Bin, p: Palette): Mesh {
   const geometry = new PlaneGeometry(180, 180, 90, 90).toNonIndexed();
+
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.getAttribute("position") as BufferAttribute;
+
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
     const d = Math.hypot(x, z);
     const rise = d > 16 ? Math.min(6, (d - 16) * 0.12) : 0;
+
     pos.setY(i, (fbm2(x * 0.12, z * 0.12) - 0.5) * 0.7 + rise);
   }
+
   const colors = new Float32Array(pos.count * 3);
   const c = new Color();
+
   for (let f = 0; f < pos.count / 3; f++) {
     let x = 0;
     let z = 0;
+
     for (let v = 0; v < 3; v++) {
       x += pos.getX(f * 3 + v) / 3;
       z += pos.getZ(f * 3 + v) / 3;
     }
+
     const d = Math.hypot(x, z);
-    if (d < 5) c.copy(p["ground-lit-2"]);
-    else if (d < 9)
+
+    if (d < 5) {
+      c.copy(p["ground-lit-2"]);
+    } else if (d < 9) {
       c.copy(p["ground-lit-1"]).lerp(p["ground-lit-2"], (9 - d) / 4);
-    else c.copy(p.ground).lerp(p["ground-lit-1"], Math.max(0, (16 - d) / 7));
+    } else {
+      c.copy(p.ground).lerp(p["ground-lit-1"], Math.max(0, (16 - d) / 7));
+    }
+
     c.multiplyScalar(0.85 + fbm2(x * 0.5, z * 0.5) * 0.3);
-    for (let v = 0; v < 3; v++) colors.set([c.r, c.g, c.b], (f * 3 + v) * 3);
+
+    for (let v = 0; v < 3; v++) {
+      colors.set([c.r, c.g, c.b], (f * 3 + v) * 3);
+    }
   }
+
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
+
   return new Mesh(
     bin.add(geometry),
     standard(bin, new Color(1, 1, 1), { vertexColors: true }),
@@ -65,8 +82,10 @@ export function clearing(bin: Bin, p: Palette): Mesh {
 export function runeMap(bin: Bin): CanvasTexture {
   const size = 128;
   const canvas = document.createElement("canvas");
+
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d")!;
+
   ctx.translate(size / 2, size / 2);
   ctx.fillStyle = "white";
   ctx.fill(new Path2D(sparklePath(size * 0.42)));
@@ -76,7 +95,9 @@ export function runeMap(bin: Bin): CanvasTexture {
   ctx.arc(0, 0, size * 0.46, 0, Math.PI * 2);
   ctx.stroke();
   const texture = bin.add(new CanvasTexture(canvas));
+
   texture.colorSpace = SRGBColorSpace;
+
   return texture;
 }
 
@@ -89,18 +110,20 @@ export function constellations(
 ) {
   const group = new Group();
   const random = seededRandom(88);
-  const starPos: number[] = [];
-  const starCol: number[] = [];
-  const linePos: number[] = [];
+  const starPos: Array<number> = [];
+  const starCol: Array<number> = [];
+  const linePos: Array<number> = [];
   const radius = 400;
   const tints = [p.star, p["star-blue"], p["star-amber"], p["star-pink"]];
+
   for (let k = 0; k < count; k++) {
     const az = (k / count) * Math.PI * 2 + random() * 0.3;
     const el = 0.36 + random() * 0.26;
-    const points: Vector3[] = [];
+    const points: Array<Vector3> = [];
     const n = 4 + Math.floor(random() * 4);
     let a = az;
     let e = el;
+
     for (let i = 0; i < n; i++) {
       a += (random() - 0.5) * 0.28;
       e += (random() - 0.5) * 0.22;
@@ -109,18 +132,24 @@ export function constellations(
         Math.sin(e),
         Math.cos(e) * Math.sin(a),
       ).multiplyScalar(radius);
+
       points.push(v);
       starPos.push(v.x, v.y, v.z);
       const t = tints[k % tints.length]!;
+
       starCol.push(t.r, t.g, t.b);
     }
+
     for (let i = 1; i < points.length; i++) {
       const from = points[i - 1]!;
       const to = points[i]!;
+
       linePos.push(from.x, from.y, from.z, to.x, to.y, to.z);
     }
   }
+
   const lineGeo = bin.add(new BufferGeometry());
+
   lineGeo.setAttribute(
     "position",
     new BufferAttribute(new Float32Array(linePos), 3),
@@ -136,8 +165,10 @@ export function constellations(
     }),
   );
   const lines = new LineSegments(lineGeo, lineMat);
+
   group.add(lines);
   const starGeo = bin.add(new BufferGeometry());
+
   starGeo.setAttribute(
     "position",
     new BufferAttribute(new Float32Array(starPos), 3),
@@ -181,8 +212,10 @@ export function constellations(
     }),
   );
   const pts = new Points(starGeo, starMat);
+
   pts.frustumCulled = false;
   group.add(pts);
+
   return {
     object: group,
     update(time: number) {
@@ -196,6 +229,7 @@ export function constellations(
 /** A soft cone of moonlight falling on the table. */
 export function moonbeam(bin: Bin, p: Palette) {
   const geometry = bin.add(new CylinderGeometry(1.2, 4.8, 44, 48, 1, true));
+
   geometry.translate(0, 22, 0);
   const material = bin.add(
     new ShaderMaterial({
@@ -231,9 +265,11 @@ export function moonbeam(bin: Bin, p: Palette) {
     }),
   );
   const mesh = new Mesh(geometry, material);
+
   mesh.position.set(0, 0.4, 0);
   mesh.rotation.z = 0.12;
   mesh.renderOrder = 7;
+
   return {
     object: mesh,
     update(time: number) {
@@ -266,6 +302,7 @@ export function shootingStar(bin: Bin, p: Palette) {
     }),
   );
   const mesh = new Mesh(bin.add(new PlaneGeometry(60, 1.2)), material);
+
   mesh.visible = false;
   const random = seededRandom(3);
   let next = 2.5;
@@ -276,6 +313,7 @@ export function shootingStar(bin: Bin, p: Palette) {
   const yAxis = new Vector3();
   const zAxis = new Vector3();
   const basis = new Matrix4();
+
   return {
     object: mesh,
     update(time: number) {
@@ -283,12 +321,19 @@ export function shootingStar(bin: Bin, p: Palette) {
         start = time;
         next = time + 6 + random() * 7;
         const az = random() * Math.PI * 2;
+
         from.set(Math.cos(az) * 220, 150 + random() * 60, Math.sin(az) * 220);
         dir.set(-Math.sin(az), -0.35, Math.cos(az)).normalize();
       }
+
       const t = (time - start) / 1.1;
+
       mesh.visible = t >= 0 && t <= 1;
-      if (!mesh.visible) return;
+
+      if (!mesh.visible) {
+        return;
+      }
+
       material.uniforms.uLife!.value = t;
       mesh.position.copy(from).addScaledVector(dir, t * 120);
       // The streak's long axis runs along its travel, its face to the centre.

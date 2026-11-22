@@ -47,6 +47,7 @@ const CARD_GAP = 0.05;
 const CARD_STEP = (() => {
   const inner = CARD_ARC - CARD_H / 2;
   const half = CARD_W / 2;
+
   // inner * sin(step) - half * cos(step) = half + CARD_GAP
   return (
     Math.asin((half + CARD_GAP) / Math.hypot(inner, half)) +
@@ -103,10 +104,10 @@ export class TablePlayView {
   private lineGeo: LineGeometry | null = null;
   private lineMat: LineMaterial;
   private lineKey = "";
-  private lineIds: string[] = [];
+  private lineIds: Array<string> = [];
   private lineLevel = 0;
-  private nodes: Sprite[] = [];
-  private cards: Card[] = [];
+  private nodes: Array<Sprite> = [];
+  private cards: Array<Card> = [];
   private cardKey = "";
   private cardsLevel = 0;
   private textures: Partial<Record<QuestCard | "back", CanvasTexture>> = {};
@@ -182,8 +183,10 @@ export class TablePlayView {
     this.group.add(this.line);
 
     const halo = glowTexture(bin, 2.4);
+
     for (let i = 0; i < 10; i++) {
       const node = glowSprite(bin, halo, p["star-blue"], 0.9, 0);
+
       node.visible = false;
       this.nodes.push(node);
       this.group.add(node);
@@ -196,8 +199,10 @@ export class TablePlayView {
     this.play = play;
     const cards = play?.cards ?? null;
     const key = cards ? cards.join(",") : "";
+
     if (key !== this.cardKey) {
       const fresh = !this.cardKey;
+
       this.cardKey = key;
       this.layCards(cards ?? [], fresh);
     }
@@ -221,25 +226,30 @@ export class TablePlayView {
   /** The camera's azimuth behind your seat (x = sin, z = cos). */
   youAzimuth(): number {
     const a = this.youAngle;
+
     return Math.atan2(Math.cos(a), Math.sin(a));
   }
 
   /** Points the team shot frames: each team member's feet and head. */
-  teamIds(): readonly string[] {
+  teamIds(): ReadonlyArray<string> {
     return this.play?.teamIds ?? [];
   }
 
   /** The corners of the quest cards (or where three would lie). */
-  cardCorners(out: Vector3[]): Vector3[] {
+  cardCorners(out: Array<Vector3>): Array<Vector3> {
     out.length = 0;
     const n = Math.max(3, this.cards.filter((c) => c.face).length);
     const half = this.arcHalf(n);
     const az = this.youAzimuth();
+
     for (const k of [-1, 1]) {
       const phi = az + k * half;
-      for (const r of [CARD_ARC - CARD_H / 2, CARD_ARC + CARD_H / 2])
+
+      for (const r of [CARD_ARC - CARD_H / 2, CARD_ARC + CARD_H / 2]) {
         out.push(new Vector3(Math.sin(phi) * r, TABLE_TOP, Math.cos(phi) * r));
+      }
     }
+
     out.push(
       new Vector3(
         Math.sin(az) * (CARD_ARC + CARD_H / 2),
@@ -247,6 +257,7 @@ export class TablePlayView {
         Math.cos(az) * (CARD_ARC + CARD_H / 2),
       ),
     );
+
     return out;
   }
 
@@ -269,11 +280,16 @@ export class TablePlayView {
     const play = this.play;
     const standing = this.seating.standing();
     const you = standing.find((s) => s.isYou);
+
     if (you && you.angle !== this.youAngle) {
       this.youAngle = you.angle;
+
       // The cards lie on your side: once you are seated, lay them there.
-      if (this.cardKey) this.layCards(this.play?.cards ?? [], false);
+      if (this.cardKey) {
+        this.layCards(this.play?.cards ?? [], false);
+      }
     }
+
     this.yourId = you?.id ?? null;
     const team = new Set(play?.teamIds ?? []);
     const leader = play?.leaderId ?? null;
@@ -293,25 +309,31 @@ export class TablePlayView {
     for (const s of standing) {
       let glow = this.glows.get(s.id);
       const want = team.has(s.id) ? 1 : 0;
+
       if (!glow) {
         if (!want) {
           s.figure.setGlow(this.teamColor, 0);
           continue;
         }
+
         const column = new Mesh(this.columnGeo, this.columnMat.clone());
+
         this.bin.add(column.material as ShaderMaterial);
         this.group.add(column);
         glow = { level: 0, column };
         this.glows.set(s.id, glow);
       }
+
       glow.level = toward(glow.level, want, step);
       const level = glow.level * s.arrive;
+
       s.figure.setGlow(this.teamColor, level * 0.3);
       glow.column.position.copy(s.at);
       glow.column.visible = level > 0.01;
       (glow.column.material as ShaderMaterial).uniforms.uLevel!.value =
         level * (0.85 + 0.15 * Math.sin(time * 1.8 + s.angle * 3));
     }
+
     for (const [id, glow] of this.glows) {
       if (!standing.some((s) => s.id === id)) {
         glow.level = 0;
@@ -321,11 +343,18 @@ export class TablePlayView {
 
     // A small crown floats over the leader's head.
     const head = standing.find((s) => s.id === leader);
+
     this.crownLevel = toward(this.crownLevel, head ? 1 : 0, step);
-    if (head) this.crownAt.copy(head.at);
+
+    if (head) {
+      this.crownAt.copy(head.at);
+    }
+
     this.crown.visible = this.crownLevel > 0.01;
+
     if (this.crown.visible) {
       const lift = head ? head.arrive : 1;
+
       this.crown.position.set(
         this.crownAt.x,
         (HEAD - 0.6) * lift + Math.sin(time * 1.4) * 0.06,
@@ -336,14 +365,17 @@ export class TablePlayView {
     }
 
     this.updateLines(standing, team, step, time);
-    if (camera?.view)
+
+    if (camera?.view) {
       this.lineMat.resolution.set(camera.view.width, camera.view.height);
+    }
+
     this.updateCards(dt, snap);
   }
 
   /** Lines of light join the team in seat order, like a constellation. */
   private updateLines(
-    standing: Standing[],
+    standing: Array<Standing>,
     team: Set<string>,
     step: number,
     time: number,
@@ -351,27 +383,32 @@ export class TablePlayView {
     const members = standing.filter((s) => team.has(s.id));
     const chain = orderChain(members);
     const key = chain.map((s) => s.id).join(",");
+
     if (key !== this.lineKey) {
       this.lineKey = key;
       this.lineIds = chain.map((s) => s.id);
       this.lineGeo?.dispose();
       this.lineGeo = null;
+
       if (chain.length >= 2) {
-        const positions: number[] = [];
-        const colors: number[] = [];
+        const positions: Array<number> = [];
+        const colors: Array<number> = [];
         const ends = chain.map((s) =>
           s.at
             .clone()
             .multiplyScalar((STAND - 0.75) / STAND)
             .setY(LINE_Y),
         );
+
         for (let i = 1; i < ends.length; i++) {
           const a = ends[i - 1]!;
           const b = ends[i]!;
           const bow = a.distanceTo(b) * 0.12;
           const segs = 16;
+
           for (let k = i === 1 ? 0 : 1; k <= segs; k++) {
             const t = k / segs;
+
             positions.push(
               a.x + (b.x - a.x) * t,
               a.y + (b.y - a.y) * t + Math.sin(Math.PI * t) * bow,
@@ -380,29 +417,38 @@ export class TablePlayView {
             colors.push(this.teamColor.r, this.teamColor.g, this.teamColor.b);
           }
         }
+
         this.lineGeo = new LineGeometry();
         this.lineGeo.setPositions(positions);
         this.lineGeo.setColors(colors);
         this.line.geometry = this.lineGeo;
       }
+
       chain.forEach((s, i) => {
         const node = this.nodes[i];
-        if (!node) return;
+
+        if (!node) {
+          return;
+        }
+
         node.position
           .copy(s.at)
           .multiplyScalar((STAND - 0.75) / STAND)
           .setY(LINE_Y);
       });
     }
+
     // The lines come with the glow of the team they join.
     const levels = this.lineIds.map((id) => this.glows.get(id)?.level ?? 0);
     const want = levels.length >= 2 ? Math.min(...levels) : 0;
+
     this.lineLevel = toward(this.lineLevel, want, step);
     this.line.visible = !!this.lineGeo && this.lineLevel > 0.01;
     this.lineMat.opacity = this.lineLevel * 0.9;
     this.nodes.forEach((node, i) => {
       const id = this.lineIds[i];
       const level = id ? (this.glows.get(id)?.level ?? 0) : 0;
+
       node.visible = level > 0.01;
       node.material.opacity =
         level * (0.75 + 0.25 * Math.sin(time * 2.2 + i * 1.3));
@@ -410,17 +456,27 @@ export class TablePlayView {
   }
 
   /** Lay the cards out on the arc, face down, in the order given. */
-  private layCards(cards: readonly QuestCard[], fresh: boolean): void {
-    while (this.cards.length < cards.length) this.cards.push(this.makeCard());
+  private layCards(cards: ReadonlyArray<QuestCard>, fresh: boolean): void {
+    while (this.cards.length < cards.length) {
+      this.cards.push(this.makeCard());
+    }
+
     const half = this.arcHalf(cards.length);
     const az = this.youAzimuth();
+
     this.cards.forEach((card, i) => {
       const face = cards[i] ?? null;
+
       card.face = face;
-      if (!face) return;
+
+      if (!face) {
+        return;
+      }
+
       card.front.material = this.faceMat(face);
       const t = cards.length > 1 ? i / (cards.length - 1) : 0.5;
       const phi = az - half + t * half * 2;
+
       card.group.position.set(
         Math.sin(phi) * CARD_ARC,
         TABLE_TOP,
@@ -428,6 +484,7 @@ export class TablePlayView {
       );
       // The picture's top points to the fire, so it reads from your side.
       card.group.rotation.y = phi;
+
       if (fresh) {
         card.land = 0;
         card.flip = 0;
@@ -444,8 +501,10 @@ export class TablePlayView {
   private updateCards(dt: number, snap: boolean): void {
     const shown = this.play?.cardsShown ?? 0;
     let any = false;
+
     this.cards.forEach((card, i) => {
       const want = card.face ? 1 : 0;
+
       if (snap) {
         card.delay = 0;
         card.land = want;
@@ -456,14 +515,21 @@ export class TablePlayView {
         card.land = toward(card.land, want, dt / CARD_LAND);
         // A card turns only once it has landed.
         const up = want && i < shown && card.land >= 1 ? 1 : 0;
+
         card.flip = toward(card.flip, up, dt / CARD_FLIP);
       }
+
       card.group.visible = card.land > 0.001;
-      if (!card.group.visible) return;
+
+      if (!card.group.visible) {
+        return;
+      }
+
       any = true;
       // It drops onto the table with a small settle.
       const l = card.land;
       const fall = 1 - easeOutBack(l);
+
       card.group.position.y = TABLE_TOP + 0.02 + fall * 2.4;
       card.flipper.rotation.z = Math.PI * (1 - easeInOut(card.flip));
       card.flipper.position.y = Math.sin(Math.PI * card.flip) * 0.55;
@@ -479,17 +545,21 @@ export class TablePlayView {
   private makeCard(): Card {
     const group = new Group();
     const flipper = new Group();
+
     group.add(flipper);
     const front = new Mesh(this.cardGeo, this.faceMat("success"));
+
     front.rotation.x = -Math.PI / 2;
     front.position.y = 0.012;
     flipper.add(front);
     const back = new Mesh(this.cardGeo, this.backMaterial());
+
     back.rotation.x = Math.PI / 2;
     back.position.y = -0.012;
     flipper.add(back);
     group.visible = false;
     this.group.add(group);
+
     return { group, flipper, front, face: null, land: 0, flip: 0, delay: 0 };
   }
 
@@ -499,11 +569,13 @@ export class TablePlayView {
         new MeshBasicMaterial({ map: this.texture("back") }),
       );
     }
+
     return this.backMat;
   }
 
   private faceMat(face: QuestCard): MeshBasicMaterial {
     let mat = this.faceMats[face];
+
     if (!mat) {
       // Dimmed a little, so the pale face does not bloom into a blur.
       mat = this.bin.add(
@@ -514,11 +586,13 @@ export class TablePlayView {
       );
       this.faceMats[face] = mat;
     }
+
     return mat;
   }
 
   private texture(kind: QuestCard | "back"): CanvasTexture {
     let texture = this.textures[kind];
+
     if (!texture) {
       texture = this.bin.add(
         new CanvasTexture(drawCard(kind, this.p, this.font)),
@@ -527,6 +601,7 @@ export class TablePlayView {
       texture.anisotropy = 4;
       this.textures[kind] = texture;
     }
+
     return texture;
   }
 
@@ -543,6 +618,7 @@ export class TablePlayView {
     layout: Layout,
   ): string | null {
     const ray = new Ray();
+
     ray.origin.setFromMatrixPosition(camera.matrixWorld);
     ray.direction.set(x, y, 0.5).unproject(camera).sub(ray.origin).normalize();
     const tanHalf = Math.tan(((camera.fov / 2) * Math.PI) / 180) / camera.zoom;
@@ -552,23 +628,34 @@ export class TablePlayView {
     let bestT = Infinity;
     const toAxis = new Vector3();
     const forward = new Vector3();
+
     camera.getWorldDirection(forward);
+
     for (const s of this.seating.standing()) {
-      if (s.arrive < 0.5) continue;
+      if (s.arrive < 0.5) {
+        continue;
+      }
+
       const depth = toAxis
         .copy(s.at)
         .setY(HIT_TOP / 2)
         .sub(ray.origin)
         .dot(forward);
-      if (depth <= 0) continue;
+
+      if (depth <= 0) {
+        continue;
+      }
+
       const perPx = (2 * depth * tanHalf) / Math.max(1, layout.height);
       const radius = Math.min(cap, Math.max(1.0, (HIT_MIN_PX / 2) * perPx));
       const t = hitCylinder(ray, s.at, radius, HIT_TOP);
+
       if (t !== null && t < bestT) {
         bestT = t;
         best = s.id;
       }
     }
+
     return best;
   }
 
@@ -579,20 +666,26 @@ export class TablePlayView {
 }
 
 /** The team in seat order, starting after the widest gap round the table. */
-function orderChain(members: Standing[]): Standing[] {
-  if (members.length < 3) return members;
+function orderChain(members: Array<Standing>): Array<Standing> {
+  if (members.length < 3) {
+    return members;
+  }
+
   const sorted = [...members].sort((a, b) => a.angle - b.angle);
   let widest = 0;
   let at = 0;
+
   for (let i = 0; i < sorted.length; i++) {
     const a = sorted[i]!.angle;
     const b = sorted[(i + 1) % sorted.length]!.angle;
     const gap = (b - a + Math.PI * 4) % (Math.PI * 2);
+
     if (gap > widest) {
       widest = gap;
       at = (i + 1) % sorted.length;
     }
   }
+
   return [...sorted.slice(at), ...sorted.slice(0, at)];
 }
 
@@ -608,5 +701,6 @@ function easeInOut(t: number): number {
 
 function easeOutBack(t: number): number {
   const c = 1.4;
+
   return t >= 1 ? 1 : 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2;
 }

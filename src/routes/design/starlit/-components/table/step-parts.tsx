@@ -20,17 +20,20 @@ const paths = designPaths();
  * left (Next hides the old page, which runs this clean-up) or skipped.
  */
 export function useOpeningCues(
-  cues: readonly { cue: CueName; at: number }[],
-): React.RefObject<CueHandle[]> {
-  const handles = useRef<CueHandle[]>([]);
+  cues: ReadonlyArray<{ cue: CueName; at: number }>,
+): React.RefObject<Array<CueHandle>> {
+  const handles = useRef<Array<CueHandle>>([]);
+
   useEffect(() => {
     handles.current = cues.map(({ cue, at }) =>
       play(cue, { delay: at / 1000 }),
     );
+
     return () => handles.current.forEach((handle) => handle.stop());
     // The cues are fixed for each step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   return handles;
 }
 
@@ -106,14 +109,17 @@ export function pickWithSound(
 ): (id: PlayerId) => void {
   return (id) => {
     const count = draft.draftIds.length;
+
     if (draft.isPicked(id)) {
       play("unpick");
     } else if (count < teamSize) {
       play("pick", { index: count });
+
       if (count + 1 === teamSize) {
         play("team-complete", { delay: 0.2 });
       }
     }
+
     draft.toggle(id);
   };
 }

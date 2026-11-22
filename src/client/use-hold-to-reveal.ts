@@ -31,12 +31,19 @@ export function useHoldToReveal(): HoldToReveal {
   const hide = useCallback(() => setRevealed(false), []);
 
   useEffect(() => {
-    if (!revealed) return;
+    if (!revealed) {
+      return;
+    }
+
     const onVisibility = () => {
-      if (document.hidden) hide();
+      if (document.hidden) {
+        hide();
+      }
     };
+
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", hide);
+
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", hide);
@@ -47,7 +54,10 @@ export function useHoldToReveal(): HoldToReveal {
     revealed,
     holdProps: {
       onPointerDown: (event) => {
-        if (event.pointerType === "mouse" && event.button !== 0) return;
+        if (event.pointerType === "mouse" && event.button !== 0) {
+          return;
+        }
+
         event.currentTarget.setPointerCapture(event.pointerId);
         setRevealed(true);
       },
@@ -61,7 +71,9 @@ export function useHoldToReveal(): HoldToReveal {
         }
       },
       onKeyUp: (event) => {
-        if (HOLD_KEYS.has(event.key)) hide();
+        if (HOLD_KEYS.has(event.key)) {
+          hide();
+        }
       },
       onBlur: hide,
       // A long press must not open the browser's context menu or select text.

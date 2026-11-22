@@ -17,6 +17,7 @@ export function useSoundToggle(): {
 } {
   const enabled = useSyncExternalStore(subscribe, isEnabled, serverSnapshot);
   const toggle = useCallback(() => setEnabled(!isEnabled()), []);
+
   return { enabled, setEnabled, toggle };
 }
 
@@ -27,8 +28,12 @@ export function useSoundToggle(): {
  */
 export function useAmbience(on: boolean): void {
   useEffect(() => {
-    if (!on) return;
+    if (!on) {
+      return;
+    }
+
     startAmbienceLoop();
+
     return () => stopAmbienceLoop();
   }, [on]);
 }

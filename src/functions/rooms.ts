@@ -19,20 +19,26 @@ export const createRoom = createServerFn({ method: "POST" })
   .validator((input: unknown) => input)
   .handler(async ({ data }): Promise<Result<SeatGrant>> => {
     const parsed = createRoomSchema.safeParse(data);
+
     if (!parsed.success) {
       return {
         ok: false,
         error: { code: "INVALID_PAYLOAD", message: "That name is not valid." },
       };
     }
+
     for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt += 1) {
       const code = randomRoomCode(secureRandomInt);
       const grant = await env.ROOM.getByName(code).create(
         code,
         parsed.data.name,
       );
-      if (grant) return { ok: true, data: grant };
+
+      if (grant) {
+        return { ok: true, data: grant };
+      }
     }
+
     return {
       ok: false,
       error: {

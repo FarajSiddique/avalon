@@ -15,7 +15,7 @@ import {
   type RoomDeps,
 } from "./state";
 
-function fixedDeps(start = 1_000) {
+function fixedDeps(start = 1000) {
   const clock = { now: start };
   let n = 0;
   const deps: RoomDeps = {
@@ -23,6 +23,7 @@ function fixedDeps(start = 1_000) {
     newId: () => `p${(n += 1)}`,
     newSecret: () => `secret-${n + 1}`,
   };
+
   return { deps, clock };
 }
 
@@ -30,15 +31,20 @@ function errorCode(run: () => unknown): string | undefined {
   try {
     run();
   } catch (error) {
-    if (error instanceof RoomError) return error.code;
+    if (error instanceof RoomError) {
+      return error.code;
+    }
+
     throw error;
   }
+
   return undefined;
 }
 
 describe("room codes", () => {
   it("are four letters from the safe alphabet", () => {
     const rolls = [0, 1, 2, 18];
+
     expect(randomRoomCode(() => rolls.shift() ?? 0)).toBe("BCDZ");
   });
 });
@@ -66,11 +72,13 @@ describe("room state", () => {
   it("rejects a taken name and a full room", () => {
     const { deps } = fixedDeps();
     let state = createRoom("BCDF", "P1", deps).state;
+
     expect(errorCode(() => joinRoom(state, "p1", deps))).toBe("NAME_TAKEN");
 
     for (let i = 2; i <= MAX_PLAYERS; i += 1) {
       state = joinRoom(state, `P${i}`, deps).state;
     }
+
     expect(errorCode(() => joinRoom(state, "Late", deps))).toBe("ROOM_FULL");
   });
 
@@ -81,6 +89,7 @@ describe("room state", () => {
 
     expect(findSeat(guest.state, guest.token)).toBe(guest.player);
     expect(findSeat(guest.state, host.token).id).toBe(host.player.id);
+
     for (const bad of ["BCDF.wrong", "no-dot", "ZZZZ.secret-1", ""]) {
       expect(errorCode(() => findSeat(guest.state, bad))).toBe(
         "SESSION_INVALID",
@@ -113,15 +122,18 @@ describe("room expiry", () => {
   it("tracks when the room became empty", () => {
     const { deps, clock } = fixedDeps();
     const { state } = createRoom("BCDF", "Wren", deps);
-    expect(state.emptySince).toBe(1_000);
+
+    expect(state.emptySince).toBe(1000);
 
     const occupied = withPresence(state, true, clock.now);
+
     expect(occupied.emptySince).toBeNull();
     expect(withPresence(occupied, true, clock.now)).toBe(occupied);
 
     clock.now += 500;
     const empty = withPresence(occupied, false, clock.now);
-    expect(empty.emptySince).toBe(1_500);
+
+    expect(empty.emptySince).toBe(1500);
     expect(withPresence(empty, false, clock.now + 99)).toBe(empty);
   });
 
@@ -129,12 +141,12 @@ describe("room expiry", () => {
     const { deps } = fixedDeps();
     const { state, token, player } = createRoom("BCDF", "Wren", deps);
 
-    expect(nextExpiryCheck(state, 1_000)).toBe(1_000 + EMPTY_ROOM_TTL_MS);
-    expect(nextExpiryCheck(state, 1_000 + EMPTY_ROOM_TTL_MS - 1)).not.toBe(
+    expect(nextExpiryCheck(state, 1000)).toBe(1000 + EMPTY_ROOM_TTL_MS);
+    expect(nextExpiryCheck(state, 1000 + EMPTY_ROOM_TTL_MS - 1)).not.toBe(
       "expired",
     );
     expect(findSeat(state, token)).toBe(player);
-    expect(nextExpiryCheck(state, 1_000 + EMPTY_ROOM_TTL_MS)).toBe("expired");
+    expect(nextExpiryCheck(state, 1000 + EMPTY_ROOM_TTL_MS)).toBe("expired");
   });
 
   it("keeps an occupied room until the age cap", () => {
@@ -142,10 +154,10 @@ describe("room expiry", () => {
     const occupied = withPresence(
       createRoom("BCDF", "Wren", deps).state,
       true,
-      1_000,
+      1000,
     );
 
-    expect(nextExpiryCheck(occupied, 2_000)).toBe(1_000 + ROOM_MAX_AGE_MS);
-    expect(nextExpiryCheck(occupied, 1_000 + ROOM_MAX_AGE_MS)).toBe("expired");
+    expect(nextExpiryCheck(occupied, 2000)).toBe(1000 + ROOM_MAX_AGE_MS);
+    expect(nextExpiryCheck(occupied, 1000 + ROOM_MAX_AGE_MS)).toBe("expired");
   });
 });

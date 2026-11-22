@@ -6,7 +6,9 @@ import { TableStageScreen } from "./-components/table/table-stage-screen";
 
 export const Route = createFileRoute("/design/starlit/table/$step")({
   beforeLoad: ({ params }) => {
-    if (!isTableStep(params.step)) throw notFound();
+    if (!isTableStep(params.step)) {
+      throw notFound();
+    }
   },
   head: () => ({ meta: [{ title: "The table · Starlit Vale" }] }),
   component: TablePage,
@@ -15,7 +17,11 @@ export const Route = createFileRoute("/design/starlit/table/$step")({
 function TablePage() {
   const { step } = Route.useParams();
   const { status } = useStage();
-  if (!isTableStep(step)) return null;
+
+  if (!isTableStep(step)) {
+    return null;
+  }
+
   // Each step starts fresh: remount so local state does not carry over.
   // Without WebGL (a failed stage stays failed) the game cannot be shown.
   return status === "failed" ? (

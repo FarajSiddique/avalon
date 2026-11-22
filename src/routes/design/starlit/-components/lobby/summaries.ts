@@ -12,7 +12,11 @@ export function playersSummary(view: LobbyView): string {
   const ready = view.players.filter((p) => p.connected && p.ready).length;
   const away = view.players.filter((p) => !p.connected).length;
   const parts = [`${view.players.length} of ${MAX_PLAYERS}`, `${ready} ready`];
-  if (away > 0) parts.push(`${away} away`);
+
+  if (away > 0) {
+    parts.push(`${away} away`);
+  }
+
   return parts.join(", ");
 }
 
@@ -20,6 +24,10 @@ export function playersSummary(view: LobbyView): string {
 export function settingsSummary(view: LobbyView): string {
   const roles = view.settings.optionalRoles.map((role) => ROLES[role].name);
   const parts = [roles.length ? roles.join(", ") : "No extra roles"];
-  if (view.settings.ladyOfTheLake) parts.push("Lady of the Lake");
+
+  if (view.settings.ladyOfTheLake) {
+    parts.push("Lady of the Lake");
+  }
+
   return parts.join(", ");
 }

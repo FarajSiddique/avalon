@@ -31,7 +31,8 @@ export { seededRandom };
 /* ---------- noise ---------- */
 
 function hash2(x: number, y: number): number {
-  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43_758.5453;
+
   return s - Math.floor(s);
 }
 
@@ -47,6 +48,7 @@ export function noise2(x: number, y: number): number {
   const b = hash2(ix + 1, iy);
   const c = hash2(ix, iy + 1);
   const d = hash2(ix + 1, iy + 1);
+
   return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
 }
 
@@ -55,11 +57,13 @@ export function fbm2(x: number, y: number, octaves = 4): number {
   let sum = 0;
   let amp = 0.5;
   let freq = 1;
+
   for (let i = 0; i < octaves; i++) {
     sum += amp * noise2(x * freq, y * freq);
     freq *= 2.03;
     amp *= 0.5;
   }
+
   return sum / (1 - 0.5 ** octaves);
 }
 
@@ -104,23 +108,37 @@ export function flicker(t: number, seed = 0): number {
 
 /** Collects disposables so a scene can free everything in one call. */
 export class Bin {
-  private items: { dispose(): void }[] = [];
+  private items: Array<{ dispose(): void }> = [];
   add<T extends { dispose(): void }>(item: T): T {
     this.items.push(item);
+
     return item;
   }
+
   /** Track the geometry and material(s) of every mesh under `root`. */
   addTree(root: Object3D): void {
     root.traverse((node) => {
       const n = node as Partial<Mesh>;
-      if (n.geometry) this.add(n.geometry);
-      const mat = n.material as Material | Material[] | undefined;
-      if (Array.isArray(mat)) mat.forEach((m) => this.add(m));
-      else if (mat) this.add(mat);
+
+      if (n.geometry) {
+        this.add(n.geometry);
+      }
+
+      const mat = n.material as Material | Array<Material> | undefined;
+
+      if (Array.isArray(mat)) {
+        mat.forEach((m) => this.add(m));
+      } else if (mat) {
+        this.add(mat);
+      }
     });
   }
+
   dispose(): void {
-    for (const item of new Set(this.items)) item.dispose();
+    for (const item of new Set(this.items)) {
+      item.dispose();
+    }
+
     this.items = [];
   }
 }
@@ -129,9 +147,11 @@ export class Bin {
 export function glowTexture(bin: Bin, falloff = 2.2): Texture {
   const size = 128;
   const canvas = document.createElement("canvas");
+
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d")!;
   const image = ctx.createImageData(size, size);
+
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const dx = (x + 0.5) / size - 0.5;
@@ -139,13 +159,17 @@ export function glowTexture(bin: Bin, falloff = 2.2): Texture {
       const d = Math.min(1, Math.sqrt(dx * dx + dy * dy) * 2);
       const v = Math.pow(1 - d, falloff);
       const i = (y * size + x) * 4;
+
       image.data[i] = image.data[i + 1] = image.data[i + 2] = 255;
       image.data[i + 3] = Math.round(v * 255);
     }
   }
+
   ctx.putImageData(image, 0, 0);
   const texture = bin.add(new CanvasTexture(canvas));
+
   texture.colorSpace = SRGBColorSpace;
+
   return texture;
 }
 
@@ -167,7 +191,9 @@ export function glowSprite(
     }),
   );
   const sprite = new Sprite(material);
+
   sprite.scale.setScalar(scale);
+
   return sprite;
 }
 
@@ -220,8 +246,10 @@ export function skyDome(
   );
   const geometry = bin.add(new SphereGeometry(options.radius ?? 500, 48, 24));
   const mesh = new Mesh(geometry, material);
+
   mesh.renderOrder = -10;
   mesh.frustumCulled = false;
+
   return mesh;
 }
 
@@ -255,6 +283,7 @@ export function starField(
     p["star-pink"],
     p["star-amber"],
   ];
+
   for (let i = 0; i < options.count; i++) {
     // Denser towards the top, none below `minY`.
     const y =
@@ -262,19 +291,24 @@ export function starField(
       Math.pow(random(), 0.8) * (1 - (options.minY ?? 0.02));
     const angle = random() * Math.PI * 2;
     const r = Math.sqrt(1 - y * y);
+
     positions.set(
       [Math.cos(angle) * r * radius, y * radius, Math.sin(angle) * r * radius],
       i * 3,
     );
     const tint = tints[Math.floor(random() * tints.length)]!;
+
     colors.set([tint.r, tint.g, tint.b], i * 3);
     const big = random() > 0.93;
+
     extra.set(
       [(big ? 2.6 : 1) * (0.7 + random() * 0.9), random() * 100],
       i * 2,
     );
   }
+
   const geometry = bin.add(new BufferGeometry());
+
   geometry.setAttribute("position", new BufferAttribute(positions, 3));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.setAttribute("extra", new BufferAttribute(extra, 2));
@@ -322,8 +356,10 @@ export function starField(
     }),
   );
   const object = new Points(geometry, material);
+
   object.frustumCulled = false;
   object.renderOrder = -9;
+
   return {
     object,
     update(time) {
@@ -346,6 +382,7 @@ export interface Animated {
 export function flame(bin: Bin, p: Palette, height = 1): Animated {
   const group = new Group();
   const geometry = bin.add(new PlaneGeometry(1, 1.6, 1, 1));
+
   geometry.translate(0, 0.8, 0);
   const material = bin.add(
     new ShaderMaterial({
@@ -389,13 +426,15 @@ export function flame(bin: Bin, p: Palette, height = 1): Animated {
       `,
     }),
   );
-  const tongues: Mesh[] = [];
+  const tongues: Array<Mesh> = [];
+
   for (const [w, h, x, z] of [
     [1.15, 1.0, 0, 0],
     [0.8, 0.8, 0.22, 0.12],
     [0.75, 0.75, -0.24, -0.08],
   ] as const) {
     const mesh = new Mesh(geometry, material.clone());
+
     bin.add(mesh.material as Material);
     mesh.scale.set(w * height, h * height, 1);
     mesh.position.set(x * height, 0, z * height);
@@ -403,14 +442,17 @@ export function flame(bin: Bin, p: Palette, height = 1): Animated {
     tongues.push(mesh);
     group.add(mesh);
   }
+
   const world = new Vector3();
   const eye = new Vector3();
+
   return {
     object: group,
     update(time, _dt, camera) {
       camera.getWorldPosition(eye);
       tongues.forEach((mesh, i) => {
         const m = mesh.material as ShaderMaterial;
+
         m.uniforms.uTime!.value = time + i * 3.7;
         // Face the camera, turning about the vertical only.
         mesh.getWorldPosition(world);
@@ -443,6 +485,7 @@ export function motes(
   const base = new Float32Array(n * 3);
   const seeds = new Float32Array(n * 2);
   const colors = new Float32Array(n * 3);
+
   for (let i = 0; i < n; i++) {
     base.set(
       [
@@ -455,9 +498,12 @@ export function motes(
     seeds.set([random() * options.life, random() * 100], i * 2);
     const c =
       options.altColor && random() > 0.6 ? options.altColor : options.color;
+
     colors.set([c.r, c.g, c.b], i * 3);
   }
+
   const geometry = bin.add(new BufferGeometry());
+
   geometry.setAttribute("position", new BufferAttribute(base, 3));
   geometry.setAttribute("seed", new BufferAttribute(seeds, 2));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
@@ -509,8 +555,10 @@ export function motes(
     }),
   );
   const points = new Points(geometry, material);
+
   points.frustumCulled = false;
   points.renderOrder = 6;
+
   return {
     object: points,
     update(time) {
@@ -523,14 +571,17 @@ export function motes(
 export function puffTexture(bin: Bin, seed = 5): Texture {
   const size = 256;
   const canvas = document.createElement("canvas");
+
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d")!;
   const random = seededRandom(seed);
+
   for (let i = 0; i < 14; i++) {
     const x = size * (0.22 + random() * 0.56);
     const y = size * (0.4 + random() * 0.25);
     const r = size * (0.12 + random() * 0.16);
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+
     g.addColorStop(0, "rgba(255,255,255,0.55)");
     g.addColorStop(0.6, "rgba(255,255,255,0.3)");
     g.addColorStop(1, "rgba(255,255,255,0)");
@@ -539,8 +590,11 @@ export function puffTexture(bin: Bin, seed = 5): Texture {
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
+
   const texture = bin.add(new CanvasTexture(canvas));
+
   texture.colorSpace = SRGBColorSpace;
+
   return texture;
 }
 
@@ -557,6 +611,7 @@ export function frameCamera(
   camera.fov =
     layout.aspect < 1 ? (options.tallFov ?? options.fov * 1.25) : options.fov;
   const half = ((camera.fov / 2) * Math.PI) / 180;
+
   camera.filmOffset = layout.wide
     ? -options.shift * 2 * camera.filmGauge * Math.tan(half) * layout.aspect
     : 0;

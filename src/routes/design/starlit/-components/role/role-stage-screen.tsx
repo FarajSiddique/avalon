@@ -43,12 +43,18 @@ function useArrived(): boolean {
       stage.phase !== null && stage.phase !== "role" && !prefersReducedMotion(),
   );
   const [waited, setWaited] = useState(false);
+
   useEffect(() => {
-    if (!moving) return;
+    if (!moving) {
+      return;
+    }
+
     const timer = window.setTimeout(() => setWaited(true), MAX_WAIT_MS);
+
     return () => window.clearTimeout(timer);
   }, [moving]);
   const settled = stage.phase === "role" || stage.status === "failed";
+
   return !moving || settled || waited;
 }
 
@@ -61,8 +67,10 @@ function useArrived(): boolean {
 export function RoleStageScreen({ variant }: { variant: RoleVariant }) {
   const view = useGameView(roleViews[variant]);
   const focus = useRef<HTMLDivElement>(null);
+
   useStageSlot({ mode: "role", reveal: "whole", fade: 0 }, focus);
   const players = useGamePlayers(view);
+
   useStagePlayers(players);
   const play = useMemo<TablePlay>(
     () => ({
@@ -74,6 +82,7 @@ export function RoleStageScreen({ variant }: { variant: RoleVariant }) {
     }),
     [],
   );
+
   useStagePlay(play);
 
   const arrived = useArrived();

@@ -11,6 +11,7 @@ export function AlignmentTag({
 }) {
   const good = alignment === "good";
   const Shape = good ? IconShield : IconDagger;
+
   return (
     <span
       className={`sl-chip ${good ? "text-good" : "text-evil"} ${

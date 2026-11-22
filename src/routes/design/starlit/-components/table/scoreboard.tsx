@@ -7,7 +7,10 @@ import { IconDagger, IconShield } from "../icons";
  * new one rolls in under it (at `--score-at` on a parent).
  */
 function Score({ value, bumped }: { value: number; bumped: boolean }) {
-  if (!bumped) return <>{value}</>;
+  if (!bumped) {
+    return <>{value}</>;
+  }
+
   return (
     <span className="sl-swap sl-swap--roll">
       <span className="sl-swap__old sl-seq" aria-hidden="true">
@@ -27,6 +30,7 @@ export function Scoreboard({
   bumped?: "good" | "evil";
 }) {
   const pips = Array.from({ length: MAX_REJECTIONS }, (_, index) => index);
+
   return (
     <section
       aria-label="Score"

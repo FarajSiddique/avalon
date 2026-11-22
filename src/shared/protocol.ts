@@ -62,15 +62,15 @@ export interface ResumeInput {
 }
 
 export interface SettingsInput {
-  optionalRoles: OptionalRole[];
+  optionalRoles: Array<OptionalRole>;
   ladyOfTheLake: boolean;
 }
 
 /** Every move a player can make during a game. */
 export type GameAction =
   | { type: "confirm_role" }
-  | { type: "draft_team"; playerIds: PlayerId[] }
-  | { type: "propose_team"; playerIds: PlayerId[] }
+  | { type: "draft_team"; playerIds: Array<PlayerId> }
+  | { type: "propose_team"; playerIds: Array<PlayerId> }
   | { type: "vote"; vote: Vote }
   | { type: "play_card"; card: QuestCard }
   | { type: "lady_examine"; targetId: PlayerId }

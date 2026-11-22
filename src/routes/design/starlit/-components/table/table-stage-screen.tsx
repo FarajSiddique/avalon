@@ -12,6 +12,8 @@ import { TableStageStep } from "./table-stage-steps";
 export function TableStageScreen({ step }: { step: TableStep }) {
   const view = useGameView(tableViews[step]);
   const players = useGamePlayers(view);
+
   useStagePlayers(players);
+
   return <TableStageStep step={step} view={view} players={players} />;
 }

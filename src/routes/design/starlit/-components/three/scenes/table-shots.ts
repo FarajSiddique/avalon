@@ -36,28 +36,31 @@ export function copyPose(out: Pose, from: Pose): Pose {
   out.look.copy(from.look);
   out.fov = from.fov;
   out.tallFov = from.tallFov;
+
   return out;
 }
 
 /** Between two poses, the short way round. */
 export function mixPose(out: Pose, a: Pose, b: Pose, t: number): Pose {
   const turn = wrap(b.az - a.az);
+
   out.az = a.az + turn * t;
   out.dist = a.dist + (b.dist - a.dist) * t;
   out.height = a.height + (b.height - a.height) * t;
   out.look.lerpVectors(a.look, b.look, t);
   out.fov = a.fov + (b.fov - a.fov) * t;
   out.tallFov = a.tallFov + (b.tallFov - a.tallFov) * t;
+
   return out;
 }
 
 interface ShotInput {
   layout: Layout;
-  standing: readonly Standing[];
-  teamIds: readonly string[];
+  standing: ReadonlyArray<Standing>;
+  teamIds: ReadonlyArray<string>;
   /** The camera's azimuth behind your seat. */
   youAz: number;
-  cardCorners: readonly Vector3[];
+  cardCorners: ReadonlyArray<Vector3>;
   time: number;
   pointer: Pointer;
 }
@@ -76,6 +79,7 @@ export function shotPose(out: Pose, shot: TableShot, input: ShotInput): Pose {
   const { layout, standing, youAz, time, pointer } = input;
   const phone = layout.width < 640;
   const sway = Math.sin(time * 0.06) * 0.035 + pointer.x * 0.06;
+
   switch (shot) {
     case "role": {
       // Low behind your seat and a little to one side, looking across the
@@ -85,16 +89,20 @@ export function shotPose(out: Pose, shot: TableShot, input: ShotInput): Pose {
       const out_ = STAND + back;
       const ax = Math.sin(youAz) * out_ + Math.cos(youAz) * side;
       const az_ = Math.cos(youAz) * out_ - Math.sin(youAz) * side;
+
       out.az = Math.atan2(ax, az_) + sway * 0.5;
       out.dist = Math.hypot(ax, az_);
       out.height = (phone ? 6.2 : 5.8) + pointer.y * 0.3;
       out.look.set(-Math.sin(youAz) * 2.6, 2.0, -Math.cos(youAz) * 2.6);
       out.fov = phone ? 50 : 46;
       out.tallFov = phone ? 60 : 56;
+
       return out;
     }
+
     case "table": {
       const points = figurePoints(standing, () => true);
+
       return fitPose(out, points, {
         layout,
         az: youAz + sway,
@@ -104,20 +112,28 @@ export function shotPose(out: Pose, shot: TableShot, input: ShotInput): Pose {
         lift: 1.4,
       });
     }
+
     case "team": {
       const team = new Set(input.teamIds);
       const members = standing.filter((s) => team.has(s.id));
-      if (!members.length) return shotPose(out, "table", input);
+
+      if (!members.length) {
+        return shotPose(out, "table", input);
+      }
+
       // Look at the team from across the table, so they face the camera,
       // unless they are spread all round it (then from your side).
       let cx = 0;
       let cz = 0;
+
       for (const s of members) {
         cx += s.at.x / members.length;
         cz += s.at.z / members.length;
       }
+
       const az =
         Math.hypot(cx, cz) > 1.6 ? Math.atan2(-cx, -cz) : youAz + sway * 0.5;
+
       return fitPose(
         out,
         figurePoints(members, () => true),
@@ -131,6 +147,7 @@ export function shotPose(out: Pose, shot: TableShot, input: ShotInput): Pose {
         },
       );
     }
+
     case "cards": {
       const points = input.cardCorners.map((p) => ({
         p,
@@ -138,6 +155,7 @@ export function shotPose(out: Pose, shot: TableShot, input: ShotInput): Pose {
         bottom: 0.2,
         side: 0.3,
       }));
+
       return fitPose(out, points, {
         layout,
         az: youAz + sway * 0.4,
@@ -163,12 +181,16 @@ interface FitPoint {
 
 /** The feet and the tag anchor of each figure, with room for its tag. */
 function figurePoints(
-  standing: readonly Standing[],
+  standing: ReadonlyArray<Standing>,
   keep: (s: Standing) => boolean,
-): FitPoint[] {
-  const out: FitPoint[] = [];
+): Array<FitPoint> {
+  const out: Array<FitPoint> = [];
+
   for (const s of standing) {
-    if (!keep(s)) continue;
+    if (!keep(s)) {
+      continue;
+    }
+
     out.push({ p: s.at.clone(), top: 6, bottom: 10, side: 26 });
     out.push({
       p: s.at.clone().setY(HEAD),
@@ -177,6 +199,7 @@ function figurePoints(
       side: TAG_HALF_W,
     });
   }
+
   return out;
 }
 
@@ -188,7 +211,7 @@ const UP = new Vector3(0, 1, 0);
  */
 function fitPose(
   out: Pose,
-  points: readonly FitPoint[],
+  points: ReadonlyArray<FitPoint>,
   options: {
     layout: Layout;
     az: number;
@@ -214,7 +237,11 @@ function fitPose(
   const right = new Vector3().crossVectors(forward, UP).normalize();
   const up = new Vector3().crossVectors(right, forward);
   const look = new Vector3();
-  for (const { p } of points) look.add(p);
+
+  for (const { p } of points) {
+    look.add(p);
+  }
+
   look.divideScalar(Math.max(1, points.length)).setY(options.lift);
   const w = Math.max(1, layout.width);
   const h = Math.max(1, layout.height);
@@ -222,56 +249,73 @@ function fitPose(
     Math.max(0.2, 1 - (options.fraction ? px * 2 : (px * 2) / size));
   const q = new Vector3();
   let distance = 10;
+
   // Fit, re-centre on what was fitted, and fit again.
   for (let pass = 0; pass < 3; pass++) {
     distance = 4;
+
     for (const pt of points) {
       q.copy(pt.p).sub(look);
       const x = q.dot(right);
       const y = q.dot(up);
       const along = q.dot(forward);
       const side = limit(pt.side, w);
+
       distance = Math.max(distance, Math.abs(x) / (tanH * side) - along);
-      if (y > 0)
+
+      if (y > 0) {
         distance = Math.max(distance, y / (tanV * limit(pt.top, h)) - along);
-      else
+      } else {
         distance = Math.max(
           distance,
           -y / (tanV * limit(pt.bottom, h)) - along,
         );
+      }
     }
-    if (pass === 2) break;
+
+    if (pass === 2) {
+      break;
+    }
+
     // Where the points land, in the frame, edges with margins included.
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
+
     for (const pt of points) {
       q.copy(pt.p).sub(look);
       const depth = distance + q.dot(forward);
       const x = q.dot(right) / (depth * tanH);
       const y = q.dot(up) / (depth * tanV);
       const sx = 1 - limit(pt.side, w);
+
       minX = Math.min(minX, x - sx);
       maxX = Math.max(maxX, x + sx);
       minY = Math.min(minY, y - (1 - limit(pt.bottom, h)));
       maxY = Math.max(maxY, y + (1 - limit(pt.top, h)));
     }
+
     const shiftX = ((minX + maxX) / 2) * distance * tanH;
     const shiftY = ((minY + maxY) / 2) * distance * tanV;
+
     look.addScaledVector(right, shiftX).addScaledVector(up, shiftY);
   }
+
   const camera = look.clone().addScaledVector(toCam, distance);
+
   out.az = Math.atan2(camera.x, camera.z);
   out.dist = Math.hypot(camera.x, camera.z);
   out.height = camera.y;
   out.look.copy(look);
   out.fov = options.fov;
   out.tallFov = options.tallFov;
+
   return out;
 }
 
 function wrap(a: number): number {
   const t = (a + Math.PI) % (Math.PI * 2);
+
   return (t < 0 ? t + Math.PI * 2 : t) - Math.PI;
 }

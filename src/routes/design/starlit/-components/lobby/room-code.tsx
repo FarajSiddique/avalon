@@ -12,8 +12,12 @@ export function RoomCode({ code }: { code: string }) {
   const [copies, setCopies] = useState(0);
 
   useEffect(() => {
-    if (!copied) return;
+    if (!copied) {
+      return;
+    }
+
     const timer = window.setTimeout(() => setCopied(false), 2400);
+
     return () => window.clearTimeout(timer);
   }, [copied]);
 
@@ -23,12 +27,14 @@ export function RoomCode({ code }: { code: string }) {
     } catch {
       // Clipboard access can be refused; the code is on screen either way.
     }
+
     setCopied(true);
     setCopies((count) => count + 1);
     play("copy");
   };
 
   const spoken = code.split("").join(" ");
+
   return (
     <section
       aria-label="Room code"

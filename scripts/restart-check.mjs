@@ -22,14 +22,19 @@ async function startServer() {
     ["exec", "vite", "preview", "--port", String(port), "--strictPort"],
     { stdio: "ignore", detached: true },
   );
+
   for (let i = 0; i < 150; i += 1) {
     try {
-      if ((await fetch(`${base}/api/health`)).ok) return child;
+      if ((await fetch(`${base}/api/health`)).ok) {
+        return child;
+      }
     } catch {
       // Not up yet.
     }
+
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
+
   throw new Error("The server did not start. Run `pnpm build` first.");
 }
 
@@ -41,7 +46,9 @@ function stopServer(child) {
 }
 
 function check(condition, message) {
-  if (!condition) throw new Error(`Restart check failed: ${message}`);
+  if (!condition) {
+    throw new Error(`Restart check failed: ${message}`);
+  }
 }
 
 const names = (page) => page.getByTestId("player").allInnerTexts();
@@ -52,6 +59,7 @@ const online = (page, value) =>
 
 let server = await startServer();
 const browser = await chromium.launch();
+
 try {
   const host = await (await browser.newContext()).newPage();
   const guest = await (await browser.newContext()).newPage();
@@ -84,6 +92,7 @@ try {
 
   const hostSees = await names(host);
   const guestSees = await names(guest);
+
   check(hostSees.length === 2, `host sees ${hostSees.length} players`);
   check(hostSees[0]?.includes("Wren (you)"), "host lost their seat");
   check(hostSees[0]?.includes("Host"), "host lost the host role");

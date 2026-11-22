@@ -52,6 +52,7 @@ export class RoomClient {
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
+
     return () => {
       this.listeners.delete(listener);
     };
@@ -85,19 +86,28 @@ export class RoomClient {
 
   private set(patch: Partial<RoomSnapshot>): void {
     this.snapshot = { ...this.snapshot, ...patch };
-    for (const listener of this.listeners) listener();
+
+    for (const listener of this.listeners) {
+      listener();
+    }
   }
 
   /** Runs on the first connect and on every reconnect: take the seat back. */
   private readonly onOpen = (): void => {
     this.set({ online: true });
     const token = loadToken(this.code);
+
     if (!token) {
       this.set({ status: "needs_name" });
+
       return;
     }
+
     void this.connection.request("room:resume", { token }).then((result) => {
-      if (result.ok || result.error.code === "OFFLINE") return;
+      if (result.ok || result.error.code === "OFFLINE") {
+        return;
+      }
+
       clearToken(this.code);
       this.set({ status: "needs_name", view: null });
     });

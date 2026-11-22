@@ -22,13 +22,23 @@ export const Route = createFileRoute("/design/starlit/lobby")({
   head: () => ({ meta: [{ title: "Lobby · Starlit Vale" }] }),
   validateSearch: (search: Record<string, unknown>): LobbySearch => {
     const out: LobbySearch = {};
-    if (search.via === "create" || search.via === "join") out.via = search.via;
-    if (typeof search.name === "string" && search.name.trim())
+
+    if (search.via === "create" || search.via === "join") {
+      out.via = search.via;
+    }
+
+    if (typeof search.name === "string" && search.name.trim()) {
       out.name = search.name.trim().slice(0, NAME_MAX_LENGTH);
+    }
+
     if (typeof search.code === "string") {
       const code = normalizeRoomCode(search.code);
-      if (code.length === ROOM_CODE_LENGTH) out.code = code;
+
+      if (code.length === ROOM_CODE_LENGTH) {
+        out.code = code;
+      }
     }
+
     return out;
   },
   component: LobbyPage,
@@ -37,6 +47,7 @@ export const Route = createFileRoute("/design/starlit/lobby")({
 function LobbyPage() {
   const search = Route.useSearch();
   const { status } = useStage();
+
   // Without WebGL (a failed stage stays failed) the game cannot be shown.
   return status === "failed" ? <NoWebGLNotice /> : <LobbyScreen {...search} />;
 }

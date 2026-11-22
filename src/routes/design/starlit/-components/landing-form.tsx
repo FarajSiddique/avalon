@@ -28,21 +28,40 @@ export function LandingForm() {
   const navigate = useNavigate();
   const { depart, status } = useStage();
   const timer = useRef(0);
+
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const go = (event: MouseEvent<HTMLAnchorElement>, via: FlightPath) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.button !== 0
+    ) {
       return;
+    }
+
     event.preventDefault();
     // Without WebGL there is no camera to fly: go straight there.
     const still =
       status === "failed" ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (status !== "failed") depart(via);
+
+    if (status !== "failed") {
+      depart(via);
+    }
+
     window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
     const search: Record<string, string> = { via };
-    if (name.trim()) search.name = name.trim();
-    if (via === "join" && code.length === ROOM_CODE_LENGTH) search.code = code;
+
+    if (name.trim()) {
+      search.name = name.trim();
+    }
+
+    if (via === "join" && code.length === ROOM_CODE_LENGTH) {
+      search.code = code;
+    }
+
     timer.current = window.setTimeout(
       () => {
         // A prototype address the route types cannot see, as in ProtoLink.

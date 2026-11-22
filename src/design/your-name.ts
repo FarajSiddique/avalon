@@ -19,19 +19,28 @@ function read(): string | null {
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
+
   return () => listeners.delete(listener);
 }
 
 export function setYourName(name: string | null | undefined): void {
   const value = name?.trim() ? name.trim() : null;
+
   memory = value;
+
   try {
-    if (value) sessionStorage.setItem(KEY, value);
-    else sessionStorage.removeItem(KEY);
+    if (value) {
+      sessionStorage.setItem(KEY, value);
+    } else {
+      sessionStorage.removeItem(KEY);
+    }
   } catch {
     // Storage blocked: the name lasts until the page closes.
   }
-  for (const listener of listeners) listener();
+
+  for (const listener of listeners) {
+    listener();
+  }
 }
 
 /** Your typed name, or null. The server render uses null. */

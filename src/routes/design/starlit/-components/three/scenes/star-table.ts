@@ -76,6 +76,7 @@ export const createStarTable: CreateConcept = ({
 }) => {
   const bin = new Bin();
   const scene = new Scene();
+
   scene.fog = new FogExp2(p["sky-low"], 0.012);
   const camera = new PerspectiveCamera(40, 1, 0.1, 1500);
   const random = seededRandom(5);
@@ -91,36 +92,50 @@ export const createStarTable: CreateConcept = ({
     seed: 41,
     minY: 0.08,
   });
+
   scene.add(stars.object);
   const sky = constellations(bin, p, lite, SEATS);
+
   scene.add(sky.object);
   const shooter = shootingStar(bin, p);
+
   scene.add(shooter.object);
 
   scene.add(new HemisphereLight(p["hill-0"], p["ground-dark"], 1.6));
   const moonLight = new DirectionalLight(p.moon, 1.4);
+
   moonLight.position.set(-10, 40, -6);
   scene.add(moonLight);
   // A soft light from the viewer's side in the lobby, so the figures read.
   const front = new DirectionalLight(p.moon, 0);
+
   front.position.set(0, 14, 18);
   scene.add(front);
 
   /* ---- the clearing ---- */
   scene.add(clearing(bin, p));
+
   for (let i = 0; i < (lite ? 50 : 90); i++) {
     const a = random() * Math.PI * 2;
+
     // Leave a gap towards the castle.
-    if (Math.abs(a - Math.PI * 1.5) < 0.22) continue;
+    if (Math.abs(a - Math.PI * 1.5) < 0.22) {
+      continue;
+    }
+
     const r = 27 + random() * 20;
     const tree = pine(bin, p, 8 + random() * 7 + (r - 27) * 0.3, i + 3);
+
     tree.position.set(Math.cos(a) * r, -0.3, Math.sin(a) * r);
     scene.add(tree);
   }
+
   const keep = castle(bin, p, p["hill-2"], 21);
+
   keep.scale.setScalar(4);
   keep.position.set(0, 1, -78);
   const keepHill = rock(bin, standard(bin, p["hill-3"]), 16, 9);
+
   keepHill.scale.set(1.4, 0.45, 1);
   keepHill.position.set(0, -3, -80);
   scene.add(keepHill, keep);
@@ -129,23 +144,27 @@ export const createStarTable: CreateConcept = ({
   const stone = standard(bin, p.stone);
   const shade = standard(bin, p["stone-shade"]);
   const table = new Group();
+
   scene.add(table);
   const top = new Mesh(
     bin.add(jitter(new CylinderGeometry(3.6, 3.9, 1.1, 40, 1), 0.06, 4)),
     stone,
   );
+
   top.position.y = 0.55;
   table.add(top);
   const plinth = new Mesh(
     bin.add(new CylinderGeometry(4.4, 4.7, 0.35, 40)),
     shade,
   );
+
   plinth.position.y = 0.05;
   table.add(plinth);
   const hearth = new Mesh(
     bin.add(new CylinderGeometry(1.2, 1.2, 0.02, 32)),
     standard(bin, p["ground-dark"]),
   );
+
   hearth.position.y = 1.11;
   table.add(hearth);
   const ringMat = bin.add(
@@ -158,6 +177,7 @@ export const createStarTable: CreateConcept = ({
     }),
   );
   const ring = new Mesh(bin.add(new RingGeometry(2.85, 3.0, 80)), ringMat);
+
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 1.125;
   table.add(ring);
@@ -166,12 +186,13 @@ export const createStarTable: CreateConcept = ({
     embers: lite ? 40 : 80,
     seed: 7,
   });
+
   fire.object.position.y = 1.12;
   table.add(fire.object);
 
   /* ---- the ten seat stones, each with a rune ---- */
   const runeTexture = runeMap(bin);
-  const seats: {
+  const seats: Array<{
     rune: Mesh;
     glow: Sprite;
     spoke: Mesh;
@@ -180,7 +201,7 @@ export const createStarTable: CreateConcept = ({
     tall: number;
     low: number;
     phase: number;
-  }[] = [];
+  }> = [];
   const spokeMat = bin.add(
     new ShaderMaterial({
       transparent: true,
@@ -201,9 +222,11 @@ export const createStarTable: CreateConcept = ({
     }),
   );
   const halo = glowTexture(bin, 2.2);
+
   for (let i = 0; i < SEATS; i++) {
     const a = (i / SEATS) * Math.PI * 2 + Math.PI / SEATS;
     const seat = new Group();
+
     seat.position.set(Math.cos(a) * 6.4, 0, Math.sin(a) * 6.4);
     seat.lookAt(0, 0, 0);
     // In the lobby the stones sink low, so the figures stand clear of them.
@@ -214,6 +237,7 @@ export const createStarTable: CreateConcept = ({
       bin.add(jitter(new BoxGeometry(1.3, h, 0.7, 2, 3, 1), 0.12, 60 + i)),
       i % 3 ? stone : shade,
     );
+
     slab.position.y = h / 2 - 0.1;
     seat.add(slab);
     const runeMat = bin.add(
@@ -227,9 +251,11 @@ export const createStarTable: CreateConcept = ({
       }),
     );
     const rune = new Mesh(bin.add(new PlaneGeometry(0.75, 0.75)), runeMat);
+
     rune.position.set(0, h * 0.62, 0.37);
     seat.add(rune);
     const glow = glowSprite(bin, halo, p["fire-glow"], 2.2, 0);
+
     glow.position.set(0, h * 0.62, 0.6);
     seat.add(glow);
     scene.add(seat);
@@ -238,6 +264,7 @@ export const createStarTable: CreateConcept = ({
       bin.add(new PlaneGeometry(2.4, 0.14)),
       spokeMat.clone(),
     );
+
     bin.add(spoke.material as ShaderMaterial);
     spoke.rotation.set(-Math.PI / 2, 0, -a);
     spoke.position.set(Math.cos(a) * 2.25, 1.13, Math.sin(a) * 2.25);
@@ -247,6 +274,7 @@ export const createStarTable: CreateConcept = ({
 
   /* ---- the moonbeam, its dust, the mist and fireflies ---- */
   const beam = moonbeam(bin, p);
+
   scene.add(beam.object);
   const dust = motes(bin, {
     count: lite ? 40 : 90,
@@ -260,6 +288,7 @@ export const createStarTable: CreateConcept = ({
     size: 0.9,
     wander: 0.6,
   });
+
   scene.add(dust.object);
   const flies = motes(bin, {
     count: lite ? 30 : 60,
@@ -273,9 +302,12 @@ export const createStarTable: CreateConcept = ({
     size: 1.4,
     wander: 1.4,
   });
+
   scene.add(flies.object);
   const puff = puffTexture(bin, 13);
-  const mist: { sprite: Sprite; a: number; r: number; speed: number }[] = [];
+  const mist: Array<{ sprite: Sprite; a: number; r: number; speed: number }> =
+    [];
+
   for (let i = 0; i < (lite ? 14 : 26); i++) {
     const material = bin.add(
       new SpriteMaterial({
@@ -288,6 +320,7 @@ export const createStarTable: CreateConcept = ({
     );
     const sprite = new Sprite(material);
     const s = 9 + random() * 8;
+
     sprite.scale.set(s, s * 0.32, 1);
     mist.push({
       sprite,
@@ -329,12 +362,13 @@ export const createStarTable: CreateConcept = ({
   let moveId = -1;
   let shotNow: ShotMove = { to: null, progress: 1, id: 0 };
   let blendNow = 0;
-  const corners: Vector3[] = [];
+  const corners: Array<Vector3> = [];
   const others = new Map<string, Vector3>();
 
   /** The lobby's framing: the whole table from above, swaying gently. */
   const lobbyPose = (out: Pose, time: number, pointer: Pointer): Pose => {
     const tall = layout.aspect < 1.4;
+
     out.az = Math.sin(time * 0.06) * 0.14 + pointer.x * 0.3;
     out.dist = tall ? 15.5 : 14.5;
     out.height = (tall ? 15 : 11.5) + pointer.y * 1.2;
@@ -343,12 +377,13 @@ export const createStarTable: CreateConcept = ({
     // panels so the whole table fits.
     out.fov = layout.aspect >= 1.7 ? 38 : layout.width < 640 ? 40 : 46;
     out.tallFov = 52;
+
     return out;
   };
 
   /** Where the framing past the landing is now. */
   const placeFrame = (time: number, pointer: Pointer, shot: ShotMove) => {
-    if (shot.to)
+    if (shot.to) {
       shotPose(target, shot.to, {
         layout,
         standing: seating.standing(),
@@ -358,15 +393,26 @@ export const createStarTable: CreateConcept = ({
         time,
         pointer,
       });
-    else lobbyPose(target, time, pointer);
+    } else {
+      lobbyPose(target, time, pointer);
+    }
+
     if (shot.id !== moveId) {
       // A new move starts where the camera is (the first one: a cut).
-      if (moveId < 0) copyPose(moveFrom, target);
-      else copyPose(moveFrom, framed);
+      if (moveId < 0) {
+        copyPose(moveFrom, target);
+      } else {
+        copyPose(moveFrom, framed);
+      }
+
       moveId = shot.id;
     }
-    if (shot.progress >= 1) copyPose(framed, target);
-    else mixPose(framed, moveFrom, target, easeInOut(shot.progress));
+
+    if (shot.progress >= 1) {
+      copyPose(framed, target);
+    } else {
+      mixPose(framed, moveFrom, target, easeInOut(shot.progress));
+    }
   };
 
   const concept: ConceptScene = {
@@ -380,8 +426,13 @@ export const createStarTable: CreateConcept = ({
     },
     update({ time, dt, pointer, blend, flight, shot }) {
       const b = blend ?? 0;
+
       blendNow = b;
-      if (shot) shotNow = shot;
+
+      if (shot) {
+        shotNow = shot;
+      }
+
       seating.update(dt, time);
       play.update(dt, time, camera);
       placeFrame(time, pointer, shotNow);
@@ -390,8 +441,11 @@ export const createStarTable: CreateConcept = ({
       const heroAz = -0.4 + time * 0.03 + pointer.x * 0.45;
       const heroDist = layout.aspect < 1 ? 24 : 20;
       const heroH = 6.5 + pointer.y * 1.8 + Math.sin(time * 0.08) * 0.5;
-      if (b <= 0 || b >= 1)
+
+      if (b <= 0 || b >= 1) {
         turns = Math.round((heroAz - framed.az) / (Math.PI * 2));
+      }
+
       const fromAz = heroAz - turns * Math.PI * 2;
       // Mid-flight the path bows: creating a room rises over the table and
       // drops onto it through the moonbeam; joining sweeps round low along
@@ -405,13 +459,18 @@ export const createStarTable: CreateConcept = ({
       const az = mix(fromAz, framed.az, b) + swing * bow;
       const distance = mix(heroDist, framed.dist, b) + reach * bow;
       const height = Math.max(2.4, mix(heroH, framed.height, b) + lift * bow);
+
       camera.position.set(
         Math.sin(az) * distance,
         height,
         Math.cos(az) * distance,
       );
       look.lerpVectors(heroLook, framed.look, b);
-      if (path === "create") look.y += 1.5 * bow;
+
+      if (path === "create") {
+        look.y += 1.5 * bow;
+      }
+
       camera.lookAt(look);
 
       front.intensity = 1.3 * b;
@@ -427,6 +486,7 @@ export const createStarTable: CreateConcept = ({
             (1 - smooth(0.86, 1, flight!.progress))
           : 0;
       const game = play.active();
+
       for (let i = 0; i < seats.length; i++) {
         const seat = seats[i]!;
         const on = Math.min(1, Math.max(0, (cycle * 14 - seat.phase) / 1.2));
@@ -436,6 +496,7 @@ export const createStarTable: CreateConcept = ({
           !s.present || s.away ? 0.05 : s.ready ? s.arrive : 0.3 * s.arrive;
         const level = Math.min(1, mix(heroLevel, lobbyLevel, b) + flare);
         const base = mix(0.15, 0.12, b);
+
         (seat.rune.material as MeshBasicMaterial).opacity =
           base + level * (1 - base);
         seat.glow.material.opacity = level * mix(0.55, 0.5, b);
@@ -445,12 +506,15 @@ export const createStarTable: CreateConcept = ({
           level * (game ? 0.3 : 0.9);
         // The stones sink as the camera comes down to the table.
         const h = mix(seat.tall, seat.low, b);
+
         seat.slab.scale.y = h / seat.tall;
         seat.slab.position.y = h / 2 - 0.1;
         seat.rune.position.y = h * 0.62;
         seat.glow.position.y = h * 0.62;
       }
+
       const heroRing = 0.35 + 0.35 * Math.min(1, cycle * 1.3);
+
       ringMat.opacity = Math.min(1, mix(heroRing, 0.55, b) + flare * 0.6);
       tick(time, dt);
     },
@@ -467,6 +531,7 @@ export const createStarTable: CreateConcept = ({
     },
     pick(x, y) {
       camera.updateMatrixWorld();
+
       return play.pick(x, y, camera, layout);
     },
     anchors() {
@@ -474,9 +539,19 @@ export const createStarTable: CreateConcept = ({
       // its tag would float over the others, so it has none.
       const all = seating.anchors();
       const you = play.youId();
-      if (shotNow.to !== "role" || !you || !all.has(you)) return all;
+
+      if (shotNow.to !== "role" || !you || !all.has(you)) {
+        return all;
+      }
+
       others.clear();
-      for (const [id, at] of all) if (id !== you) others.set(id, at);
+
+      for (const [id, at] of all) {
+        if (id !== you) {
+          others.set(id, at);
+        }
+      }
+
       return others;
     },
     seated() {
@@ -503,8 +578,10 @@ export const createStarTable: CreateConcept = ({
   function tick(time: number, dt: number): void {
     for (const m of mist) {
       const a = m.a + time * m.speed;
+
       m.sprite.position.set(Math.cos(a) * m.r, 0.9, Math.sin(a) * m.r);
     }
+
     sky.update(time);
     shooter.update(time);
     stars.update(time);
@@ -514,6 +591,7 @@ export const createStarTable: CreateConcept = ({
     flies.update(time, dt, camera);
     wavePennants(keep, time);
   }
+
   return concept;
 };
 
@@ -527,5 +605,6 @@ function mix(a: number, b: number, t: number): number {
 
 function smooth(from: number, to: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - from) / (to - from)));
+
   return t * t * (3 - 2 * t);
 }

@@ -45,7 +45,9 @@ function useWide(): boolean {
   return useSyncExternalStore(
     (change) => {
       const query = window.matchMedia(WIDE);
+
       query.addEventListener("change", change);
+
       return () => query.removeEventListener("change", change);
     },
     () => window.matchMedia(WIDE).matches,
@@ -59,8 +61,12 @@ function useWide(): boolean {
  */
 function useEveryoneReadyChord(canStart: boolean): void {
   const was = useRef(canStart);
+
   useEffect(() => {
-    if (canStart && !was.current) play("all-ready");
+    if (canStart && !was.current) {
+      play("all-ready");
+    }
+
     was.current = canStart;
   }, [canStart]);
 }
@@ -77,6 +83,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const reasons = startBlockerMessages(view);
   const isHost = view.you.isHost;
   const hostName = view.players.find((p) => p.isHost)?.name ?? "The host";
+
   useEveryoneReadyChord(canStart);
   // The game seats you under the name you typed (or as Wren, with none, so
   // the lobby and the table always agree).
@@ -87,6 +94,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   // The table's open space, claimed from the shared stage.
   const stage = useStage();
   const focus = useRef<HTMLDivElement>(null);
+
   useStageSlot({ mode: "lobby", reveal: "whole", fade: 0 }, focus);
   const [arriveAt] = useState(() => (stage.pending ? AFTER_FLIGHT_MS : 0));
   const landed = stage.phase === "lobby";
@@ -94,7 +102,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   // Your figure rises once the camera has landed; everyone else is already
   // here (joining) or arrives one by one (a new room).
   const yours = useAvatar();
-  const players = useMemo<TablePlayer[]>(
+  const players = useMemo<Array<TablePlayer>>(
     () =>
       view.players
         .filter((p) => landed || p.id !== view.you.id)
@@ -109,17 +117,23 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
         })),
     [view.players, view.you.id, yours, landed],
   );
+
   useStagePlayers(players);
 
   const { arriveNext } = lobby;
   const filling = via === "create" && landed && lobby.toArrive > 0;
   const count = view.players.length;
+
   useEffect(() => {
-    if (!filling) return;
+    if (!filling) {
+      return;
+    }
+
     const timer = window.setTimeout(
       arriveNext,
       count === 1 ? ARRIVAL_MS * 1.4 : ARRIVAL_MS,
     );
+
     return () => window.clearTimeout(timer);
   }, [filling, count, arriveNext]);
 

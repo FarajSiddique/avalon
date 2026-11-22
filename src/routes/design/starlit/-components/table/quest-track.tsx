@@ -42,6 +42,7 @@ export function QuestTrack({
     settled !== undefined && (index === settled || index === settled + 1)
       ? "sl-moon-news sl-seq"
       : "";
+
   return (
     <section aria-label="Quest track">
       <ol className="sl-track">

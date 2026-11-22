@@ -79,17 +79,28 @@ export function useSheet({
     // The click that ends a drag is not a toggle: the drag already settled.
     if (dragged.current) {
       dragged.current = false;
+
       return false;
     }
+
     settle(!chosen);
+
     return true;
   };
 
   const end = (e: ReactPointerEvent<HTMLElement>, cancelled: boolean) => {
     const d = drag.current;
-    if (!d || d.id !== e.pointerId) return;
+
+    if (!d || d.id !== e.pointerId) {
+      return;
+    }
+
     drag.current = null;
-    if (!d.moved) return;
+
+    if (!d.moved) {
+      return;
+    }
+
     dragged.current = true;
     // A click may not follow (the pointer left the button): forget it soon.
     window.setTimeout(() => {
@@ -104,6 +115,7 @@ export function useSheet({
       : Math.abs(vy) > FLICK_PX_PER_MS
         ? vy > 0
         : d.p > 0.5;
+
     settle(next);
   };
 
@@ -111,11 +123,20 @@ export function useSheet({
     onPointerDown: (e) => {
       // The result step skips its timeline on any press; not this one.
       e.stopPropagation();
-      if (!enabled || e.button !== 0) return;
+
+      if (!enabled || e.button !== 0) {
+        return;
+      }
+
       const travel =
         (sheet.current?.offsetHeight ?? 0) - (peek.current?.offsetHeight ?? 0);
-      if (travel <= 0) return;
+
+      if (travel <= 0) {
+        return;
+      }
+
       const startP = collapsed ? 1 : 0;
+
       drag.current = {
         id: e.pointerId,
         startY: e.clientY,
@@ -134,24 +155,36 @@ export function useSheet({
         e.target instanceof Element
           ? (e.target.closest("button") ?? e.currentTarget)
           : e.currentTarget;
+
       held.setPointerCapture(e.pointerId);
     },
     onPointerMove: (e) => {
       const d = drag.current;
-      if (!d || d.id !== e.pointerId) return;
+
+      if (!d || d.id !== e.pointerId) {
+        return;
+      }
+
       const dy = e.clientY - d.startY;
+
       if (!d.moved) {
-        if (Math.abs(dy) < DRAG_SLOP_PX) return;
+        if (Math.abs(dy) < DRAG_SLOP_PX) {
+          return;
+        }
+
         d.moved = true;
         setDragging(true);
       }
+
       d.p = Math.min(1, Math.max(0, d.startP + dy / d.travel));
       const dt = e.timeStamp - d.lastT;
+
       if (dt > 0) {
         d.vy = 0.7 * ((e.clientY - d.lastY) / dt) + 0.3 * d.vy;
         d.lastY = e.clientY;
         d.lastT = e.timeStamp;
       }
+
       scope.current?.style.setProperty("--sheet-p", d.p.toFixed(4));
     },
     onPointerUp: (e) => end(e, false),

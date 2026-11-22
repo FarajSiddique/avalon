@@ -57,15 +57,21 @@ export type Palette = Record<ArtToken, Color>;
 export function readPalette(el: Element): Palette {
   const style = getComputedStyle(el);
   const out = {} as Palette;
+
   for (const token of ART_TOKENS) {
     const value = style.getPropertyValue(`--art-${token}`).trim();
     const color = new Color();
+
     try {
-      if (value) color.setStyle(value);
+      if (value) {
+        color.setStyle(value);
+      }
     } catch {
       // An unparseable value leaves the colour black rather than breaking.
     }
+
     out[token] = color;
   }
+
   return out;
 }

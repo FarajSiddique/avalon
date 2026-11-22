@@ -13,6 +13,7 @@ function PlayerState({ player }: { player: SeatView }) {
       </span>
     );
   }
+
   if (!player.ready) {
     return (
       <span className="text-warning sl-pop sl-seq inline-flex items-center gap-1.5 text-base font-bold">
@@ -21,6 +22,7 @@ function PlayerState({ player }: { player: SeatView }) {
       </span>
     );
   }
+
   return (
     <span className="text-success sl-pop sl-seq sl-tick inline-flex items-center gap-1.5 text-base font-bold">
       <IconCheck size={18} />
@@ -30,7 +32,10 @@ function PlayerState({ player }: { player: SeatView }) {
 }
 
 function stateKey(player: SeatView): string {
-  if (!player.connected) return "away";
+  if (!player.connected) {
+    return "away";
+  }
+
   return player.ready ? "ready" : "waiting";
 }
 

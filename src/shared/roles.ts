@@ -22,7 +22,7 @@ export const OPTIONAL_ROLES = [
   "morgana",
   "mordred",
   "oberon",
-] as const satisfies readonly Role[];
+] as const satisfies ReadonlyArray<Role>;
 
 export type OptionalRole = (typeof OPTIONAL_ROLES)[number];
 

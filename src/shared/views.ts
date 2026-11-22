@@ -14,7 +14,7 @@ export type PlayerId = string;
 export type RoomCode = string;
 
 export interface GameSettings {
-  optionalRoles: OptionalRole[];
+  optionalRoles: Array<OptionalRole>;
   ladyOfTheLake: boolean;
 }
 
@@ -32,30 +32,30 @@ export interface SeatView {
 /** A reason the host cannot start yet. Shown next to the Start button. */
 export type StartBlocker =
   | { kind: "too_few_players"; needed: number }
-  | { kind: "not_ready"; playerIds: PlayerId[] }
-  | { kind: "disconnected"; playerIds: PlayerId[] }
+  | { kind: "not_ready"; playerIds: Array<PlayerId> }
+  | { kind: "disconnected"; playerIds: Array<PlayerId> }
   | { kind: "too_many_evil_roles"; allowed: number };
 
 export interface LobbyView {
   stage: "lobby";
   code: RoomCode;
   /** In seat order (clockwise). */
-  players: SeatView[];
+  players: Array<SeatView>;
   settings: GameSettings;
   you: { id: PlayerId; isHost: boolean };
   /** Empty when the game can start. */
-  startBlockers: StartBlocker[];
+  startBlockers: Array<StartBlocker>;
 }
 
 /** What a role learns on the first night. Built per viewer on the server. */
 export type Knowledge =
   | { kind: "none" }
   /** Merlin: the Evil players he can see (never Mordred). */
-  | { kind: "merlin"; evilIds: PlayerId[] }
+  | { kind: "merlin"; evilIds: Array<PlayerId> }
   /** Percival: Merlin and Morgana, shuffled, not told apart. */
-  | { kind: "percival"; merlinCandidateIds: PlayerId[] }
+  | { kind: "percival"; merlinCandidateIds: Array<PlayerId> }
   /** Assassin, Minion, Mordred, Morgana: fellow Evil players (never Oberon). */
-  | { kind: "evil"; allyIds: PlayerId[] };
+  | { kind: "evil"; allyIds: Array<PlayerId> };
 
 export type Vote = "approve" | "reject";
 export type QuestCard = "success" | "fail";
@@ -65,7 +65,7 @@ export interface QuestView {
   failsRequired: 1 | 2;
   status: "upcoming" | "current" | "success" | "fail";
   /** Set once the quest is finished. Team membership is public. */
-  team?: PlayerId[];
+  team?: Array<PlayerId>;
   /** Set once the quest is finished. Counts only, never who played what. */
   failCount?: number;
 }
@@ -74,7 +74,7 @@ export interface QuestView {
 export interface ProposalRecord {
   questIndex: number;
   leaderId: PlayerId;
-  team: PlayerId[];
+  team: Array<PlayerId>;
   votes: Record<PlayerId, Vote>;
   approved: boolean;
 }
@@ -87,28 +87,36 @@ export type WinReason =
 
 export type PhaseView =
   /** Everyone looks at their role in private and confirms. */
-  | { name: "role_reveal"; confirmedIds: PlayerId[]; youConfirmed: boolean }
+  | {
+      name: "role_reveal";
+      confirmedIds: Array<PlayerId>;
+      youConfirmed: boolean;
+    }
   /** The leader picks a team. `draftIds` updates live as they tap seats. */
-  | { name: "team_building"; teamSize: number; draftIds: PlayerId[] }
+  | { name: "team_building"; teamSize: number; draftIds: Array<PlayerId> }
   /** Everyone votes. Only who has voted is visible until all votes are in. */
   | {
       name: "team_vote";
-      teamIds: PlayerId[];
-      votedIds: PlayerId[];
+      teamIds: Array<PlayerId>;
+      votedIds: Array<PlayerId>;
       yourVote: Vote | null;
     }
   /** The team plays cards. `yourCard` is null if you are not on the team. */
   | {
       name: "quest";
-      teamIds: PlayerId[];
-      playedIds: PlayerId[];
+      teamIds: Array<PlayerId>;
+      playedIds: Array<PlayerId>;
       onTeam: boolean;
       yourCard: QuestCard | null;
     }
   /** Optional rule. The holder of the Lady of the Lake examines one player. */
-  | { name: "lady"; holderId: PlayerId; eligibleIds: PlayerId[] }
+  | { name: "lady"; holderId: PlayerId; eligibleIds: Array<PlayerId> }
   /** Good won three quests. The Assassin names Merlin. */
-  | { name: "assassination"; assassinId: PlayerId; candidateIds: PlayerId[] }
+  | {
+      name: "assassination";
+      assassinId: PlayerId;
+      candidateIds: Array<PlayerId>;
+    }
   | {
       name: "game_over";
       winner: Alignment;
@@ -122,7 +130,7 @@ export interface GameView {
   stage: "game";
   code: RoomCode;
   /** In seat order (clockwise). The leader token moves along this order. */
-  players: SeatView[];
+  players: Array<SeatView>;
   settings: GameSettings;
   you: {
     id: PlayerId;
@@ -131,10 +139,10 @@ export interface GameView {
     alignment: Alignment;
     knowledge: Knowledge;
     /** Lady of the Lake results this player has seen. */
-    ladyResults: { playerId: PlayerId; alignment: Alignment }[];
+    ladyResults: Array<{ playerId: PlayerId; alignment: Alignment }>;
   };
   /** Always 5 entries. */
-  quests: QuestView[];
+  quests: Array<QuestView>;
   /** 0 to 4. Index of the current quest. */
   questIndex: number;
   leaderId: PlayerId;
@@ -143,7 +151,7 @@ export interface GameView {
   score: { good: number; evil: number };
   phase: PhaseView;
   /** Every finished vote, oldest first. */
-  proposals: ProposalRecord[];
+  proposals: Array<ProposalRecord>;
   /** Who holds the Lady of the Lake, if the rule is on. */
   ladyHolderId: PlayerId | null;
 }

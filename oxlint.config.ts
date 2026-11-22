@@ -67,17 +67,13 @@ const sharedIsPure = [
 
 /** Temporary during the migration. Each later commit removes entries. */
 const migrationOff = {
-  "@stylistic/padding-line-between-statements": "off",
-  "@stylistic/lines-between-class-members": "off",
   "@nkzw/no-instanceof": "off",
-  curly: "off",
   "no-console": "off",
   "no-promise-executor-return": "off",
   "quality/no-chained-type-assertions": "off",
   "quality/no-known-value-widening": "off",
   "quality/no-unknown-returns": "off",
   "quality/no-unsafe-dictionary-type": "off",
-  "typescript/array-type": "off",
   "typescript/no-misused-promises": "off",
   "typescript/no-non-null-assertion": "off",
   "typescript/no-unnecessary-type-assertion": "off",
@@ -86,7 +82,6 @@ const migrationOff = {
   "typescript/unbound-method": "off",
   "unicorn/consistent-function-scoping": "off",
   "unicorn/no-array-fill-with-reference-type": "off",
-  "unicorn/numeric-separators-style": "off",
   "unicorn/prefer-dom-node-append": "off",
   "unicorn/prefer-single-call": "off",
   "unicorn/prefer-string-replace-all": "off",

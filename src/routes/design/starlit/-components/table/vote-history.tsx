@@ -11,6 +11,7 @@ export function tallyOf(record: ProposalRecord): {
   const votes = Object.values(record.votes);
   const approvals = votes.filter((vote) => vote === "approve").length;
   const rejections = votes.length - approvals;
+
   return {
     approvals,
     rejections,
@@ -23,6 +24,7 @@ export function tallyOf(record: ProposalRecord): {
 /** Approved or Rejected with the count: a word, an icon and a colour. */
 function TallyChip({ record }: { record: ProposalRecord }) {
   const Shape = record.approved ? IconApprove : IconReject;
+
   return (
     <span
       className={`sl-chip ${record.approved ? "text-success" : "text-fail"}`}
@@ -41,7 +43,9 @@ export function VoteHistory({ view }: { view: GameView }) {
   const attempts = new Map<number, number>();
   const records = view.proposals.map((record) => {
     const attempt = (attempts.get(record.questIndex) ?? 0) + 1;
+
     attempts.set(record.questIndex, attempt);
+
     return { record, attempt };
   });
 
@@ -70,6 +74,7 @@ export function VoteHistory({ view }: { view: GameView }) {
                 {view.players.map((player) => {
                   const approved = record.votes[player.id] === "approve";
                   const Shape = approved ? IconApprove : IconReject;
+
                   return (
                     <li
                       key={player.id}

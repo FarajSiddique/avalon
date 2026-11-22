@@ -16,12 +16,14 @@ import { useCardSound } from "./sky-card";
 export function RolePeek({ view }: { view: GameView }) {
   const hold = useHoldToReveal();
   const { revealed } = hold;
+
   useCardSound(revealed);
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   // The card opens over the whole scene, inside the theme (for its tokens)
   // but outside any header or panel that could clip or move it.
   const [host, setHost] = useState<HTMLElement | null>(null);
+
   useEffect(() => {
     setHost(button.current?.closest<HTMLElement>(".theme-starlit") ?? null);
   }, []);

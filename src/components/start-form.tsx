@@ -21,6 +21,7 @@ const secondaryButton =
 /** The value of a named text field, read at submit time. */
 function field(form: HTMLFormElement, name: string): string {
   const value = new FormData(form).get(name);
+
   return typeof value === "string" ? value : "";
 }
 
@@ -40,33 +41,45 @@ export function StartForm() {
   async function onCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = normalizeName(field(event.currentTarget, "name"));
-    if (!name || busy) return;
+
+    if (!name || busy) {
+      return;
+    }
+
     setBusy(true);
     setCreateError(null);
+
     try {
       const result = await createRoom({ data: { name } });
+
       if (result.ok) {
         saveToken(result.data.code, result.data.token);
         await navigate({
           to: "/room/$code",
           params: { code: result.data.code },
         });
+
         return;
       }
+
       setCreateError(result.error.message);
     } catch {
       setCreateError("Could not reach the server. Try again.");
     }
+
     setBusy(false);
   }
 
   function onJoin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const code = normalizeRoomCode(field(event.currentTarget, "code"));
+
     if (!ROOM_CODE_PATTERN.test(code)) {
       setJoinError(`A room code is ${ROOM_CODE_LENGTH} letters.`);
+
       return;
     }
+
     setJoinError(null);
     void navigate({ to: "/room/$code", params: { code } });
   }

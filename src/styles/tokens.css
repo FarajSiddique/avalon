@@ -1,0 +1,54 @@
+/*
+ * Token contract.
+ *
+ * Components use the Tailwind utilities generated in app.css (bg-canvas,
+ * text-ink, border-line, font-display, ...). A theme is a set of values for
+ * the plain custom properties (--canvas, --ink, ...). The neutral values here
+ * are a placeholder shell; each design direction overrides them inside its own
+ * `.theme-*` wrapper. The winning direction's values move to :root later.
+ *
+ * Layers (see docs/design/README.md):
+ *   primitive  --<theme>-<hue>-<step>   raw values, defined per theme
+ *   semantic   --canvas, --ink, ...     the contract below
+ *   component  --seat-size, ...         defined per theme where needed
+ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --canvas: #15131d;
+  --surface: #201d2b;
+  --well: #100e17;
+
+  /* Text */
+  --ink: #f1ecdf;
+  --ink-muted: #a8a2b8;
+
+  /* Lines and focus */
+  --line: #37324a;
+  --line-strong: #5a5378;
+  --focus: #ffd58a;
+
+  /* Action colour (firelight) and its cool counterpart */
+  --accent: #f0a348;
+  --accent-strong: #ffbd66;
+  --on-accent: #1b1206;
+  --accent-cool: #8fa8ff;
+
+  /* Game meaning */
+  --good: #7fb2ff;
+  --evil: #f0646c;
+  --success: #6fd3a0;
+  --fail: #f0646c;
+  --warning: #f2c14e;
+
+  /* Type */
+  --display-font: ui-serif, Georgia, "Times New Roman", serif;
+  --body-font:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Shape */
+  --corner-sm: 6px;
+  --corner-md: 10px;
+  --corner-lg: 16px;
+}

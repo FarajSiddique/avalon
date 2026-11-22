@@ -205,7 +205,7 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Moments
 
-"Wired" says whether the moment plays in the click-through or only in the gallery. Every row has a static end state under reduced motion: `src/styles.css` cuts durations to almost nothing, and `-theme.css` also zeroes every delay inside `.theme-starlit`, so a timed sequence lands on its end at once (sound may still play).
+"Wired" says whether the moment plays in the click-through or only in the gallery. Every row has a static end state under reduced motion: `src/styles/app.css` cuts durations to almost nothing, and `-theme.css` also zeroes every delay inside `.theme-starlit`, so a timed sequence lands on its end at once (sound may still play).
 
 | Stage        | Moment                     | What moves                                                                                                                    | Duration                                                             | Easing              | Cue                                                     | Wired                                 | Reduced motion                              |
 | ------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------------------------------------- | ------------------------------------- | ------------------------------------------- |
@@ -255,7 +255,7 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Reduced motion
 
-`src/styles.css` cuts every animation and transition to almost nothing. `-theme.css` adds two things inside `.theme-starlit`: every animation and transition delay is set to zero (the sequences are timed with delays, which `src/styles.css` leaves alone), and the decorative loops are switched off or removed. Because every element's normal style is its end state, each screen and each gallery scene shows its final state at once. The gallery's timed scenes (counts, players joining) also jump to their last step under reduced motion. Sound still plays if it is switched on. This was checked: with reduced motion emulated, no finite animation is still running 400ms after any Starlit screen opens, and every gallery scene matches its resting end state 200ms after Play.
+`src/styles/app.css` cuts every animation and transition to almost nothing. `-theme.css` adds two things inside `.theme-starlit`: every animation and transition delay is set to zero (the sequences are timed with delays, which `src/styles/app.css` leaves alone), and the decorative loops are switched off or removed. Because every element's normal style is its end state, each screen and each gallery scene shows its final state at once. The gallery's timed scenes (counts, players joining) also jump to their last step under reduced motion. Sound still plays if it is switched on. This was checked: with reduced motion emulated, no finite animation is still running 400ms after any Starlit screen opens, and every gallery scene matches its resting end state 200ms after Play.
 
 ## Sound
 

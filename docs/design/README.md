@@ -49,7 +49,7 @@ The prototype lives in `src/routes/design/starlit/`:
   open-licensed) and names them for the theme.
 - `-theme.css` holds the tokens, scoped to `.theme-starlit`, in three layers:
   primitives (`--starlit-<hue>-<step>`), the semantic contract (`--canvas`,
-  `--ink`, `--accent`, `--good`, `--evil`, ... see `src/styles.css`), and
+  `--ink`, `--accent`, `--good`, `--evil`, ... see `src/styles/tokens.css`), and
   component tokens. Components use Tailwind utilities generated from the
   semantic layer (`bg-canvas`, `text-ink`, `border-line`, `font-display`) or
   `var(--token)`. No raw colour values in components. `-motion.css` holds the

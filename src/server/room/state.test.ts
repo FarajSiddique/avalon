@@ -27,7 +27,7 @@ function fixedDeps(start = 1000) {
   return { deps, clock };
 }
 
-function errorCode(run: () => unknown): string | undefined {
+function errorCode(run: () => void): string | undefined {
   try {
     run();
   } catch (error) {
@@ -114,6 +114,8 @@ describe("room state", () => {
       deps,
     );
 
+    // The point is a JSON round trip, not a deep copy.
+    // oxlint-disable-next-line unicorn/prefer-structured-clone -- proves the state survives JSON
     expect(JSON.parse(JSON.stringify(state))).toEqual(state);
   });
 });

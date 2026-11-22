@@ -86,7 +86,7 @@ export function StartForm() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={onCreate} className="space-y-3">
+      <form onSubmit={(event) => void onCreate(event)} className="space-y-3">
         <label htmlFor={nameId} className="block text-sm font-medium">
           Your name
         </label>

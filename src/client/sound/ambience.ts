@@ -182,10 +182,12 @@ export function startAmbience(
 
   windLevel.gain.value = 0.012;
   wind.connect(windTone).connect(windLevel).connect(bus);
-  sources.push(lfo(context, windTone.frequency, 0.045, 160, at));
-  sources.push(lfo(context, windLevel.gain, 0.07, 0.006, at));
   wind.start(at, NOISE_SECONDS / 2);
-  sources.push(wind);
+  sources.push(
+    lfo(context, windTone.frequency, 0.045, 160, at),
+    lfo(context, windLevel.gain, 0.07, 0.006, at),
+    wind,
+  );
 
   // Night bed: D3, A3, D4, each breathing at its own slow rate.
   const bedTone = context.createBiquadFilter();

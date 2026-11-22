@@ -145,13 +145,15 @@ export const voteReveal: ProposalRecord = {
 };
 
 /** Quest 3's cards, already shuffled, shown at the "result" step. */
-export const questReveal: {
+export interface MockQuestReveal {
   questIndex: number;
   team: Array<PlayerId>;
   cards: Array<QuestCard>;
   failCount: number;
   outcome: "success" | "fail";
-} = {
+}
+
+export const questReveal: MockQuestReveal = {
   questIndex: 2,
   team: quest3Team,
   cards: ["success", "fail", "success"],

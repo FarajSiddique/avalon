@@ -135,6 +135,13 @@ export function openingView({ via, name, code }: MockLobbyOptions): LobbyView {
   return withBlockers({ ...lobbyView, players: named });
 }
 
+function withPlayers(
+  current: LobbyView,
+  players: LobbyView["players"],
+): LobbyView {
+  return withBlockers({ ...current, players });
+}
+
 export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
   const [view, setView] = useState<LobbyView>(() => openingView(options));
   const arriveNext = useCallback(
@@ -153,11 +160,6 @@ export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
       }),
     [],
   );
-
-  const withPlayers = (
-    current: LobbyView,
-    players: LobbyView["players"],
-  ): LobbyView => withBlockers({ ...current, players });
 
   return {
     view,

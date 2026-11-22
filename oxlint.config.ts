@@ -11,15 +11,12 @@ const effectHooks = ["useEffect", "useLayoutEffect", "useInsertionEffect"];
 const noEffectsMessage =
   "Effects are banned. Use useSyncExternalStore or a zustand store for subscriptions, a ref callback with cleanup for DOM work, or an event handler.";
 
-// Temporary during the migration: the ban switches on once every effect is gone.
-const banEffects = false;
-
-const noEffects = banEffects
-  ? [{ name: "react", importNames: effectHooks, message: noEffectsMessage }]
-  : [];
+const noEffects = [
+  { name: "react", importNames: effectHooks, message: noEffectsMessage },
+];
 
 /** Catches `React.useEffect` when React is imported as a namespace. */
-const noEffectProperties = (banEffects ? effectHooks : []).map((property) => ({
+const noEffectProperties = effectHooks.map((property) => ({
   object: "React",
   property,
   message: noEffectsMessage,
@@ -65,30 +62,6 @@ const sharedIsPure = [
   },
 ];
 
-/** Temporary during the migration. Each later commit removes entries. */
-const migrationOff = {
-  "@nkzw/no-instanceof": "off",
-  "no-console": "off",
-  "no-promise-executor-return": "off",
-  "quality/no-chained-type-assertions": "off",
-  "quality/no-known-value-widening": "off",
-  "quality/no-unknown-returns": "off",
-  "quality/no-unsafe-dictionary-type": "off",
-  "typescript/no-misused-promises": "off",
-  "typescript/no-non-null-assertion": "off",
-  "typescript/no-unnecessary-type-assertion": "off",
-  "typescript/no-unsafe-type-assertion": "off",
-  "typescript/only-throw-error": "off",
-  "typescript/unbound-method": "off",
-  "unicorn/consistent-function-scoping": "off",
-  "unicorn/no-array-fill-with-reference-type": "off",
-  "unicorn/prefer-dom-node-append": "off",
-  "unicorn/prefer-single-call": "off",
-  "unicorn/prefer-string-replace-all": "off",
-  "unicorn/prefer-structured-clone": "off",
-  "unicorn/text-encoding-identifier-case": "off",
-} as const;
-
 export default defineConfig({
   ...cloudflare,
   jsPlugins: [
@@ -117,6 +90,9 @@ export default defineConfig({
     // preset's prefer-top-level style would fight that autofix.
     "import/consistent-type-specifier-style": "off",
 
+    // Only for things a person must act on.
+    "no-console": ["error", { allow: ["error", "warn"] }],
+
     "no-restricted-imports": ["error", { paths: noEffects }],
     "no-restricted-properties": ["error", ...noEffectProperties],
 
@@ -142,8 +118,6 @@ export default defineConfig({
       "always",
       { exceptAfterSingleLine: true },
     ],
-
-    ...migrationOff,
   },
   overrides: [
     ...(cloudflare.overrides ?? []),

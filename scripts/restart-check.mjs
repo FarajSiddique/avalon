@@ -32,7 +32,9 @@ async function startServer() {
       // Not up yet.
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 200);
+    });
   }
 
   throw new Error("The server did not start. Run `pnpm build` first.");

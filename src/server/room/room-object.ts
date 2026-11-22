@@ -61,9 +61,18 @@ const deps: RoomDeps = {
 };
 
 function seatOf(socket: WebSocket): PlayerId | null {
-  const attachment = socket.deserializeAttachment() as SocketAttachment | null;
+  const attachment: unknown = socket.deserializeAttachment();
 
-  return attachment?.playerId ?? null;
+  return isSocketAttachment(attachment) ? attachment.playerId : null;
+}
+
+function isSocketAttachment(value: unknown): value is SocketAttachment {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "playerId" in value &&
+    (value.playerId === null || typeof value.playerId === "string")
+  );
 }
 
 function send(socket: WebSocket, message: ServerMessage): void {

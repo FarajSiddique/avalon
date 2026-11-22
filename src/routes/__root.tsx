@@ -13,6 +13,8 @@ const description =
 export const Route = createRootRoute({
   head: () => ({
     meta: [
+      // HTML's canonical label. The rule is about Node's Buffer encodings.
+      // oxlint-disable-next-line unicorn/text-encoding-identifier-case -- HTML meta charset
       { charSet: "utf-8" },
       {
         name: "viewport",

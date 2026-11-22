@@ -67,11 +67,13 @@ function hashSecret(secret: string): string {
   return createHash("sha256").update(secret).digest("hex");
 }
 
-function newPlayer(
-  code: RoomCode,
-  name: string,
-  deps: RoomDeps,
-): { player: PlayerRecord; token: string } {
+/** A new seat, and the token that claims it (sent to that player only). */
+interface NewPlayer {
+  player: PlayerRecord;
+  token: string;
+}
+
+function newPlayer(code: RoomCode, name: string, deps: RoomDeps): NewPlayer {
   const secret = deps.newSecret();
 
   return {

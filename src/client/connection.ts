@@ -41,6 +41,20 @@ const offline: Result<never> = {
   error: { code: "OFFLINE", message: "You are offline. Trying to reconnect." },
 };
 
+const SERVER_MESSAGE_TYPES: ReadonlySet<unknown> = new Set<
+  ServerMessage["type"]
+>(["ack", "state", "closed"]);
+
+/** Drops anything that is not one of the room's messages. */
+function isServerMessage(value: unknown): value is ServerMessage {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    SERVER_MESSAGE_TYPES.has(value.type)
+  );
+}
+
 interface Pending {
   resolve: (result: Result<unknown>) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -107,6 +121,9 @@ export class RoomConnection {
       }, REQUEST_TIMEOUT_MS);
 
       this.pending.set(id, {
+        // The room answers each event with that event's output type (see
+        // RoomRequests). The browser does not ship zod, so this is trusted.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- protocol boundary, typed by RoomRequests
         resolve: resolve as (result: Result<unknown>) => void,
         timer,
       });
@@ -150,7 +167,11 @@ export class RoomConnection {
         return;
       }
 
-      this.receive(JSON.parse(event.data) as ServerMessage);
+      const message: unknown = JSON.parse(event.data);
+
+      if (isServerMessage(message)) {
+        this.receive(message);
+      }
     });
 
     socket.addEventListener("close", (event) => {

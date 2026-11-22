@@ -1,24 +1,20 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import {
-  DIRECTIONS,
-  ROLE_VARIANTS,
-  STARLIT_MOTION_PATH,
-  TABLE_STEPS,
-  designPaths,
-} from "../src/design/directions";
+import { TABLE_STEPS, designPaths } from "../src/design/directions";
 
 /**
- * Regenerates docs/design/screenshots/<direction>/<screen>-<width>.jpg for
- * every prototype screen at phone and desktop width. Run with
- * `pnpm build && pnpm screenshots`.
- *
- * Whole pages are captured by growing the viewport to the page's height, so
- * a bar fixed to the bottom of the screen lands at the bottom of the image
- * instead of covering the middle of it. The press-and-hold states are
- * captured at the normal viewport size, because a finger is "down".
+ * Regenerates docs/design/screenshots/starlit/<screen>-<width>.jpg for the
+ * Starlit Vale screens on the 3D stage, at phone and desktop width, plus the
+ * notice shown without WebGL. Run with `pnpm build && pnpm screenshots`.
  */
+
+// Software WebGL, so the 3D Star Table renders in headless runs.
+test.use({
+  launchOptions: {
+    args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+  },
+});
 
 const OUT = path.join(
   import.meta.dirname,
@@ -26,6 +22,7 @@ const OUT = path.join(
   "docs",
   "design",
   "screenshots",
+  "starlit",
 );
 
 const VIEWPORTS = [
@@ -33,161 +30,114 @@ const VIEWPORTS = [
   { width: 1440, height: 900 },
 ] as const;
 
-interface Shot {
-  name: string;
-  url: string;
-  /** Put the page in the state to capture. */
-  prepare?: (page: Page) => Promise<void>;
-  /** Keep the normal viewport height (for states that need a finger held down). */
-  viewportOnly?: boolean;
+const STAGE_TIMEOUT = { timeout: 90_000 };
+
+type Phase = "hero" | "lobby" | "role" | "table";
+
+const paths = designPaths();
+const SHOTS: { name: string; url: string; phase: Phase; hold?: boolean }[] = [
+  { name: "01-landing", url: paths.landing, phase: "hero" },
+  { name: "02-lobby", url: paths.lobby, phase: "lobby" },
+  { name: "03-role-hidden", url: paths.role("merlin"), phase: "role" },
+  {
+    name: "04-role-revealed",
+    url: paths.role("merlin"),
+    phase: "role",
+    hold: true,
+  },
+  ...TABLE_STEPS.map((step, index) => ({
+    name: `${String(5 + index).padStart(2, "0")}-table-${step}`,
+    url: paths.table(step),
+    phase: "table" as const,
+  })),
+];
+
+/** Collect page and console errors, to assert none at the end. */
+function watchErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  return errors;
 }
 
-/** Wait until the screen has rendered, fonts are in and its height is stable. */
-async function settle(page: Page): Promise<void> {
-  await page.locator("main:visible").first().waitFor();
-  await page.evaluate(() => document.fonts.ready);
-  let previous = -1;
-  await expect
-    .poll(async () => {
-      const height = await page.evaluate(
-        () => document.documentElement.scrollHeight,
-      );
-      const stable = height === previous;
-      previous = height;
-      return stable;
-    })
-    .toBe(true);
-}
-
-/**
- * Press and hold the role card so the secret side is showing. A press that
- * lands before the page has finished loading its scripts does nothing, so
- * press again until the card reports that it is held.
- */
-async function holdRoleCard(page: Page): Promise<void> {
-  const card = page.locator("button[aria-pressed]:visible").first();
-  await card.scrollIntoViewIfNeeded();
-  const box = await card.boundingBox();
-  if (!box) throw new Error("No hold-to-reveal control found");
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(async () => {
-    await page.mouse.up();
-    await page.mouse.down();
-    await expect(card).toHaveAttribute("aria-pressed", "true", {
-      timeout: 400,
-    });
-  }).toPass({ timeout: 10_000 });
-}
-
-for (const viewport of VIEWPORTS) {
-  test.describe(`index ${viewport.width}`, () => {
-    test.use({ viewport, deviceScaleFactor: viewport.width < 600 ? 2 : 1 });
-
-    test("00-index", async ({ page }) => {
-      await page.goto("/design");
-      await settle(page);
-      const height = await page.evaluate(
-        () => document.documentElement.scrollHeight,
-      );
-      await page.setViewportSize({ width: viewport.width, height });
-      // The three live previews are iframes; give them time to paint.
-      for (const frame of page.frames().slice(1)) {
-        await frame.waitForLoadState("load");
-      }
-      await page.waitForTimeout(1500);
-      mkdirSync(OUT, { recursive: true });
-      await page.screenshot({
-        path: path.join(OUT, `00-index-${viewport.width}.jpg`),
-        type: "jpeg",
-        quality: 82,
-        fullPage: true,
-      });
-    });
+async function capture(page: Page, name: string, width: number) {
+  // No page may scroll sideways.
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow, "horizontal overflow in px").toBeLessThanOrEqual(0);
+  mkdirSync(OUT, { recursive: true });
+  await page.screenshot({
+    path: path.join(OUT, `${name}-${width}.jpg`),
+    type: "jpeg",
+    quality: 82,
   });
 }
 
-for (const direction of DIRECTIONS) {
-  const paths = designPaths(direction.slug);
-  const shots: Shot[] = [
-    { name: "01-landing", url: paths.landing },
-    { name: "02-lobby", url: paths.lobby },
-    { name: "03-role-hidden", url: paths.role("merlin") },
-    ...ROLE_VARIANTS.map((role, index) => ({
-      name: `0${4 + index}-role-${role}-revealed`,
-      url: paths.role(role),
-      prepare: holdRoleCard,
-      viewportOnly: true,
-    })),
-    ...TABLE_STEPS.map((step, index) => ({
-      name: `${String(6 + index).padStart(2, "0")}-table-${step}`,
-      url: paths.table(step),
-    })),
-    // Only Starlit Vale has the motion and sound gallery. It is tens of
-    // screens long, so only the top is captured.
-    ...(direction.slug === "starlit"
-      ? [
-          {
-            name: "11-motion-gallery",
-            url: STARLIT_MOTION_PATH,
-            viewportOnly: true,
-          },
-        ]
-      : []),
-  ];
-
-  for (const viewport of VIEWPORTS) {
-    test.describe(`${direction.slug} ${viewport.width}`, () => {
-      test.use({
-        viewport,
-        deviceScaleFactor: viewport.width < 600 ? 2 : 1,
-        hasTouch: false,
-      });
-
-      for (const shot of shots) {
-        test(shot.name, async ({ page }) => {
-          const errors: string[] = [];
-          page.on("pageerror", (error) => errors.push(error.message));
-          page.on("console", (message) => {
-            if (message.type() === "error") errors.push(message.text());
-          });
-
-          await page.goto(shot.url);
-          await settle(page);
-
-          // No page may scroll sideways. Checked at the real viewport size.
-          const overflow = await page.evaluate(
-            () =>
-              document.documentElement.scrollWidth -
-              document.documentElement.clientWidth,
-          );
-
-          if (shot.viewportOnly) {
-            await shot.prepare?.(page);
-          } else {
-            const height = await page.evaluate(
-              () => document.documentElement.scrollHeight,
-            );
-            await page.setViewportSize({
-              width: viewport.width,
-              height: Math.max(height, viewport.height),
-            });
-          }
-          // Let entrance animations settle so captures are comparable.
-          await page.waitForTimeout(700);
-
-          const dir = path.join(OUT, direction.slug);
-          mkdirSync(dir, { recursive: true });
-          await page.screenshot({
-            path: path.join(dir, `${shot.name}-${viewport.width}.jpg`),
-            type: "jpeg",
-            quality: 82,
-            fullPage: !shot.viewportOnly,
-          });
-
-          expect(overflow, "horizontal overflow in px").toBeLessThanOrEqual(0);
-          expect(errors, "console errors").toEqual([]);
-        });
-      }
+for (const viewport of VIEWPORTS) {
+  test.describe(`starlit ${viewport.width}`, () => {
+    test.use({
+      viewport,
+      deviceScaleFactor: viewport.width < 600 ? 2 : 1,
+      hasTouch: false,
     });
-  }
+
+    for (const shot of SHOTS) {
+      test(shot.name, async ({ page }) => {
+        test.setTimeout(180_000);
+        const errors = watchErrors(page);
+        await page.goto(shot.url);
+        const stage = page.locator("[data-stage-host]");
+        await expect(stage.locator("canvas")).toHaveCount(1, STAGE_TIMEOUT);
+        await expect(stage).toHaveAttribute(
+          "data-stage",
+          shot.phase,
+          STAGE_TIMEOUT,
+        );
+        await page.evaluate(() => document.fonts.ready);
+        if (shot.hold) {
+          const card = page.locator("main button.sl-skycard");
+          const box = await card.boundingBox();
+          if (!box) throw new Error("No role card");
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await expect(card).toHaveAttribute("aria-pressed", "true");
+        }
+        // Let entrance motion settle so captures are comparable.
+        await page.waitForTimeout(1500);
+        await capture(page, shot.name, viewport.width);
+        expect(errors, "console errors").toEqual([]);
+      });
+    }
+
+    test("12-no-webgl", async ({ page }) => {
+      // Make every WebGL context fail, as on a machine without it.
+      await page.addInitScript(() => {
+        const original = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (
+          this: HTMLCanvasElement,
+          type: string,
+          ...rest: unknown[]
+        ) {
+          if (type.startsWith("webgl")) return null;
+          return (original as (...a: unknown[]) => unknown).call(
+            this,
+            type,
+            ...rest,
+          );
+        } as typeof original;
+      });
+      await page.goto(paths.table("propose"));
+      await expect(
+        page.getByRole("heading", { name: "This game needs 3D graphics" }),
+      ).toBeVisible({ timeout: 30_000 });
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(700);
+      await capture(page, "12-no-webgl", viewport.width);
+    });
+  });
 }

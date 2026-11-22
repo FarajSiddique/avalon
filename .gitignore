@@ -29,3 +29,7 @@
 *.local
 npm-debug.log*
 .pnpm-debug.log*
+
+# evidence and screenshots: generated locally, attached to PRs, never committed
+/docs/evidence/
+/docs/design/screenshots/

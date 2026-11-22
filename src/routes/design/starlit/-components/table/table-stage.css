@@ -1,0 +1,200 @@
+/*
+ * The game at the 3D Star Table: the tags over heads and the overlay panels.
+ * The base look (sl-name-tag, sl-panel, sl-btn) is in -theme.css; this adds
+ * only what the table needs. The engine writes each tag's transform and
+ * opacity, so nothing here animates the tag element itself.
+ */
+
+@layer components {
+  /* A tag with a state is wider than the lobby's: name, crown, You, state. */
+  .sl-name-tag.sl-seat-tag {
+    max-width: 13rem;
+    gap: 0.3125rem;
+  }
+
+  .sl-name-tag.sl-seat-tag--chosen {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .sl-seat-tag__status {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.1875rem;
+    margin-left: 0.125rem;
+    padding-left: 0.375rem;
+    border-left: 1px solid var(--line);
+    animation: sl-pop var(--dur-control, 180ms) var(--ease-out) both;
+  }
+
+  /*
+   * A tag you can pick: the pill stays small (the engine stacks tags by
+   * their box) and an invisible ring around it makes the target 44px.
+   */
+  .sl-name-tag.sl-seat-tag--pick {
+    position: absolute;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .sl-name-tag.sl-seat-tag--pick::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100% + 0.75rem, 2.75rem);
+    height: max(100% + 0.75rem, 2.75rem);
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+  }
+
+  .sl-name-tag.sl-seat-tag--pick:hover {
+    border-color: var(--line-strong);
+  }
+
+  .sl-name-tag.sl-seat-tag--pick[aria-pressed="true"]:hover {
+    border-color: var(--accent-strong);
+  }
+
+  .sl-name-tag.sl-seat-tag--pick:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  /* The open space over the table: a tap there can pick a figure. */
+  .sl-table-focus[data-pickable="true"] {
+    cursor: pointer;
+  }
+
+  /* The "Team" list under the step: the same picks as the tags. */
+  .sl-team-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--well);
+    color: var(--ink);
+    font-weight: var(--label-weight);
+  }
+
+  .sl-team-pick[aria-pressed="true"] {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+    color: var(--accent-strong);
+  }
+
+  .sl-team-pick:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* The quest cards as they turn on the table, said in text. */
+  .sl-card-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    min-height: 2rem;
+    padding: 0 0.625rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--corner-sm);
+    background: var(--well);
+    color: var(--ink);
+    font-weight: var(--label-weight);
+  }
+
+  .sl-card-chip[data-face="down"] {
+    border-style: dashed;
+    color: var(--ink-muted);
+  }
+
+  .sl-card-chip[data-face="up"] {
+    animation: sl-pop var(--dur-control, 180ms) var(--ease-out) both;
+  }
+
+  /*
+   * The phone's bottom sheet slides down to its peek. `--sheet-p` on the
+   * main element is 0 open and 1 collapsed (fractions while dragging). The
+   * sheet slides by its height less the peek's, so its top meets the peek's,
+   * and its content fades as the peek's fades in over it. `translate`, not
+   * `transform`, so the arrival animation does not fight it.
+   */
+  .sl-sheet {
+    --sheet-q: clamp(0, (var(--sheet-p, 0) - 0.55) * 2.5, 1);
+    translate: 0 calc((100% - var(--peek-h, 0px)) * var(--sheet-p, 0));
+    transition: translate var(--dur-close) var(--ease-out);
+  }
+
+  .sl-sheet__fade {
+    opacity: calc(1 - var(--sheet-q));
+    transition: opacity var(--dur-close) var(--ease-out);
+  }
+
+  .sl-sheet-peek {
+    opacity: clamp(0, (var(--sheet-p, 0) - 0.55) * 2.5, 1);
+    transition: opacity var(--dur-close) var(--ease-out);
+  }
+
+  .sl-sheet-peek[aria-hidden="true"] {
+    pointer-events: none;
+  }
+
+  /* Drag from the handle only; the sheet's own content keeps its scroll. */
+  .sl-sheet-grip,
+  .sl-sheet-handle {
+    touch-action: none;
+    cursor: grab;
+  }
+
+  main[data-sheet-drag] .sl-sheet-grip,
+  main[data-sheet-drag] .sl-sheet-handle {
+    cursor: grabbing;
+  }
+
+  .sl-sheet-handle {
+    border-radius: var(--corner-sm);
+  }
+
+  .sl-sheet-handle:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+  }
+
+  main[data-sheet-drag] .sl-sheet,
+  main[data-sheet-drag] .sl-sheet__fade,
+  main[data-sheet-drag] .sl-sheet-peek {
+    transition: none;
+  }
+
+  /* The open space (and the camera with it) glides as the sheet moves. */
+  .sl-table-focus[data-glide] {
+    transition: bottom var(--dur-close) var(--ease-out);
+  }
+
+  @media (min-width: 1024px) {
+    .sl-sheet {
+      translate: none;
+    }
+
+    .sl-sheet__fade {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sl-seat-tag__status,
+    .sl-card-chip[data-face="up"] {
+      animation: none;
+    }
+
+    .sl-sheet,
+    .sl-sheet__fade,
+    .sl-sheet-peek,
+    .sl-table-focus[data-glide] {
+      transition: none;
+    }
+  }
+}

@@ -1,37 +1,9 @@
 /**
- * The three design directions and the screens every direction must provide.
- * Prototype-only: this folder and src/app/design are removed (or reduced to
- * the winner) once a direction is picked.
+ * The screens of the Starlit Vale prototype. Prototype-only: this folder is
+ * removed once the real screens are built from it.
  */
 
-export const DIRECTIONS = [
-  {
-    slug: "ember",
-    name: "Ember & Rune",
-    style: "Candlelit tabletop",
-    summary:
-      "A worn oak table lit by candles and a glowing rune circle. Carved serif capitals, parchment cards, wax seals.",
-  },
-  {
-    slug: "lavender",
-    name: "Lavender Vigil",
-    style: "16-bit pixel art",
-    summary:
-      "A knight's camp in a lavender field at dusk. Chunky pixel frames, sprite art, stepped animation.",
-  },
-  {
-    slug: "starlit",
-    name: "Starlit Vale",
-    style: "Painted storybook night",
-    summary:
-      "A hand-inked valley under a deep blue sky full of stars. Soft storybook serif, layered hills, one warm campfire.",
-  },
-] as const;
-
-export type Direction = (typeof DIRECTIONS)[number];
-export type DirectionSlug = Direction["slug"];
-
-export const ROLE_VARIANTS = ["merlin", "assassin"] as const;
+const ROLE_VARIANTS = ["merlin", "assassin"] as const;
 export type RoleVariant = (typeof ROLE_VARIANTS)[number];
 
 export function isRoleVariant(value: string): value is RoleVariant {
@@ -60,9 +32,9 @@ export const TABLE_STEP_LABELS: Record<TableStep, string> = {
   result: "Quest result",
 };
 
-/** Every prototype URL for one direction. Use these instead of string paths. */
-export function designPaths(slug: DirectionSlug) {
-  const base = `/design/${slug}` as const;
+/** Every prototype URL. Use these instead of string paths. */
+export function designPaths() {
+  const base = "/design/starlit" as const;
   return {
     landing: base,
     lobby: `${base}/lobby`,
@@ -70,12 +42,3 @@ export function designPaths(slug: DirectionSlug) {
     table: (step: TableStep) => `${base}/table/${step}` as const,
   } as const;
 }
-
-/** The step after this one in the click-through, looping back to the start. */
-export function nextTableStep(step: TableStep): TableStep {
-  const index = TABLE_STEPS.indexOf(step);
-  return TABLE_STEPS[(index + 1) % TABLE_STEPS.length] ?? "propose";
-}
-
-/** Starlit Vale also has a gallery of every moment of motion and sound. */
-export const STARLIT_MOTION_PATH = "/design/starlit/motion";

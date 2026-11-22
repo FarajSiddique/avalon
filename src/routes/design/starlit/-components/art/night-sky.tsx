@@ -1,22 +1,18 @@
+import { useMemo } from "react";
 import { Cloud } from "./cloud";
 import { makeValleyLights } from "./lights";
 import { makeStars } from "./seeded";
 import { StarField } from "./star-field";
 
-const STARS = makeStars({ count: 430, seed: 1136, width: 1000, height: 880 });
-
-const LIGHTS = makeValleyLights(
-  [
-    [150, 168, 6],
-    [420, 174, 8],
-    [610, 166, 9],
-    [790, 172, 10],
-    [900, 160, 5],
-    [1120, 170, 8],
-    [1320, 176, 6],
-  ],
-  52,
-);
+const HAMLETS = [
+  [150, 168, 6],
+  [420, 174, 8],
+  [610, 166, 9],
+  [790, 172, 10],
+  [900, 160, 5],
+  [1120, 170, 8],
+  [1320, 176, 6],
+] as const;
 
 /**
  * The backdrop behind every Starlit screen: a fixed star field, one shooting
@@ -25,6 +21,20 @@ const LIGHTS = makeValleyLights(
  * that needs a guarantee sits on a panel.
  */
 export function NightSky() {
+  const stars = useMemo(
+    () =>
+      makeStars({
+        count: 430,
+        seed: 1136,
+        width: 1000,
+        height: 880,
+        // Above 1 crowds the stars toward the top of the sky.
+        topBias: 1.35,
+        twinkleEvery: 5,
+      }),
+    [],
+  );
+  const lights = useMemo(() => makeValleyLights(HAMLETS, 52), []);
   return (
     <div className="sl-sky" aria-hidden="true">
       <svg
@@ -33,7 +43,7 @@ export function NightSky() {
         preserveAspectRatio="xMidYMid slice"
         focusable="false"
       >
-        <StarField stars={STARS} />
+        <StarField stars={stars} />
       </svg>
       <span className="sl-shooting-star" />
       <svg
@@ -42,7 +52,7 @@ export function NightSky() {
         preserveAspectRatio="xMidYMax slice"
         focusable="false"
       >
-        <g opacity={0.9}>
+        <g style={{ opacity: "var(--sky-clouds-opacity)" }}>
           <Cloud
             variant="wispy"
             transform="translate(180 62) scale(1.1)"
@@ -67,7 +77,7 @@ export function NightSky() {
           d="M0 186C160 160 320 172 520 180C700 188 820 160 1000 166C1180 172 1300 188 1440 176V240H0Z"
           fill="var(--art-hill-4)"
         />
-        {LIGHTS.map((light, index) => (
+        {lights.map((light, index) => (
           <circle
             key={index}
             cx={light.x}

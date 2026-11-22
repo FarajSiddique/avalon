@@ -95,7 +95,7 @@ function CloudBank({ side }: { side: "left" | "right" }) {
  * same for every role, so a neighbour learns nothing); letting go stops the
  * constellation and plays the clouds closing.
  */
-function useCardSound(open: boolean): void {
+export function useCardSound(open: boolean): void {
   // Start from the first value, so mounting already open makes no sound.
   const wasOpen = useRef(open);
   const stars = useRef<CueHandle | null>(null);
@@ -125,18 +125,21 @@ function useCardSound(open: boolean): void {
  * clouds part; let go and they close again. The secret content is not in
  * the page at all until the card is held.
  *
- * `forceOpen` is for the motion gallery, which plays a hold on its own.
+ * `onHold` is told each time a hold opens the card.
  */
 export function SkyCard({
   children,
-  forceOpen = false,
+  onHold,
 }: {
   children: ReactNode;
-  forceOpen?: boolean;
+  onHold?: () => void;
 }) {
   const hold = useHoldToReveal();
-  const revealed = hold.revealed || forceOpen;
+  const revealed = hold.revealed;
   useCardSound(revealed);
+  useEffect(() => {
+    if (revealed) onHold?.();
+  }, [revealed, onHold]);
 
   return (
     <button

@@ -12,21 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as DesignIndexRouteImport } from './routes/design/index'
-import { Route as DesignEmberRouteRouteImport } from './routes/design/ember/route'
-import { Route as DesignLavenderRouteRouteImport } from './routes/design/lavender/route'
 import { Route as DesignStarlitRouteRouteImport } from './routes/design/starlit/route'
 import { Route as RoomCodeRouteImport } from './routes/room.$code'
-import { Route as DesignEmberIndexRouteImport } from './routes/design/ember/index'
-import { Route as DesignEmberLobbyRouteImport } from './routes/design/ember/lobby'
-import { Route as DesignLavenderIndexRouteImport } from './routes/design/lavender/index'
-import { Route as DesignLavenderLobbyRouteImport } from './routes/design/lavender/lobby'
 import { Route as DesignStarlitIndexRouteImport } from './routes/design/starlit/index'
 import { Route as DesignStarlitLobbyRouteImport } from './routes/design/starlit/lobby'
-import { Route as DesignStarlitMotionRouteImport } from './routes/design/starlit/motion'
-import { Route as DesignEmberRoleRoleRouteImport } from './routes/design/ember/role.$role'
-import { Route as DesignEmberTableStepRouteImport } from './routes/design/ember/table.$step'
-import { Route as DesignLavenderRoleRoleRouteImport } from './routes/design/lavender/role.$role'
-import { Route as DesignLavenderTableStepRouteImport } from './routes/design/lavender/table.$step'
 import { Route as DesignStarlitRoleRoleRouteImport } from './routes/design/starlit/role.$role'
 import { Route as DesignStarlitTableStepRouteImport } from './routes/design/starlit/table.$step'
 
@@ -45,16 +34,6 @@ const DesignIndexRoute = DesignIndexRouteImport.update({
   path: '/design/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DesignEmberRouteRoute = DesignEmberRouteRouteImport.update({
-  id: '/design/ember',
-  path: '/design/ember',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesignLavenderRouteRoute = DesignLavenderRouteRouteImport.update({
-  id: '/design/lavender',
-  path: '/design/lavender',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DesignStarlitRouteRoute = DesignStarlitRouteRouteImport.update({
   id: '/design/starlit',
   path: '/design/starlit',
@@ -65,26 +44,6 @@ const RoomCodeRoute = RoomCodeRouteImport.update({
   path: '/room/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DesignEmberIndexRoute = DesignEmberIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DesignEmberRouteRoute,
-} as any)
-const DesignEmberLobbyRoute = DesignEmberLobbyRouteImport.update({
-  id: '/lobby',
-  path: '/lobby',
-  getParentRoute: () => DesignEmberRouteRoute,
-} as any)
-const DesignLavenderIndexRoute = DesignLavenderIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DesignLavenderRouteRoute,
-} as any)
-const DesignLavenderLobbyRoute = DesignLavenderLobbyRouteImport.update({
-  id: '/lobby',
-  path: '/lobby',
-  getParentRoute: () => DesignLavenderRouteRoute,
-} as any)
 const DesignStarlitIndexRoute = DesignStarlitIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -94,31 +53,6 @@ const DesignStarlitLobbyRoute = DesignStarlitLobbyRouteImport.update({
   id: '/lobby',
   path: '/lobby',
   getParentRoute: () => DesignStarlitRouteRoute,
-} as any)
-const DesignStarlitMotionRoute = DesignStarlitMotionRouteImport.update({
-  id: '/motion',
-  path: '/motion',
-  getParentRoute: () => DesignStarlitRouteRoute,
-} as any)
-const DesignEmberRoleRoleRoute = DesignEmberRoleRoleRouteImport.update({
-  id: '/role/$role',
-  path: '/role/$role',
-  getParentRoute: () => DesignEmberRouteRoute,
-} as any)
-const DesignEmberTableStepRoute = DesignEmberTableStepRouteImport.update({
-  id: '/table/$step',
-  path: '/table/$step',
-  getParentRoute: () => DesignEmberRouteRoute,
-} as any)
-const DesignLavenderRoleRoleRoute = DesignLavenderRoleRoleRouteImport.update({
-  id: '/role/$role',
-  path: '/role/$role',
-  getParentRoute: () => DesignLavenderRouteRoute,
-} as any)
-const DesignLavenderTableStepRoute = DesignLavenderTableStepRouteImport.update({
-  id: '/table/$step',
-  path: '/table/$step',
-  getParentRoute: () => DesignLavenderRouteRoute,
 } as any)
 const DesignStarlitRoleRoleRoute = DesignStarlitRoleRoleRouteImport.update({
   id: '/role/$role',
@@ -133,23 +67,12 @@ const DesignStarlitTableStepRoute = DesignStarlitTableStepRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/design/ember': typeof DesignEmberRouteRouteWithChildren
-  '/design/lavender': typeof DesignLavenderRouteRouteWithChildren
   '/design/starlit': typeof DesignStarlitRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/room/$code': typeof RoomCodeRoute
   '/design/': typeof DesignIndexRoute
-  '/design/ember/lobby': typeof DesignEmberLobbyRoute
-  '/design/lavender/lobby': typeof DesignLavenderLobbyRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
-  '/design/starlit/motion': typeof DesignStarlitMotionRoute
-  '/design/ember/': typeof DesignEmberIndexRoute
-  '/design/lavender/': typeof DesignLavenderIndexRoute
   '/design/starlit/': typeof DesignStarlitIndexRoute
-  '/design/ember/role/$role': typeof DesignEmberRoleRoleRoute
-  '/design/ember/table/$step': typeof DesignEmberTableStepRoute
-  '/design/lavender/role/$role': typeof DesignLavenderRoleRoleRoute
-  '/design/lavender/table/$step': typeof DesignLavenderTableStepRoute
   '/design/starlit/role/$role': typeof DesignStarlitRoleRoleRoute
   '/design/starlit/table/$step': typeof DesignStarlitTableStepRoute
 }
@@ -158,40 +81,20 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/room/$code': typeof RoomCodeRoute
   '/design': typeof DesignIndexRoute
-  '/design/ember/lobby': typeof DesignEmberLobbyRoute
-  '/design/lavender/lobby': typeof DesignLavenderLobbyRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
-  '/design/starlit/motion': typeof DesignStarlitMotionRoute
-  '/design/ember': typeof DesignEmberIndexRoute
-  '/design/lavender': typeof DesignLavenderIndexRoute
   '/design/starlit': typeof DesignStarlitIndexRoute
-  '/design/ember/role/$role': typeof DesignEmberRoleRoleRoute
-  '/design/ember/table/$step': typeof DesignEmberTableStepRoute
-  '/design/lavender/role/$role': typeof DesignLavenderRoleRoleRoute
-  '/design/lavender/table/$step': typeof DesignLavenderTableStepRoute
   '/design/starlit/role/$role': typeof DesignStarlitRoleRoleRoute
   '/design/starlit/table/$step': typeof DesignStarlitTableStepRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/design/ember': typeof DesignEmberRouteRouteWithChildren
-  '/design/lavender': typeof DesignLavenderRouteRouteWithChildren
   '/design/starlit': typeof DesignStarlitRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/room/$code': typeof RoomCodeRoute
   '/design/': typeof DesignIndexRoute
-  '/design/ember/lobby': typeof DesignEmberLobbyRoute
-  '/design/lavender/lobby': typeof DesignLavenderLobbyRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
-  '/design/starlit/motion': typeof DesignStarlitMotionRoute
-  '/design/ember/': typeof DesignEmberIndexRoute
-  '/design/lavender/': typeof DesignLavenderIndexRoute
   '/design/starlit/': typeof DesignStarlitIndexRoute
-  '/design/ember/role/$role': typeof DesignEmberRoleRoleRoute
-  '/design/ember/table/$step': typeof DesignEmberTableStepRoute
-  '/design/lavender/role/$role': typeof DesignLavenderRoleRoleRoute
-  '/design/lavender/table/$step': typeof DesignLavenderTableStepRoute
   '/design/starlit/role/$role': typeof DesignStarlitRoleRoleRoute
   '/design/starlit/table/$step': typeof DesignStarlitTableStepRoute
 }
@@ -199,23 +102,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/design/ember'
-    | '/design/lavender'
     | '/design/starlit'
     | '/api/health'
     | '/room/$code'
     | '/design/'
-    | '/design/ember/lobby'
-    | '/design/lavender/lobby'
     | '/design/starlit/lobby'
-    | '/design/starlit/motion'
-    | '/design/ember/'
-    | '/design/lavender/'
     | '/design/starlit/'
-    | '/design/ember/role/$role'
-    | '/design/ember/table/$step'
-    | '/design/lavender/role/$role'
-    | '/design/lavender/table/$step'
     | '/design/starlit/role/$role'
     | '/design/starlit/table/$step'
   fileRoutesByTo: FileRoutesByTo
@@ -224,47 +116,25 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/room/$code'
     | '/design'
-    | '/design/ember/lobby'
-    | '/design/lavender/lobby'
     | '/design/starlit/lobby'
-    | '/design/starlit/motion'
-    | '/design/ember'
-    | '/design/lavender'
     | '/design/starlit'
-    | '/design/ember/role/$role'
-    | '/design/ember/table/$step'
-    | '/design/lavender/role/$role'
-    | '/design/lavender/table/$step'
     | '/design/starlit/role/$role'
     | '/design/starlit/table/$step'
   id:
     | '__root__'
     | '/'
-    | '/design/ember'
-    | '/design/lavender'
     | '/design/starlit'
     | '/api/health'
     | '/room/$code'
     | '/design/'
-    | '/design/ember/lobby'
-    | '/design/lavender/lobby'
     | '/design/starlit/lobby'
-    | '/design/starlit/motion'
-    | '/design/ember/'
-    | '/design/lavender/'
     | '/design/starlit/'
-    | '/design/ember/role/$role'
-    | '/design/ember/table/$step'
-    | '/design/lavender/role/$role'
-    | '/design/lavender/table/$step'
     | '/design/starlit/role/$role'
     | '/design/starlit/table/$step'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DesignEmberRouteRoute: typeof DesignEmberRouteRouteWithChildren
-  DesignLavenderRouteRoute: typeof DesignLavenderRouteRouteWithChildren
   DesignStarlitRouteRoute: typeof DesignStarlitRouteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   RoomCodeRoute: typeof RoomCodeRoute
@@ -294,20 +164,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DesignIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/design/ember': {
-      id: '/design/ember'
-      path: '/design/ember'
-      fullPath: '/design/ember'
-      preLoaderRoute: typeof DesignEmberRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/design/lavender': {
-      id: '/design/lavender'
-      path: '/design/lavender'
-      fullPath: '/design/lavender'
-      preLoaderRoute: typeof DesignLavenderRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/design/starlit': {
       id: '/design/starlit'
       path: '/design/starlit'
@@ -322,34 +178,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoomCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/design/ember/': {
-      id: '/design/ember/'
-      path: '/'
-      fullPath: '/design/ember/'
-      preLoaderRoute: typeof DesignEmberIndexRouteImport
-      parentRoute: typeof DesignEmberRouteRoute
-    }
-    '/design/ember/lobby': {
-      id: '/design/ember/lobby'
-      path: '/lobby'
-      fullPath: '/design/ember/lobby'
-      preLoaderRoute: typeof DesignEmberLobbyRouteImport
-      parentRoute: typeof DesignEmberRouteRoute
-    }
-    '/design/lavender/': {
-      id: '/design/lavender/'
-      path: '/'
-      fullPath: '/design/lavender/'
-      preLoaderRoute: typeof DesignLavenderIndexRouteImport
-      parentRoute: typeof DesignLavenderRouteRoute
-    }
-    '/design/lavender/lobby': {
-      id: '/design/lavender/lobby'
-      path: '/lobby'
-      fullPath: '/design/lavender/lobby'
-      preLoaderRoute: typeof DesignLavenderLobbyRouteImport
-      parentRoute: typeof DesignLavenderRouteRoute
-    }
     '/design/starlit/': {
       id: '/design/starlit/'
       path: '/'
@@ -363,41 +191,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/design/starlit/lobby'
       preLoaderRoute: typeof DesignStarlitLobbyRouteImport
       parentRoute: typeof DesignStarlitRouteRoute
-    }
-    '/design/starlit/motion': {
-      id: '/design/starlit/motion'
-      path: '/motion'
-      fullPath: '/design/starlit/motion'
-      preLoaderRoute: typeof DesignStarlitMotionRouteImport
-      parentRoute: typeof DesignStarlitRouteRoute
-    }
-    '/design/ember/role/$role': {
-      id: '/design/ember/role/$role'
-      path: '/role/$role'
-      fullPath: '/design/ember/role/$role'
-      preLoaderRoute: typeof DesignEmberRoleRoleRouteImport
-      parentRoute: typeof DesignEmberRouteRoute
-    }
-    '/design/ember/table/$step': {
-      id: '/design/ember/table/$step'
-      path: '/table/$step'
-      fullPath: '/design/ember/table/$step'
-      preLoaderRoute: typeof DesignEmberTableStepRouteImport
-      parentRoute: typeof DesignEmberRouteRoute
-    }
-    '/design/lavender/role/$role': {
-      id: '/design/lavender/role/$role'
-      path: '/role/$role'
-      fullPath: '/design/lavender/role/$role'
-      preLoaderRoute: typeof DesignLavenderRoleRoleRouteImport
-      parentRoute: typeof DesignLavenderRouteRoute
-    }
-    '/design/lavender/table/$step': {
-      id: '/design/lavender/table/$step'
-      path: '/table/$step'
-      fullPath: '/design/lavender/table/$step'
-      preLoaderRoute: typeof DesignLavenderTableStepRouteImport
-      parentRoute: typeof DesignLavenderRouteRoute
     }
     '/design/starlit/role/$role': {
       id: '/design/starlit/role/$role'
@@ -416,43 +209,8 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface DesignEmberRouteRouteChildren {
-  DesignEmberLobbyRoute: typeof DesignEmberLobbyRoute
-  DesignEmberIndexRoute: typeof DesignEmberIndexRoute
-  DesignEmberRoleRoleRoute: typeof DesignEmberRoleRoleRoute
-  DesignEmberTableStepRoute: typeof DesignEmberTableStepRoute
-}
-
-const DesignEmberRouteRouteChildren: DesignEmberRouteRouteChildren = {
-  DesignEmberLobbyRoute: DesignEmberLobbyRoute,
-  DesignEmberIndexRoute: DesignEmberIndexRoute,
-  DesignEmberRoleRoleRoute: DesignEmberRoleRoleRoute,
-  DesignEmberTableStepRoute: DesignEmberTableStepRoute,
-}
-
-const DesignEmberRouteRouteWithChildren =
-  DesignEmberRouteRoute._addFileChildren(DesignEmberRouteRouteChildren)
-
-interface DesignLavenderRouteRouteChildren {
-  DesignLavenderLobbyRoute: typeof DesignLavenderLobbyRoute
-  DesignLavenderIndexRoute: typeof DesignLavenderIndexRoute
-  DesignLavenderRoleRoleRoute: typeof DesignLavenderRoleRoleRoute
-  DesignLavenderTableStepRoute: typeof DesignLavenderTableStepRoute
-}
-
-const DesignLavenderRouteRouteChildren: DesignLavenderRouteRouteChildren = {
-  DesignLavenderLobbyRoute: DesignLavenderLobbyRoute,
-  DesignLavenderIndexRoute: DesignLavenderIndexRoute,
-  DesignLavenderRoleRoleRoute: DesignLavenderRoleRoleRoute,
-  DesignLavenderTableStepRoute: DesignLavenderTableStepRoute,
-}
-
-const DesignLavenderRouteRouteWithChildren =
-  DesignLavenderRouteRoute._addFileChildren(DesignLavenderRouteRouteChildren)
-
 interface DesignStarlitRouteRouteChildren {
   DesignStarlitLobbyRoute: typeof DesignStarlitLobbyRoute
-  DesignStarlitMotionRoute: typeof DesignStarlitMotionRoute
   DesignStarlitIndexRoute: typeof DesignStarlitIndexRoute
   DesignStarlitRoleRoleRoute: typeof DesignStarlitRoleRoleRoute
   DesignStarlitTableStepRoute: typeof DesignStarlitTableStepRoute
@@ -460,7 +218,6 @@ interface DesignStarlitRouteRouteChildren {
 
 const DesignStarlitRouteRouteChildren: DesignStarlitRouteRouteChildren = {
   DesignStarlitLobbyRoute: DesignStarlitLobbyRoute,
-  DesignStarlitMotionRoute: DesignStarlitMotionRoute,
   DesignStarlitIndexRoute: DesignStarlitIndexRoute,
   DesignStarlitRoleRoleRoute: DesignStarlitRoleRoleRoute,
   DesignStarlitTableStepRoute: DesignStarlitTableStepRoute,
@@ -471,8 +228,6 @@ const DesignStarlitRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DesignEmberRouteRoute: DesignEmberRouteRouteWithChildren,
-  DesignLavenderRouteRoute: DesignLavenderRouteRouteWithChildren,
   DesignStarlitRouteRoute: DesignStarlitRouteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   RoomCodeRoute: RoomCodeRoute,

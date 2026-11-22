@@ -23,7 +23,7 @@ import type {
 } from "@/shared/views";
 import type { RoleVariant, TableStep } from "./directions";
 
-export const ROOM_CODE = "KNGT";
+const ROOM_CODE = "KNGT";
 
 const ids = {
   wren: "p-wren",
@@ -36,17 +36,6 @@ const ids = {
 } as const;
 
 export const PLAYER_IDS = ids;
-
-/** Hidden truth, for reference only. A real client never has this. */
-export const MOCK_ROLES = {
-  [ids.wren]: "merlin",
-  [ids.ansel]: "percival",
-  [ids.mira]: "servant",
-  [ids.tobias]: "assassin",
-  [ids.isolde]: "servant",
-  [ids.kay]: "morgana",
-  [ids.bram]: "mordred",
-} as const;
 
 const settings: GameSettings = {
   optionalRoles: ["percival", "morgana", "mordred"],

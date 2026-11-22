@@ -1,6 +1,5 @@
 import { useId, type CSSProperties } from "react";
 import type { Alignment, Role } from "@/shared/roles";
-import { GlowGradient } from "./campfire";
 import { sparklePath } from "./seeded";
 
 type Point = readonly [x: number, y: number];
@@ -214,5 +213,15 @@ export function Constellation({
         ),
       )}
     </svg>
+  );
+}
+
+function GlowGradient({ id, color }: { id: string; color: string }) {
+  return (
+    <radialGradient id={id}>
+      <stop offset="0" stopColor={color} stopOpacity={0.6} />
+      <stop offset="0.45" stopColor={color} stopOpacity={0.2} />
+      <stop offset="1" stopColor={color} stopOpacity={0} />
+    </radialGradient>
   );
 }

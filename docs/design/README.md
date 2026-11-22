@@ -1,82 +1,73 @@
-# Design prototypes
+# Design prototype
 
-Three design directions for Avalon, built as clickable prototypes with mock
-data so they can be compared screen for screen. Open `/design` in the running
-app to see them.
+**Starlit Vale was chosen on 16 November 2026**, with the 3D Star Table as its
+landing hero and game. It is a clickable prototype with mock data at
+`/design/starlit` (`/design` redirects there). Its spec is
+[starlit.md](./starlit.md). The other two directions (Ember & Rune, Lavender
+Vigil), the tweak studio, the motion gallery and the flat 2D game screens were
+removed on 21 November 2026; they are in the git history.
 
-| Direction      | Route              | Spec                         |
-| -------------- | ------------------ | ---------------------------- |
-| Ember & Rune   | `/design/ember`    | [ember.md](./ember.md)       |
-| Lavender Vigil | `/design/lavender` | [lavender.md](./lavender.md) |
-| Starlit Vale   | `/design/starlit`  | [starlit.md](./starlit.md)   |
+Screenshots of every screen at 390px and 1440px, plus the no-WebGL notice, are
+written to [`screenshots/starlit/`](./screenshots) as
+`<nn>-<screen>-<width>.jpg` by `pnpm build && pnpm screenshots` (software
+WebGL in headless Chromium).
 
-Screenshots of every screen at 390px and 1440px are in
-[`screenshots/`](./screenshots), named `<direction>/<nn>-<screen>-<width>.jpg`.
-Regenerate them with `pnpm build && pnpm screenshots`. Phone screenshots show
-the whole page, with the bar that is fixed to the bottom of the screen drawn at
-the bottom of the image.
+Starlit Vale has motion and sound wired into its click-through. Sound is off
+until the player turns it on. The sound engine is in `src/client/sound` and
+does not depend on the prototype.
 
-**Starlit Vale was chosen on 16 November 2026.** The comparison, with the
-strengths and costs of each direction, is on the `/design` page
-(`src/routes/design/index.tsx`). The other two are kept until Phase 0 in
-`docs/architecture.md` removes them.
+## Screens
 
-Starlit Vale has motion and sound at every stage of a game. All 35 moments are
-replayable at `/design/starlit/motion`, and the same motion and cues are wired
-into its click-through. Sound is off until the player turns it on. The sound
-engine is in `src/client/sound` and does not depend on the prototypes.
+Driven by one mock game (`src/design/mock.ts`: seven players, seen by Wren, who
+is Merlin and the host).
 
-## What every direction provides
+| Screen                | URL                             | What it shows                                                                                |
+| --------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- |
+| Landing               | `/design/starlit`               | Name field, create a room, join with a 4-letter code.                                        |
+| Lobby                 | `/design/starlit/lobby`         | Room code, player list, ready and away states, host settings, why the game cannot start yet. |
+| Private role reveal   | `/design/starlit/role/merlin`   | A Good role. Hidden until the player presses and holds.                                      |
+|                       | `/design/starlit/role/assassin` | An Evil role, same treatment.                                                                |
+| Table: team proposal  | `/design/starlit/table/propose` | Quest track, score, rejected-vote track, seats. The leader picks the team.                   |
+| Table: team vote      | `/design/starlit/table/vote`    | The proposed team, who has voted so far (not how), Approve and Reject.                       |
+| Table: votes revealed | `/design/starlit/table/reveal`  | Every vote shown at the same moment, and the tally.                                          |
+| Table: quest cards    | `/design/starlit/table/quest`   | A team member plays Success or Fail in private.                                              |
+| Table: quest result   | `/design/starlit/table/result`  | The shuffled cards, the outcome, the updated quest track.                                    |
 
-The same screens at the same URLs, driven by the same mock game
-(`src/design/mock.ts`: seven players, seen by Wren, who is Merlin and the host).
+The primary button on each screen leads to the next one, so the prototype can be
+clicked through from landing to quest result. Without WebGL the lobby, role and
+table screens show a short notice instead; the landing form still works.
 
-| Screen                | URL                         | What it shows                                                                                |
-| --------------------- | --------------------------- | -------------------------------------------------------------------------------------------- |
-| Landing               | `/design/<d>`               | Name field, create a room, join with a 4-letter code.                                        |
-| Lobby                 | `/design/<d>/lobby`         | Room code, player list, ready and away states, host settings, why the game cannot start yet. |
-| Private role reveal   | `/design/<d>/role/merlin`   | A Good role. Hidden until the player presses and holds.                                      |
-|                       | `/design/<d>/role/assassin` | An Evil role, same treatment.                                                                |
-| Table: team proposal  | `/design/<d>/table/propose` | Quest track, score, rejected-vote track, seats. The leader taps seats to build a team.       |
-| Table: team vote      | `/design/<d>/table/vote`    | The proposed team, who has voted so far (not how), Approve and Reject.                       |
-| Table: votes revealed | `/design/<d>/table/reveal`  | Every vote shown at the same moment, and the tally.                                          |
-| Table: quest cards    | `/design/<d>/table/quest`   | A team member plays Success or Fail in private.                                              |
-| Table: quest result   | `/design/<d>/table/result`  | The shuffled cards, the outcome, the updated quest track.                                    |
+## How it is built
 
-The primary button on each screen leads to the next one, so each direction can
-be clicked through from landing to quest result.
+The prototype lives in `src/routes/design/starlit/`:
 
-## How a direction is built
+- `route.tsx` is the layout: it wraps the screens in `<div class="theme-starlit">`
+  and renders the prototype bar, the night sky and the shared 3D stage.
+  `index.tsx`, `lobby.tsx`, `role.$role.tsx` and `table.$step.tsx` are the
+  screens.
+- `-fonts.css` loads the fonts from Fontsource packages (self-hosted,
+  open-licensed) and names them for the theme.
+- `-theme.css` holds the tokens, scoped to `.theme-starlit`, in three layers:
+  primitives (`--starlit-<hue>-<step>`), the semantic contract (`--canvas`,
+  `--ink`, `--accent`, `--good`, `--evil`, ... see `src/styles.css`), and
+  component tokens. Components use Tailwind utilities generated from the
+  semantic layer (`bg-canvas`, `text-ink`, `border-line`, `font-display`) or
+  `var(--token)`. No raw colour values in components. `-motion.css` holds the
+  motion.
+- `-components/` holds the components, the SVG artwork and the 3D stage
+  (`stage/`, `three/`).
 
-Each direction lives in one folder, `src/routes/design/<d>/`, and can be deleted
-without touching anything else:
+Kept for the real game: the view types in `src/shared/views.ts`, the
+press-and-hold privacy behaviour in `src/client/use-hold-to-reveal.ts`, the
+wording helpers in `src/shared/copy.ts` and the sound engine. Prototype only:
+everything in `src/design/`.
 
-- `route.tsx` is the layout: it wraps the screens in `<div class="theme-<d>">`
-  and renders the shared prototype bar. `index.tsx`, `lobby.tsx`,
-  `role.$role.tsx` and `table.$step.tsx` are the screens.
-- `-fonts.css` loads the direction's fonts from Fontsource packages
-  (self-hosted, open-licensed) and names them for the theme.
-- `-theme.css` holds the tokens, scoped to `.theme-<d>`, in three layers:
-  primitives (`--<d>-<hue>-<step>`), the semantic contract shared by all
-  directions (`--canvas`, `--ink`, `--accent`, `--good`, `--evil`, ... see
-  `src/styles.css`), and component tokens. Components use Tailwind
-  utilities generated from the semantic layer (`bg-canvas`, `text-ink`,
-  `border-line`, `font-display`) or `var(--token)`. No raw colour values in
-  components.
-- `-components/` holds the direction's own components and artwork.
-
-Shared between directions (and kept for the real game): the view types in
-`src/shared/views.ts`, the press-and-hold privacy behaviour in
-`src/client/use-hold-to-reveal.ts`, and the wording helpers in
-`src/shared/copy.ts`. Shared for the prototypes only: everything in
-`src/design/`.
-
-## Rules every direction follows
+## Rules the prototype follows
 
 - Mobile first. No horizontal scrolling at 390px. Primary actions sit in the
   thumb zone. Touch targets are at least 44 by 44 px.
-- Desktop (1440px) treats the table as a shared screen: seats around a table,
-  quest track and vote history beside it.
+- Desktop (1440px) treats the table as a shared screen: the table in the
+  middle, quest track and vote history beside it.
 - Body text is at least 16px and at least 4.5:1 against its background.
   Contrast is measured with `node scripts/contrast.mjs`.
 - Meaning never depends on colour alone. Good and Evil, Approve and Reject,
@@ -84,18 +75,18 @@ Shared between directions (and kept for the real game): the view types in
 - Secret information (a role, a quest card) is hidden until the player presses
   and holds, and hides again on release or when the tab loses focus.
 - All motion stops under `prefers-reduced-motion: reduce`.
-- Artwork is original CSS and inline SVG written for this repo. The
-  inspiration images are mood references only and are not in the repo.
+- Artwork is original CSS, inline SVG and three.js code written for this repo.
+  The inspiration images are mood references only and are not in the repo.
 - Fonts are open-licensed and self-hosted with Fontsource packages.
 
-## Known gaps shared by all three
+## Known gaps
 
 - **Quest cards can give your side away.** For a Good player the Fail card is
   shown as disabled, so someone glancing at the phone learns the player is
   Good. The real game will show both cards the same to everyone (see "Client"
   in `docs/architecture.md`).
 - **Seven players only.** The mock game has seven seats. Seat layouts need
-  checking, and in places new rules, for 5, 6, 8, 9 and 10.
+  checking for 5, 6, 8, 9 and 10.
 - **No screens yet** for the assassination, the end of the game or the Lady of
   the Lake.
 - **Checked in desktop Chromium only**, at 390px and 1440px. Not yet checked

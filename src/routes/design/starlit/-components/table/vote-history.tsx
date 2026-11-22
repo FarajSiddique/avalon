@@ -21,7 +21,7 @@ export function tallyOf(record: ProposalRecord): {
 }
 
 /** Approved or Rejected with the count: a word, an icon and a colour. */
-export function TallyChip({ record }: { record: ProposalRecord }) {
+function TallyChip({ record }: { record: ProposalRecord }) {
   const Shape = record.approved ? IconApprove : IconReject;
   return (
     <span
@@ -33,7 +33,10 @@ export function TallyChip({ record }: { record: ProposalRecord }) {
   );
 }
 
-/** Every finished team vote, newest first, with how each player voted. */
+/**
+ * Every finished team vote, newest first, with how each player voted.
+ * Sits inside a disclosure, which carries the heading.
+ */
 export function VoteHistory({ view }: { view: GameView }) {
   const attempts = new Map<number, number>();
   const records = view.proposals.map((record) => {
@@ -43,10 +46,9 @@ export function VoteHistory({ view }: { view: GameView }) {
   });
 
   return (
-    <section aria-label="Vote history" className="sl-panel p-4 lg:p-5">
-      <h2 className="font-display text-[1.375rem] font-medium">Vote history</h2>
+    <section aria-label="Vote history">
       {records.length === 0 ? (
-        <p className="text-ink-muted mt-2 text-base">No team votes yet.</p>
+        <p className="text-ink-muted text-base">No team votes yet.</p>
       ) : (
         <ol className="mt-1" reversed>
           {[...records].reverse().map(({ record, attempt }) => (

@@ -127,6 +127,14 @@ export function useSheet({
         vy: 0,
         moved: false,
       };
+      // Hold the pointer from the start: a fast flick leaves the handle
+      // before it has moved far enough to count as a drag. A tap still
+      // clicks: the button pressed holds it, so the release lands there too.
+      const held =
+        e.target instanceof Element
+          ? (e.target.closest("button") ?? e.currentTarget)
+          : e.currentTarget;
+      held.setPointerCapture(e.pointerId);
     },
     onPointerMove: (e) => {
       const d = drag.current;
@@ -136,8 +144,6 @@ export function useSheet({
         if (Math.abs(dy) < DRAG_SLOP_PX) return;
         d.moved = true;
         setDragging(true);
-        // Capture only now: a tap must still click the handle's button.
-        e.currentTarget.setPointerCapture(e.pointerId);
       }
       d.p = Math.min(1, Math.max(0, d.startP + dy / d.travel));
       const dt = e.timeStamp - d.lastT;

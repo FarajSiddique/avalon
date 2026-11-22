@@ -390,6 +390,26 @@
     pointer-events: auto;
   }
 
+  /*
+   * While your role card is held open (on the role screen, or "Your role"
+   * on a table step), the name tags step back: the card reads alone and
+   * the scene stays neutral.
+   */
+  .sl-stage-tags {
+    transition:
+      opacity 180ms var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  .theme-starlit:has(.sl-skycard[aria-pressed="true"], [data-role-peek-card])
+    .sl-stage-tags {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 180ms var(--ease-out),
+      visibility 0s linear 180ms;
+  }
+
   /* The landing steps aside while the camera flies to the lobby. */
   .sl-landing > * {
     transition:

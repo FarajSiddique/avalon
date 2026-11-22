@@ -423,10 +423,14 @@ test("Your role on a table step shows the card only while held", async ({
   await expect(card).toBeVisible();
   await expect(card).toContainText("Merlin");
   await expect(card).toContainText("Let go to hide it again.");
+  // The name tags step back while the card is open, so none sit over it.
+  const tags = page.locator("main .sl-stage-tags");
+  await expect(tags).toBeHidden();
 
   await page.mouse.up();
   await expect(peek).toHaveAttribute("aria-pressed", "false");
   await expect(card).toHaveCount(0);
+  await expect(tags).toBeVisible();
   await expect(roleName(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });

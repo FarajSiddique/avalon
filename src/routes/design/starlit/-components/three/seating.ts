@@ -319,12 +319,14 @@ export class Seating {
         ringMat.opacity = !connected ? 0 : ready ? 0.75 * pulse * t : 0.18 * t;
         ring.scale.setScalar(1);
       }
+      // The tag's anchor rises with the figure but leaves out its idle bob,
+      // so a name tag holds still over a figure at rest.
       if (t > 0.05)
         this.anchorMap.set(
           seat.player.id,
           seat.head.set(
             g.position.x,
-            g.position.y + HEAD * Math.min(1, eased),
+            risen(eased) + HEAD * Math.min(1, eased),
             g.position.z,
           ),
         );
@@ -339,7 +341,7 @@ export class Seating {
     const eased = t >= 1 ? 1 : 1 + (k + 1) * (t - 1) ** 3 + k * (t - 1) ** 2;
     const g = seat.figure.group;
     const bob = Math.sin(time * 1.6 + seat.phase) * 0.025 * t;
-    g.position.y = (1 - eased) * -1.4 + bob;
+    g.position.y = risen(eased) + bob;
     g.scale.setScalar(Math.max(0.001, SCALE * Math.min(1.05, eased)));
     const a = this.angles[seat.seat]!;
     g.rotation.y =
@@ -395,4 +397,9 @@ export class Seating {
     for (const seat of this.seats.values()) seat.figure.dispose();
     this.seats.clear();
   }
+}
+
+/** A figure's height as it rises from under the floor (eased 0 to 1). */
+function risen(eased: number): number {
+  return (1 - eased) * -1.4;
 }

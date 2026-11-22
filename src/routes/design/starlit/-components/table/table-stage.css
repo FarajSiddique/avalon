@@ -115,10 +115,86 @@
     animation: sl-pop var(--dur-control, 180ms) var(--ease-out) both;
   }
 
+  /*
+   * The phone's bottom sheet slides down to its peek. `--sheet-p` on the
+   * main element is 0 open and 1 collapsed (fractions while dragging). The
+   * sheet slides by its height less the peek's, so its top meets the peek's,
+   * and its content fades as the peek's fades in over it. `translate`, not
+   * `transform`, so the arrival animation does not fight it.
+   */
+  .sl-sheet {
+    --sheet-q: clamp(0, (var(--sheet-p, 0) - 0.55) * 2.5, 1);
+    translate: 0 calc((100% - var(--peek-h, 0px)) * var(--sheet-p, 0));
+    transition: translate var(--dur-close) var(--ease-out);
+  }
+
+  .sl-sheet__fade {
+    opacity: calc(1 - var(--sheet-q));
+    transition: opacity var(--dur-close) var(--ease-out);
+  }
+
+  .sl-sheet-peek {
+    opacity: clamp(0, (var(--sheet-p, 0) - 0.55) * 2.5, 1);
+    transition: opacity var(--dur-close) var(--ease-out);
+  }
+
+  .sl-sheet-peek[aria-hidden="true"] {
+    pointer-events: none;
+  }
+
+  /* Drag from the handle only; the sheet's own content keeps its scroll. */
+  .sl-sheet-grip,
+  .sl-sheet-handle {
+    touch-action: none;
+    cursor: grab;
+  }
+
+  main[data-sheet-drag] .sl-sheet-grip,
+  main[data-sheet-drag] .sl-sheet-handle {
+    cursor: grabbing;
+  }
+
+  .sl-sheet-handle {
+    border-radius: var(--corner-sm);
+  }
+
+  .sl-sheet-handle:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+  }
+
+  main[data-sheet-drag] .sl-sheet,
+  main[data-sheet-drag] .sl-sheet__fade,
+  main[data-sheet-drag] .sl-sheet-peek {
+    transition: none;
+  }
+
+  /* The open space (and the camera with it) glides as the sheet moves. */
+  .sl-table-focus[data-glide] {
+    transition: bottom var(--dur-close) var(--ease-out);
+  }
+
+  @media (min-width: 1024px) {
+    .sl-sheet {
+      translate: none;
+    }
+
+    .sl-sheet__fade {
+      opacity: 1;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .sl-seat-tag__status,
     .sl-card-chip[data-face="up"] {
       animation: none;
+    }
+
+    .sl-sheet,
+    .sl-sheet__fade,
+    .sl-sheet-peek,
+    .sl-table-focus[data-glide] {
+      transition: none;
     }
   }
 }

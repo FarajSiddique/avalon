@@ -489,6 +489,25 @@
     will-change: transform;
   }
 
+  /*
+   * A tag lifted off its head to make room for another: a thin stem from
+   * the tag down to the head. The engine sets its length, where it meets the
+   * tag, and its opacity (0 while the tag sits on the head).
+   */
+  .sl-name-tag::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: calc(50% + var(--tag-stem-x, 0px));
+    width: 2px;
+    height: var(--tag-stem, 0px);
+    margin-left: -1px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    opacity: var(--tag-stem-opacity, 0);
+    pointer-events: none;
+  }
+
   /* Pickers in "Your look": a colour swatch and a labelled toggle. */
   .sl-swatch {
     display: grid;

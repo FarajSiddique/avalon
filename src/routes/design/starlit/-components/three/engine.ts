@@ -400,14 +400,28 @@ export async function mountStarTable(
   let running = false;
   let visible = true;
 
-  // Name tags follow the figures' heads. Nearer figures place theirs first;
-  // a tag that would overlap one already placed moves up above it.
+  // Name tags follow the figures' heads. Each sits on a fixed point just
+  // over its head; one that would overlap another stacks straight up above
+  // it, and eases there rather than jumping. A tag lifted well off its head
+  // draws a thin stem down to it, so it still reads as that player's.
   const projected = new Vector3();
   const body = new Vector3();
   let tagLayer: HTMLElement | null = options.overlay ?? null;
   // A screen's own tag layer has its own origin: tags are placed in the
   // stage's coordinates, then moved by the gap between the two.
   const tagOffset = { x: 0, y: 0 };
+  /**
+   * Per player: how far their tag is moved off its natural spot (pixels
+   * right and up), as shown and as aimed for, and how fast it is easing.
+   * By id, so a screen's new tag for the same player carries on.
+   */
+  const tagStates = new Map<
+    string,
+    { shown: Offset; speed: Offset; target: Offset }
+  >();
+  /** The order tags claim their spots in, kept from frame to frame. */
+  let tagOrder: string[] = [];
+  let tagClock = 0;
   const measureTags = () => {
     if (!tagLayer || tagLayer === options.overlay) {
       tagOffset.x = tagOffset.y = 0;
@@ -425,24 +439,32 @@ export async function mountStarTable(
   const hide = (el: HTMLElement) => {
     el.style.opacity = "0";
     el.style.visibility = "hidden";
+    // When it shows again, it appears at its spot rather than easing there.
+    if (el.dataset.tag) tagStates.delete(el.dataset.tag);
   };
   const placeTags = () => {
     const overlay = tagLayer;
     if (!overlay || !concept.anchors) return;
+    const now = performance.now();
+    const dt = tagClock ? Math.min(0.1, (now - tagClock) / 1000) : 0;
+    tagClock = now;
+    // Held still, or placed outside the frame loop: straight to the spot.
+    const snap = motion.matches || !running;
     const anchors = concept.anchors();
-    const tags: { el: HTMLElement; x: number; y: number; depth: number }[] = [];
+    const tags = new Map<string, TagSpot & { el: HTMLElement }>();
     // On the stage, tags stay inside the open space; elsewhere the canvas.
     const box = stage ? focus : whole();
     for (const child of overlay.children) {
       const el = child as HTMLElement;
-      const at = el.dataset.tag ? anchors.get(el.dataset.tag) : undefined;
-      if (!at) {
+      const id = el.dataset.tag;
+      const at = id ? anchors.get(id) : undefined;
+      if (!id || !at) {
         hide(el);
         continue;
       }
       projected.copy(at).project(concept.camera);
-      const x = ((projected.x + 1) / 2) * size.width;
-      const y = ((1 - projected.y) / 2) * size.height;
+      const hx = ((projected.x + 1) / 2) * size.width;
+      const hy = ((1 - projected.y) / 2) * size.height;
       // The figure's middle, below the tag's anchor: when it is out of the
       // open space, so is the figure, and so is its tag.
       body.copy(at);
@@ -456,9 +478,9 @@ export async function mountStarTable(
       if (
         projected.z >= 1 ||
         (stage &&
-          (x < box.x ||
-            x > box.x + box.w ||
-            y > box.y + box.h ||
+          (hx < box.x ||
+            hx > box.x + box.w ||
+            hy > box.y + box.h ||
             bx < box.x ||
             bx > box.x + box.w ||
             by < box.y ||
@@ -467,82 +489,94 @@ export async function mountStarTable(
         hide(el);
         continue;
       }
-      tags.push({ el, x, y, depth: projected.z });
-    }
-    tags.sort((a, b) => a.depth - b.depth);
-    // On the stage, tags come in as the camera arrives at the table.
-    const arrived = stage ? Math.min(1, Math.max(0, (blend - 0.7) / 0.3)) : 1;
-    const tagOpacity = arrived.toFixed(2);
-    const placed: {
-      left: number;
-      right: number;
-      top: number;
-      bottom: number;
-    }[] = [];
-    for (const tag of tags) {
-      const w = tag.el.offsetWidth;
-      const h = tag.el.offsetHeight;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
       // Inside the open space: from side to side, and never off its top.
       const left = stage ? box.x + w / 2 + 4 : -Infinity;
       const right = stage ? box.x + box.w - w / 2 - 4 : Infinity;
       const highest = stage ? box.y + h + 4 : h + 4;
-      const clampX = (value: number) =>
-        Math.min(Math.max(value, left), Math.max(left, right));
-      const hitAt = (cx: number, cb: number) =>
-        placed.find(
-          (b) =>
-            cx - w / 2 < b.right + 4 &&
-            cx + w / 2 > b.left - 4 &&
-            cb - h < b.bottom + 2 &&
-            cb > b.top - 2,
-        );
-      let x = clampX(tag.x);
-      let bottom = Math.max(tag.y, highest);
-      // A tag in the way: go up above it while there is room; then try
-      // beside it; then just below it.
-      let spot: { x: number; bottom: number } | null = null;
-      for (let tries = 0; tries < 8 && !spot; tries++) {
-        const hit = hitAt(x, bottom);
-        if (!hit) spot = { x, bottom };
-        else if (hit.top - 3 >= highest) bottom = hit.top - 3;
-        else break;
+      tags.set(id, {
+        el,
+        hx,
+        hy,
+        w,
+        h,
+        left,
+        right: Math.max(left, right),
+        highest,
+        lowest: stage ? box.y + box.h : size.height,
+        x: Math.min(Math.max(hx, left), Math.max(left, right)),
+        natural: Math.max(hy, highest),
+      });
+    }
+    // The lowest tag on screen (the nearest figure) claims its spot first.
+    // The order changes only when two tags are clearly the other way round,
+    // so a small drift of the camera does not reshuffle the stack.
+    tagOrder = tagOrder.filter((id) => tags.has(id));
+    for (const id of tags.keys()) if (!tagOrder.includes(id)) tagOrder.push(id);
+    for (let i = 1; i < tagOrder.length; i++) {
+      for (let j = i; j > 0; j--) {
+        const a = tagOrder[j]!;
+        const b = tagOrder[j - 1]!;
+        if (tags.get(a)!.natural <= tags.get(b)!.natural + TAG_REORDER_PX)
+          break;
+        tagOrder[j - 1] = a;
+        tagOrder[j] = b;
       }
-      if (!spot) {
-        const hit = hitAt(x, bottom);
-        if (hit) {
-          const sides = [hit.right + 4 + w / 2, hit.left - 4 - w / 2]
-            .map(clampX)
-            .sort((m, n) => Math.abs(m - tag.x) - Math.abs(n - tag.x));
-          for (const side of sides) {
-            if (!hitAt(side, bottom)) {
-              spot = { x: side, bottom };
-              break;
-            }
-          }
-          if (!spot) {
-            let below = hit.bottom + h + 3;
-            for (let tries = 0; tries < 8; tries++) {
-              const next = hitAt(x, below);
-              if (!next) break;
-              below = next.bottom + h + 3;
-            }
-            spot = { x, bottom: below };
-          }
-        } else spot = { x, bottom };
-      }
-      x = spot.x;
-      bottom = spot.bottom;
+    }
+    // On the stage, tags come in as the camera arrives at the table.
+    const arrived = stage ? Math.min(1, Math.max(0, (blend - 0.7) / 0.3)) : 1;
+    const tagOpacity = arrived.toFixed(2);
+    const placed: Box[] = [];
+    for (const id of tagOrder) {
+      const tag = tags.get(id)!;
+      const state = tagStates.get(id);
+      const target = tagSpot(tag, placed, state?.target);
+      const x = tag.x + target.x;
+      const bottom = tag.natural - target.y;
       placed.push({
-        left: x - w / 2,
-        right: x + w / 2,
-        top: bottom - h,
+        left: x - tag.w / 2,
+        right: x + tag.w / 2,
+        top: bottom - tag.h,
         bottom,
       });
-      const tx = x + tagOffset.x;
-      const ty = bottom + tagOffset.y;
-      tag.el.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) translate(-50%, -100%)`;
-      tag.el.style.opacity = tagOpacity;
-      tag.el.style.visibility = "";
+      // Ease toward the aim (critically damped), so a tag that makes room
+      // glides there. The offset is from the head, so the tag still moves
+      // with its figure exactly.
+      const shown = { ...target };
+      const speed = { x: 0, y: 0 };
+      if (state && !snap && dt > 0) {
+        const decay = Math.exp(-TAG_SPRING * dt);
+        for (const k of ["x", "y"] as const) {
+          const off = state.shown[k] - target[k];
+          const drive = state.speed[k] + TAG_SPRING * off;
+          shown[k] = target[k] + (off + drive * dt) * decay;
+          speed[k] = (state.speed[k] - TAG_SPRING * drive * dt) * decay;
+        }
+      }
+      tagStates.set(id, { shown, speed, target });
+      const style = tag.el.style;
+      const left = tag.x + shown.x;
+      const top = tag.natural - shown.y;
+      // Lifted well over its head (and still over it): a stem down to it.
+      const stem = tag.hy - top;
+      const reach = tag.hx - left;
+      if (stem > TAG_STEM_PX && Math.abs(reach) < tag.w / 2 - 8) {
+        style.setProperty("--tag-stem", `${stem.toFixed(1)}px`);
+        style.setProperty("--tag-stem-x", `${reach.toFixed(1)}px`);
+        style.setProperty(
+          "--tag-stem-opacity",
+          Math.min(1, (stem - TAG_STEM_PX) / TAG_STEM_PX).toFixed(2),
+        );
+      } else style.setProperty("--tag-stem-opacity", "0");
+      // A lifted tag's stem passes behind the tags under it: the higher a
+      // tag is lifted, the further back it sits.
+      style.zIndex = String(100 - Math.min(99, Math.round(stem / 4)));
+      const tx = left + tagOffset.x;
+      const ty = top + tagOffset.y;
+      style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) translate(-50%, -100%)`;
+      style.opacity = tagOpacity;
+      style.visibility = "";
     }
     mark("seated", String(concept.seated?.() ?? 0));
   };
@@ -734,4 +768,116 @@ function mixRect(a: Rect, b: Rect, t: number): Rect {
     w: a.w + (b.w - a.w) * t,
     h: a.h + (b.h - a.h) * t,
   };
+}
+
+/** Pixels a tag's head must be lower than another's to go before it. */
+const TAG_REORDER_PX = 10;
+/** Stiffness of a tag's ease to a new spot (1/s: about a quarter second). */
+const TAG_SPRING = 16;
+/** A tag lifted more than this over its head shows a stem down to it. */
+const TAG_STEM_PX = 12;
+/** Clearance kept round a tag. */
+const TAG_PAD = { x: 4, y: 3 };
+/** A tag keeps its spot unless another is better by this many pixels. */
+const TAG_STAY_PX = 18;
+
+interface Offset {
+  x: number;
+  y: number;
+}
+
+interface Box {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/** A tag this frame: its head, its size, its bounds and its natural spot. */
+interface TagSpot {
+  /** The head's point, in the stage's pixels. */
+  hx: number;
+  hy: number;
+  w: number;
+  h: number;
+  /** The range the tag's centre may take, side to side. */
+  left: number;
+  right: number;
+  /** The range the tag's bottom may take: the open space. */
+  highest: number;
+  lowest: number;
+  /** The tag's centre over its head, kept inside the open space. */
+  x: number;
+  /** The tag's bottom when nothing is in the way: on its head. */
+  natural: number;
+}
+
+/**
+ * Where a tag goes, as an offset from its natural spot (pixels right and
+ * up), given the tags already placed. It looks at the spots that just clear
+ * another tag: straight up first, then aside, then below (each costs more),
+ * and takes the nearest free one inside the open space. It keeps last
+ * frame's spot while that is free and nearly as near, so tags do not flick
+ * between spots as the camera drifts.
+ */
+function tagSpot(
+  tag: TagSpot,
+  placed: readonly Box[],
+  previous: Offset | undefined,
+): Offset {
+  // `slack`: how much overlap to forgive (a kept spot may touch by a hair as
+  // heads drift by fractions of a pixel).
+  const free = (cx: number, bottom: number, slack = 0) =>
+    !placed.some(
+      (b) =>
+        cx - tag.w / 2 < b.right + TAG_PAD.x - slack &&
+        cx + tag.w / 2 > b.left - TAG_PAD.x + slack &&
+        bottom - tag.h < b.bottom + TAG_PAD.y - slack &&
+        bottom > b.top - TAG_PAD.y + slack,
+    );
+  const inside = (cx: number, bottom: number, lowest: number, slack = 0.5) =>
+    cx >= tag.left - slack &&
+    cx <= tag.right + slack &&
+    bottom >= tag.highest - slack &&
+    bottom <= lowest + slack;
+  const was = previous
+    ? { x: tag.x + previous.x, bottom: tag.natural - previous.y }
+    : null;
+  // Nearest to the head; among near equals, nearest to where it was.
+  const cost = (cx: number, bottom: number) => {
+    const up = tag.natural - bottom;
+    const away = was ? Math.hypot(cx - was.x, bottom - was.bottom) * 0.25 : 0;
+    return Math.abs(cx - tag.x) * 1.5 + (up >= 0 ? up : -up * 2) + away;
+  };
+  const xs = [tag.x, tag.left, tag.right];
+  const bottoms = [tag.natural];
+  for (const b of placed) {
+    xs.push(b.left - TAG_PAD.x - tag.w / 2, b.right + TAG_PAD.x + tag.w / 2);
+    bottoms.push(b.top - TAG_PAD.y, b.bottom + TAG_PAD.y + tag.h);
+  }
+  const best = (lowest: number) => {
+    let spot: { x: number; bottom: number; cost: number } | null = null;
+    for (const cx of xs) {
+      for (const bottom of bottoms) {
+        if (!inside(cx, bottom, lowest)) continue;
+        const c = cost(cx, bottom);
+        // Each spot just touches a tag's clearance: forgive rounding.
+        if ((!spot || c < spot.cost) && free(cx, bottom, 0.5))
+          spot = { x: cx, bottom, cost: c };
+      }
+    }
+    return spot;
+  };
+  // Inside the open space if it can; else anywhere below; else on its head.
+  const spot = best(tag.lowest) ?? best(Infinity);
+  if (!spot) return { x: 0, y: 0 };
+  if (
+    previous &&
+    was &&
+    inside(was.x, was.bottom, Math.max(tag.lowest, spot.bottom), 2) &&
+    cost(was.x, was.bottom) <= spot.cost + TAG_STAY_PX &&
+    free(was.x, was.bottom, 1.5)
+  )
+    return previous;
+  return { x: spot.x - tag.x, y: tag.natural - spot.bottom };
 }

@@ -36,7 +36,23 @@ import type { Layout, TablePlay } from "../types";
 const TABLE_TOP = 1.12;
 /** Quest cards lie on an arc round the fire, on your side of it. */
 const CARD_ARC = 2.05;
-const CARD_GAP = 0.2;
+/** The least space between two neighbouring cards (at their inner corners). */
+const CARD_GAP = 0.05;
+/**
+ * The angle between neighbouring cards. Each card points at the fire, so
+ * neighbours lean in and come closest at their inner corners: the step puts
+ * the next card's inner corner CARD_GAP beyond this card's side, so no two
+ * cards ever overlap (overlapping cards at one height flicker).
+ */
+const CARD_STEP = (() => {
+  const inner = CARD_ARC - CARD_H / 2;
+  const half = CARD_W / 2;
+  // inner * sin(step) - half * cos(step) = half + CARD_GAP
+  return (
+    Math.asin((half + CARD_GAP) / Math.hypot(inner, half)) +
+    Math.atan2(half, inner)
+  );
+})();
 /** Seconds for a card to land, and between one landing and the next. */
 const CARD_LAND = 0.55;
 const CARD_STAGGER = 0.16;
@@ -422,7 +438,7 @@ export class TablePlayView {
 
   /** Half the arc a row of `n` cards covers, in radians. */
   private arcHalf(n: number): number {
-    return ((n - 1) * (CARD_W + CARD_GAP)) / CARD_ARC / 2;
+    return ((n - 1) * CARD_STEP) / 2;
   }
 
   private updateCards(dt: number, snap: boolean): void {

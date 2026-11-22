@@ -116,6 +116,16 @@ function ProposeStep({
       marks={marks}
       pickable={youLead}
       onPick={youLead ? toggle : undefined}
+      peek={{
+        title: youLead ? "Choose your team" : `${leader} is choosing`,
+        state: `${draftIds.length} of ${phase.teamSize} chosen`,
+        action:
+          youLead && draft.complete ? (
+            <ContinueLink to="vote" cue="propose">
+              Propose this team
+            </ContinueLink>
+          ) : undefined,
+      }}
       panel={
         <>
           <StepTitle>
@@ -226,6 +236,27 @@ function VoteStep({
     play("vote-lock");
     setVote(choice);
   };
+  const choices = (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        className="sl-choice sl-choice--approve"
+        onClick={() => cast("approve")}
+      >
+        <IconApprove size={28} />
+        Approve
+      </button>
+      <button
+        type="button"
+        className="sl-choice sl-choice--reject"
+        onClick={() => cast("reject")}
+      >
+        <IconReject size={28} />
+        Reject
+      </button>
+    </div>
+  );
+  const votedLine = `${votedIds.length} of ${view.players.length} have voted`;
 
   return (
     <TableShell
@@ -234,6 +265,15 @@ function VoteStep({
       players={players}
       play={shown}
       marks={marks}
+      peek={{
+        title: vote ? "You have voted" : "Vote on the team",
+        state: votedLine,
+        action: vote ? (
+          <ContinueLink to="reveal">Continue</ContinueLink>
+        ) : (
+          choices
+        ),
+      }}
       panel={
         <>
           <StepTitle>The proposed team</StepTitle>
@@ -247,9 +287,7 @@ function VoteStep({
       }
       actions={
         <>
-          <Count>
-            {votedIds.length} of {view.players.length} have voted
-          </Count>
+          <Count>{votedLine}</Count>
           {vote ? (
             <>
               <LockedNote>
@@ -268,24 +306,7 @@ function VoteStep({
               <ContinueLink to="reveal">Continue</ContinueLink>
             </>
           ) : (
-            <div className="flex gap-3">
-              <button
-                type="button"
-                className="sl-choice sl-choice--approve"
-                onClick={() => cast("approve")}
-              >
-                <IconApprove size={28} />
-                Approve
-              </button>
-              <button
-                type="button"
-                className="sl-choice sl-choice--reject"
-                onClick={() => cast("reject")}
-              >
-                <IconReject size={28} />
-                Reject
-              </button>
-            </div>
+            choices
           )}
         </>
       }
@@ -354,6 +375,11 @@ function RevealStep({ view, players }: StepProps) {
       marks={marks}
       quests={turned ? view : { ...view, rejections: BEFORE_REVEAL.rejections }}
       proposals={turned ? view.proposals : BEFORE_REVEAL.proposals}
+      peek={{
+        title: "The vote",
+        state: turned ? tally.text : "The votes turn over together",
+        action: <ContinueLink to="quest">Continue to the quest</ContinueLink>,
+      }}
       panel={
         <>
           <StepTitle>
@@ -460,6 +486,18 @@ function QuestStep({
       players={players}
       play={shown}
       marks={marks}
+      peek={{
+        title: phase.onTeam ? "Play your card" : "The team is choosing",
+        // The cards are too big for the peek: it asks to be pulled up.
+        state:
+          phase.onTeam && !played
+            ? "Pull up to play yours"
+            : `${playedIds.length} of ${phase.teamIds.length} have played`,
+        action:
+          phase.onTeam && !played ? undefined : (
+            <ContinueLink to="result">Continue</ContinueLink>
+          ),
+      }}
       panel={
         <>
           <StepTitle>
@@ -637,6 +675,13 @@ function ResultStep({ view, players }: StepProps) {
         } as CSSProperties,
         onPointerDown: skip,
         "data-skip": skipped,
+      }}
+      peek={{
+        title: "The quest",
+        state: scoreIn
+          ? `${failed ? "Failed" : "Succeeded"}. Good ${view.score.good}, Evil ${view.score.evil}`
+          : "The cards turn over",
+        action: <ContinueLink to="propose">Next team proposal</ContinueLink>,
       }}
       panel={
         <>

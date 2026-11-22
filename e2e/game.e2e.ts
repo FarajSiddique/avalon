@@ -348,6 +348,64 @@ test("the round's panels open and close and say their state when closed", async 
   expect(errors).toEqual([]);
 });
 
+test("on a phone the round's sheet collapses to a peek and the table grows", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openOnStage(page, "/design/starlit/table/propose", "table");
+  const main = page.locator("main[data-step=propose]");
+  const slot = page.locator('[data-stage-slot="table"]');
+  const sheet = page.getByRole("region", { name: "The round" });
+  const slotHeight = async (): Promise<number> =>
+    (await slot.boundingBox())?.height ?? 0;
+
+  await expect(main).toHaveAttribute("data-sheet", "open");
+  const openHeight = await slotHeight();
+
+  // The handle is a button: collapse without swiping.
+  const hide = page.getByRole("button", { name: /hide the round/i });
+  await expect(hide).toHaveAttribute("aria-expanded", "true");
+  const box = await hide.boundingBox();
+  expect(box?.width).toBeGreaterThanOrEqual(44);
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+  // By keyboard: focus moves to the other handle, never to the page.
+  await hide.focus();
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-sheet", "collapsed");
+  await expect(sheet).toBeHidden();
+  const show = page.getByRole("button", { name: /show the round/i });
+  await expect(show).toBeFocused();
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+  await expect(show).toHaveAccessibleName(/Choose your team, 2 of 3 chosen/);
+  // The open space (where the camera frames the table) grows a lot.
+  await expect.poll(slotHeight).toBeGreaterThan(openHeight + 250);
+
+  // Picking from the Team list: open the sheet again with the button.
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-sheet", "open");
+  await expect(hide).toBeFocused();
+  const team = page.getByRole("list", { name: "Team" });
+  await expect(team).toBeVisible();
+  await expect.poll(slotHeight).toBeLessThan(openHeight + 2);
+  await team.getByRole("button", { name: "Bram" }).click();
+
+  // Collapsed again, the step's main action is in the peek.
+  await page.getByRole("button", { name: /hide the round/i }).click();
+  await expect(
+    page.getByRole("button", { name: /show the round/i }),
+  ).toHaveAccessibleName(/3 of 3 chosen/);
+  await page.getByRole("link", { name: /propose this team/i }).click();
+  // The sheet stays as you left it on the next step.
+  await expect(page.locator("main[data-step=vote]")).toHaveAttribute(
+    "data-sheet",
+    "collapsed",
+  );
+  await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("Your role on a table step shows the card only while held", async ({
   page,
 }) => {

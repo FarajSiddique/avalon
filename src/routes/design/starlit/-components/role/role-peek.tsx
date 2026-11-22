@@ -1,4 +1,4 @@
-import { useId, useRef, useState, useEffect } from "react";
+import { useCallback, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { useHoldToReveal } from "@/client/use-hold-to-reveal";
 import type { GameView } from "@/shared/views";
@@ -19,21 +19,32 @@ export function RolePeek({ view }: { view: GameView }) {
 
   useCardSound(revealed);
   const id = useId();
-  const button = useRef<HTMLButtonElement>(null);
   // The card opens over the whole scene, inside the theme (for its tokens)
   // but outside any header or panel that could clip or move it.
   const [host, setHost] = useState<HTMLElement | null>(null);
+  // Find that host once the button is in the page, and wire the hold's own
+  // hiding (blur, a locked phone) to the same button. Stable, so React
+  // attaches it once and runs the hold's clean-up when the button goes.
+  const holdRef = hold.holdProps.ref;
+  const button = useCallback(
+    (node: HTMLButtonElement | null) => {
+      if (!node) {
+        return undefined;
+      }
 
-  useEffect(() => {
-    setHost(button.current?.closest<HTMLElement>(".theme-starlit") ?? null);
-  }, []);
+      setHost(node.closest<HTMLElement>(".theme-starlit"));
+
+      return holdRef(node);
+    },
+    [holdRef],
+  );
 
   return (
     <>
       <button
-        ref={button}
         type="button"
         {...hold.holdProps}
+        ref={button}
         data-role-peek=""
         aria-controls={revealed ? id : undefined}
         aria-label={

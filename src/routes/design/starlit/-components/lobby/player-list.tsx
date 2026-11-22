@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import type { LobbyView, SeatView } from "@/shared/views";
+import { cssVars } from "../art/css-vars";
 import { IconCheck, IconCrown, IconMoon, IconRing } from "../icons";
 import { initialOf } from "../names";
 
@@ -79,7 +79,7 @@ function PlayerRow({
     <li className="border-line flex min-h-[3.75rem] items-center gap-3 border-t border-dashed py-2 first:border-t-0">
       <span
         aria-hidden="true"
-        style={{ "--i": index } as CSSProperties}
+        style={cssVars({ "--i": index })}
         className={`sl-avatar sl-seq font-display grid size-11 flex-none place-items-center rounded-full border-[1.5px] text-xl font-semibold ${
           player.connected
             ? "border-line-strong bg-well text-ink"

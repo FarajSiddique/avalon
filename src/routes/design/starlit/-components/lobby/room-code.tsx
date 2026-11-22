@@ -1,6 +1,17 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { play } from "@/client/sound";
+import { cssVars } from "../art/css-vars";
 import { IconCheck, IconCopy } from "../icons";
+
+function noSubscription(): () => void {
+  return noop;
+}
+
+function noop(): void {}
+
+function noSnapshot(): null {
+  return null;
+}
 
 /**
  * The room code with a copy button: a small badge for the lobby's header,
@@ -10,16 +21,20 @@ export function RoomCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   // Each copy replays the little wave through the letters.
   const [copies, setCopies] = useState(0);
-
-  useEffect(() => {
-    if (!copied) {
-      return;
-    }
-
+  // "Copied" lasts 2.4s from the copy that showed it (copying again while it
+  // shows does not extend it). The timer lives as long as `copied` is true,
+  // set up after that commit and cleared on unmount.
+  const clearLater = useCallback(() => {
     const timer = window.setTimeout(() => setCopied(false), 2400);
 
     return () => window.clearTimeout(timer);
-  }, [copied]);
+  }, []);
+
+  useSyncExternalStore(
+    copied ? clearLater : noSubscription,
+    noSnapshot,
+    noSnapshot,
+  );
 
   const copy = async () => {
     try {
@@ -53,7 +68,7 @@ export function RoomCode({ code }: { code: string }) {
               key={index}
               aria-hidden="true"
               className="sl-code__letter sl-seq"
-              style={{ "--i": index } as CSSProperties}
+              style={cssVars({ "--i": index })}
             >
               {letter}
             </span>
@@ -62,7 +77,7 @@ export function RoomCode({ code }: { code: string }) {
       </div>
       <button
         type="button"
-        onClick={copy}
+        onClick={() => void copy()}
         className="sl-btn sl-btn--ghost min-w-11 px-3"
         aria-label={copied ? "Copied" : "Copy code"}
       >

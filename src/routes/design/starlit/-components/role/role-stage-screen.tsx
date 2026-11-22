@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { cssVars } from "../art/css-vars";
 import { ProtoLink as Link } from "@/design/proto-link";
 import { designPaths, type RoleVariant } from "@/design/directions";
 import { roleViews } from "@/design/mock";
@@ -20,8 +26,23 @@ import { SkyCard } from "./sky-card";
 
 const paths = designPaths();
 
+/** When an overlay rises in, after the screen has arrived. */
+function at(ms: number) {
+  return cssVars({ "--arrive-at": `${ms}ms` });
+}
+
 /** The longest the overlays wait for the camera to settle on your seat. */
 const MAX_WAIT_MS = 2200;
+
+function noSubscription(): () => void {
+  return noop;
+}
+
+function noop(): void {}
+
+function noSnapshot(): null {
+  return null;
+}
 
 function prefersReducedMotion(): boolean {
   return (
@@ -43,16 +64,19 @@ function useArrived(): boolean {
       stage.phase !== null && stage.phase !== "role" && !prefersReducedMotion(),
   );
   const [waited, setWaited] = useState(false);
-
-  useEffect(() => {
-    if (!moving) {
-      return;
-    }
-
+  // The fallback timer lives as long as a subscription: set up after the
+  // first commit, cleared on unmount (StrictMode clears and sets it again).
+  const waitForCamera = useCallback(() => {
     const timer = window.setTimeout(() => setWaited(true), MAX_WAIT_MS);
 
     return () => window.clearTimeout(timer);
-  }, [moving]);
+  }, []);
+
+  useSyncExternalStore(
+    moving ? waitForCamera : noSubscription,
+    noSnapshot,
+    noSnapshot,
+  );
   const settled = stage.phase === "role" || stage.status === "failed";
 
   return !moving || settled || waited;
@@ -94,7 +118,6 @@ export function RoleStageScreen({ variant }: { variant: RoleVariant }) {
   const other: RoleVariant = variant === "merlin" ? "assassin" : "merlin";
   // Hidden (not just transparent) until then, so nothing can be pressed.
   const shown = arrived ? "sl-overlay-in" : "invisible";
-  const at = (ms: number) => ({ "--arrive-at": `${ms}ms` }) as CSSProperties;
 
   return (
     <main

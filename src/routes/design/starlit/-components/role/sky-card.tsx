@@ -1,4 +1,9 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import {
+  useCallback,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { play, type CueHandle } from "@/client/sound";
 import { useHoldToReveal } from "@/client/use-hold-to-reveal";
 import { Billow, type Lobe } from "../art/cloud";
@@ -107,30 +112,41 @@ export function useCardSound(open: boolean): void {
   // Start from the first value, so mounting already open makes no sound.
   const wasOpen = useRef(open);
   const stars = useRef<CueHandle | null>(null);
-
-  useEffect(() => {
-    if (open === wasOpen.current) {
-      return;
-    }
-
-    wasOpen.current = open;
-
-    if (open) {
+  // One subscription while open and another while closed: React swaps them
+  // after the commit that changes `open`, as an effect on `[open]` would.
+  // Leaving the open one (closing, or unmounting) always stops the stars;
+  // only entering the closed one plays the clouds closing, so unmounting
+  // while held stays quiet. Both are idempotent, so StrictMode's extra
+  // subscribe on mount makes no sound.
+  const whileOpen = useCallback(() => {
+    if (!wasOpen.current) {
+      wasOpen.current = true;
       play("clouds-part");
       stars.current = play("constellation");
-    } else {
-      stars.current?.stop();
-      stars.current = null;
-      play("clouds-close");
     }
-  }, [open]);
-  useEffect(
-    () => () => {
+
+    return () => {
       // Hidden or gone: never leave the stars ringing.
       stars.current?.stop();
-    },
-    [],
-  );
+      stars.current = null;
+    };
+  }, []);
+  const whileClosed = useCallback(() => {
+    if (wasOpen.current) {
+      wasOpen.current = false;
+      play("clouds-close");
+    }
+
+    return noop;
+  }, []);
+
+  useSyncExternalStore(open ? whileOpen : whileClosed, noSnapshot, noSnapshot);
+}
+
+function noop(): void {}
+
+function noSnapshot(): null {
+  return null;
 }
 
 /**
@@ -147,15 +163,11 @@ export function SkyCard({
   children: ReactNode;
   onHold?: () => void;
 }) {
-  const hold = useHoldToReveal();
+  // Told from the press itself, each time it opens the card.
+  const hold = useHoldToReveal({ onReveal: onHold });
   const revealed = hold.revealed;
 
   useCardSound(revealed);
-  useEffect(() => {
-    if (revealed) {
-      onHold?.();
-    }
-  }, [revealed, onHold]);
 
   return (
     <button

@@ -20,7 +20,12 @@ export interface LobbySearch {
 
 export const Route = createFileRoute("/design/starlit/lobby")({
   head: () => ({ meta: [{ title: "Lobby · Starlit Vale" }] }),
-  validateSearch: (search: Record<string, unknown>): LobbySearch => {
+  // The address is untrusted: each field is checked before it is kept.
+  validateSearch: (search: {
+    via?: unknown;
+    name?: unknown;
+    code?: unknown;
+  }): LobbySearch => {
     const out: LobbySearch = {};
 
     if (search.via === "create" || search.via === "join") {

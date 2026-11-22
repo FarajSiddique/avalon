@@ -1,10 +1,9 @@
 import {
-  useEffect,
+  useCallback,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
-  type CSSProperties,
 } from "react";
 import { play } from "@/client/sound";
 import { avatarFor, lookSummary } from "@/design/avatar";
@@ -14,6 +13,7 @@ import { setYourName } from "@/design/your-name";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import type { LobbySearch } from "../../lobby";
+import { cssVars } from "../art/css-vars";
 import { IconArrowRight, IconCheck, IconRing } from "../icons";
 import { SoundLink } from "../sound-link";
 import {
@@ -61,14 +61,75 @@ function useWide(): boolean {
  */
 function useEveryoneReadyChord(canStart: boolean): void {
   const was = useRef(canStart);
-
-  useEffect(() => {
-    if (canStart && !was.current) {
+  // One subscription while the lobby can start and another while it cannot;
+  // React swaps them after the commit that changes `canStart`, as an effect
+  // on `[canStart]` would. Both are idempotent, so StrictMode's extra
+  // subscribe on mount stays quiet.
+  const whileReady = useCallback(() => {
+    if (!was.current) {
+      was.current = true;
       play("all-ready");
     }
 
-    was.current = canStart;
-  }, [canStart]);
+    return noop;
+  }, []);
+  const whileBlocked = useCallback(() => {
+    was.current = false;
+
+    return noop;
+  }, []);
+
+  useSyncExternalStore(
+    canStart ? whileReady : whileBlocked,
+    noSnapshot,
+    noSnapshot,
+  );
+}
+
+/**
+ * The game seats you under the name you typed (or as Wren, with none, so the
+ * lobby and the table always agree). Written to the session store after the
+ * commit, and again whenever the name in the address changes.
+ */
+function useSeatName(name: string | undefined): void {
+  const write = useCallback(() => {
+    setYourName(name ?? null);
+
+    return noop;
+  }, [name]);
+
+  useSyncExternalStore(write, noSnapshot, noSnapshot);
+}
+
+/**
+ * While `filling`, the next friend arrives after a pause. Each arrival
+ * changes `count`, which gives a new subscription and so the next timer.
+ */
+function useArrivals(
+  filling: boolean,
+  count: number,
+  arrive: () => void,
+): void {
+  const wait = useCallback(() => {
+    const timer = window.setTimeout(
+      arrive,
+      count === 1 ? ARRIVAL_MS * 1.4 : ARRIVAL_MS,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [count, arrive]);
+
+  useSyncExternalStore(filling ? wait : noSubscription, noSnapshot, noSnapshot);
+}
+
+function noSubscription(): () => void {
+  return noop;
+}
+
+function noop(): void {}
+
+function noSnapshot(): null {
+  return null;
 }
 
 /**
@@ -85,11 +146,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const hostName = view.players.find((p) => p.isHost)?.name ?? "The host";
 
   useEveryoneReadyChord(canStart);
-  // The game seats you under the name you typed (or as Wren, with none, so
-  // the lobby and the table always agree).
-  useEffect(() => {
-    setYourName(name ?? null);
-  }, [name]);
+  useSeatName(name);
 
   // The table's open space, claimed from the shared stage.
   const stage = useStage();
@@ -124,18 +181,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const filling = via === "create" && landed && lobby.toArrive > 0;
   const count = view.players.length;
 
-  useEffect(() => {
-    if (!filling) {
-      return;
-    }
-
-    const timer = window.setTimeout(
-      arriveNext,
-      count === 1 ? ARRIVAL_MS * 1.4 : ARRIVAL_MS,
-    );
-
-    return () => window.clearTimeout(timer);
-  }, [filling, count, arriveNext]);
+  useArrivals(filling, count, arriveNext);
 
   // Sections start closed so the table shows; a wide screen has room to
   // open the player list. A section you open or close stays that way.
@@ -162,7 +208,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
       ? `Get ready, and ${hostName} starts the game.`
       : "Friends type this code to join you.";
   const arrive = (extra: number) =>
-    ({ "--arrive-at": `${arriveAt + extra}ms` }) as CSSProperties;
+    cssVars({ "--arrive-at": `${arriveAt + extra}ms` });
 
   return (
     <main

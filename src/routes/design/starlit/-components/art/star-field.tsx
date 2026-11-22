@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { cssVars } from "./css-vars";
 import { STAR_FILL, sparklePath, type Star } from "./seeded";
 
 function twinkleStyle(star: Star): CSSProperties | undefined {
@@ -6,10 +7,10 @@ function twinkleStyle(star: Star): CSSProperties | undefined {
     return undefined;
   }
 
-  return {
+  return cssVars({
     "--twinkle-dur": `${star.twinkle.duration}s`,
     "--twinkle-delay": `${star.twinkle.delay}s`,
-  } as CSSProperties;
+  });
 }
 
 /** The stars themselves. Put this inside an <svg> with a matching viewBox. */

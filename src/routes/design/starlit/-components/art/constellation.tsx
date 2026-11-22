@@ -1,5 +1,6 @@
 import { useId, type CSSProperties } from "react";
 import type { Alignment, Role } from "@/shared/roles";
+import { cssVars } from "./css-vars";
 import { sparklePath } from "./seeded";
 
 type Point = readonly [x: number, y: number];
@@ -119,10 +120,14 @@ const LINE_DRAW = 240;
  * reaches it, so the figure is traced star by star. The brightest star
  * lights last, as the full stop.
  */
-function timeline(figure: Figure): {
+interface Timeline {
+  /** When each line starts drawing, in the figure's order. */
   lines: Array<number>;
+  /** When each star lights, by index. */
   stars: Array<number>;
-} {
+}
+
+function timeline(figure: Figure): Timeline {
   const stars = figure.stars.map(() => Number.POSITIVE_INFINITY);
   const lines = figure.lines.map(([from, to], index) => {
     const start = DRAW_START + index * LINE_GAP;
@@ -143,7 +148,7 @@ function timeline(figure: Figure): {
 }
 
 function delay(ms: number | undefined): CSSProperties {
-  return { "--at": `${ms ?? 0}ms` } as CSSProperties;
+  return cssVars({ "--at": `${ms ?? 0}ms` });
 }
 
 /**

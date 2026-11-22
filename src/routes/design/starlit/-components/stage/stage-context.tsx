@@ -2,15 +2,15 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useMemo,
-  useRef,
   useState,
+  useSyncExternalStore,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
   type RefObject,
 } from "react";
+import { useStore } from "zustand";
+import { createStore, type StoreApi } from "zustand/vanilla";
 import type { StageMode, StagePhase } from "../three/engine";
 import type { FlightPath, TablePlay, TablePlayer } from "../three/types";
 
@@ -19,7 +19,7 @@ import type { FlightPath, TablePlay, TablePlayer } from "../three/types";
  * from one to the other is a camera flight, not a page change. A screen
  * claims it with a slot; the lobby also says who is at the table.
  */
-interface StageSlot {
+export interface StageSlot {
   mode: StageMode;
   /** The open space the table is framed in. */
   focus: RefObject<HTMLElement | null>;
@@ -31,7 +31,9 @@ interface StageSlot {
 
 type StageStatus = "idle" | "loading" | "running" | "failed";
 
-interface StageValue {
+type Picker = (clientX: number, clientY: number) => string | null;
+
+export interface StageValue {
   slot: StageSlot | null;
   players: ReadonlyArray<TablePlayer>;
   /** A flight asked for before the next screen has mounted. */
@@ -59,105 +61,118 @@ interface StageValue {
   tagLayer: HTMLElement | null;
   setTagLayer: (el: HTMLElement | null) => void;
   /** The live scene answers "whose figure is here"; the stage sets this. */
-  picker: RefObject<
-    ((clientX: number, clientY: number) => string | null) | null
-  >;
+  picker: RefObject<Picker | null>;
 }
 
-const StageContext = createContext<StageValue | null>(null);
+export type StageStore = StoreApi<StageValue>;
+
+/**
+ * Every setter leaves the state object alone when nothing changes, so (as
+ * with React state) readers do not re-render for a value they already have.
+ */
+function createStageStore(): StageStore {
+  return createStore<StageValue>()((set) => ({
+    slot: null,
+    players: [],
+    pending: null,
+    leaving: false,
+    status: "idle",
+    phase: null,
+    play: null,
+    tagLayer: null,
+    picker: { current: null },
+    setSlot: (update) =>
+      set((s) => {
+        const slot = update(s.slot);
+
+        return slot === s.slot ? s : { slot };
+      }),
+    setPlayers: (players) =>
+      set((s) => (players === s.players ? s : { players })),
+    depart: (path) => set({ pending: path, leaving: true }),
+    // The lobby has the stage: the landing is gone and done leaving.
+    takePending: () =>
+      set((s) =>
+        s.pending === null && !s.leaving
+          ? s
+          : { pending: null, leaving: false },
+      ),
+    setStatus: (next) =>
+      set((s) => {
+        const status = typeof next === "function" ? next(s.status) : next;
+
+        return status === s.status ? s : { status };
+      }),
+    setPhase: (phase) => set((s) => (phase === s.phase ? s : { phase })),
+    setPlay: (play) => set((s) => (play === s.play ? s : { play })),
+    setTagLayer: (tagLayer) =>
+      set((s) => (tagLayer === s.tagLayer ? s : { tagLayer })),
+  }));
+}
+
+const StageContext = createContext<StageStore | null>(null);
 
 export function StageProvider({ children }: { children: ReactNode }) {
-  const [slot, setSlot] = useState<StageSlot | null>(null);
-  const [players, setPlayers] = useState<ReadonlyArray<TablePlayer>>([]);
-  const [pending, setPending] = useState<FlightPath | null>(null);
-  const [leaving, setLeaving] = useState(false);
-  const [status, setStatus] = useState<StageStatus>("idle");
-  const [phase, setPhase] = useState<StagePhase | null>(null);
-  const [play, setPlay] = useState<TablePlay | null>(null);
-  const [tagLayer, setTagLayer] = useState<HTMLElement | null>(null);
-  const picker = useRef<
-    ((clientX: number, clientY: number) => string | null) | null
-  >(null);
-
-  const depart = useCallback((path: FlightPath) => {
-    setPending(path);
-    setLeaving(true);
-  }, []);
-  // The lobby has the stage: the landing is gone and done leaving.
-  const takePending = useCallback(() => {
-    setPending(null);
-    setLeaving(false);
-  }, []);
-  const value = useMemo<StageValue>(
-    () => ({
-      slot,
-      players,
-      pending,
-      leaving,
-      status,
-      phase,
-      setSlot,
-      setPlayers,
-      depart,
-      takePending,
-      setStatus,
-      setPhase,
-      play,
-      setPlay,
-      tagLayer,
-      setTagLayer,
-      picker,
-    }),
-    [
-      slot,
-      players,
-      pending,
-      leaving,
-      status,
-      phase,
-      depart,
-      takePending,
-      play,
-      tagLayer,
-    ],
-  );
+  const [store] = useState(createStageStore);
 
   return (
-    <StageContext.Provider value={value}>{children}</StageContext.Provider>
+    <StageContext.Provider value={store}>{children}</StageContext.Provider>
   );
 }
 
-export function useStage(): StageValue {
-  const value = useContext(StageContext);
+/** The stage's store itself, for code that reads it outside rendering. */
+export function useStageStore(): StageStore {
+  const store = useContext(StageContext);
 
-  if (!value) {
+  if (!store) {
     throw new Error("useStage needs a StageProvider");
   }
 
-  return value;
+  return store;
 }
+
+export function useStage(): StageValue {
+  return useStore(useStageStore());
+}
+
+/*
+ * Holding the stage. Each hook below claims part of the stage while its
+ * screen is mounted: useSyncExternalStore subscribes (claims) after the
+ * screen commits and unsubscribes (lets go) when it unmounts, or before
+ * claiming again when the subscribe function changes with its inputs. Old
+ * screens let go before new ones claim, in the same commit, as effects did.
+ */
+
+function nothing(): null {
+  return null;
+}
+
+function noop(): void {}
 
 /** Claim the stage for this screen while it is mounted. Null: don't. */
 export function useStageSlot(
   options: Omit<StageSlot, "focus"> | null,
   focus: RefObject<HTMLElement | null>,
 ): void {
-  const { setSlot } = useStage();
+  const store = useStageStore();
   const mode = options?.mode;
   const reveal = options?.reveal;
   const fade = options?.fade;
 
-  useEffect(() => {
+  const hold = useCallback(() => {
     if (!mode || !reveal || fade === undefined) {
-      return;
+      return noop;
     }
 
+    const { setSlot } = store.getState();
     const slot: StageSlot = { mode, reveal, fade, focus };
 
     setSlot(() => slot);
 
     return () => setSlot((current) => (current === slot ? null : current));
-  }, [mode, reveal, fade, focus, setSlot]);
+  }, [mode, reveal, fade, focus, store]);
+
+  useSyncExternalStore(hold, nothing, nothing);
 }
 
 /**
@@ -166,25 +181,34 @@ export function useStageSlot(
  * same commit (the next step) sets its own, so the scene never blinks.
  */
 export function useStagePlay(play: TablePlay | null): void {
-  const { setPlay } = useStage();
+  const store = useStageStore();
+  const hold = useCallback(() => {
+    store.getState().setPlay(play);
 
-  useEffect(() => {
-    setPlay(play);
-  }, [play, setPlay]);
-  useEffect(() => () => setPlay(null), [setPlay]);
+    return () => {
+      const now = store.getState();
+
+      if (now.play === play) {
+        now.setPlay(null);
+      }
+    };
+  }, [play, store]);
+
+  useSyncExternalStore(hold, nothing, nothing);
 }
 
 /** Give the stage this screen's tag layer while it is mounted. */
 export function useTagLayer(layer: RefObject<HTMLElement | null>): void {
-  const { setTagLayer } = useStage();
+  const store = useStageStore();
+  const hold = useCallback(() => {
+    const { setTagLayer } = store.getState();
 
-  useEffect(() => {
-    const el = layer.current;
-
-    setTagLayer(el);
+    setTagLayer(layer.current);
 
     return () => setTagLayer(null);
-  }, [layer, setTagLayer]);
+  }, [layer, store]);
+
+  useSyncExternalStore(hold, nothing, nothing);
 }
 
 /**
@@ -196,21 +220,29 @@ export function usePickAt(): (
   clientX: number,
   clientY: number,
 ) => string | null {
-  const { picker } = useStage();
+  const store = useStageStore();
 
   return useCallback(
     (clientX: number, clientY: number) =>
-      picker.current?.(clientX, clientY) ?? null,
-    [picker],
+      store.getState().picker.current?.(clientX, clientY) ?? null,
+    [store],
   );
 }
 
 /** Who stands at the table while this screen is mounted. */
 export function useStagePlayers(players: ReadonlyArray<TablePlayer>): void {
-  const { setPlayers } = useStage();
+  const store = useStageStore();
+  const hold = useCallback(() => {
+    store.getState().setPlayers(players);
 
-  useEffect(() => {
-    setPlayers(players);
-  }, [players, setPlayers]);
-  useEffect(() => () => setPlayers([]), [setPlayers]);
+    return () => {
+      const now = store.getState();
+
+      if (now.players === players) {
+        now.setPlayers([]);
+      }
+    };
+  }, [players, store]);
+
+  useSyncExternalStore(hold, nothing, nothing);
 }

@@ -191,13 +191,15 @@ function figurePoints(
       continue;
     }
 
-    out.push({ p: s.at.clone(), top: 6, bottom: 10, side: 26 });
-    out.push({
-      p: s.at.clone().setY(HEAD),
-      top: TAG_H,
-      bottom: 0,
-      side: TAG_HALF_W,
-    });
+    out.push(
+      { p: s.at.clone(), top: 6, bottom: 10, side: 26 },
+      {
+        p: s.at.clone().setY(HEAD),
+        top: TAG_H,
+        bottom: 0,
+        side: TAG_HALF_W,
+      },
+    );
   }
 
   return out;

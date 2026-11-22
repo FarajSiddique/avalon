@@ -1,10 +1,41 @@
 import { expect, test, type Page } from "@playwright/test";
+import { z } from "zod";
 
 /**
  * The real-time proof for this checkpoint: two separate browsers (separate
  * storage, like two phones) join one room through the real Worker and its room
  * object, and see each other arrive, leave and come back.
  */
+
+const stateMessage = z.object({
+  type: z.string(),
+  view: z.object({ you: z.object({ id: z.string() }) }).optional(),
+});
+
+/** Record the `you.id` of every state message a page receives. */
+const watch = (page: Page): Array<string> => {
+  const seen: Array<string> = [];
+
+  page.on("websocket", (socket) => {
+    if (!socket.url().includes("/api/socket/")) {
+      return;
+    }
+
+    socket.on("framereceived", (frame) => {
+      if (typeof frame.payload !== "string" || frame.payload === "pong") {
+        return;
+      }
+
+      const parsed = stateMessage.safeParse(JSON.parse(frame.payload));
+
+      if (parsed.success && parsed.data.type === "state" && parsed.data.view) {
+        seen.push(parsed.data.view.you.id);
+      }
+    });
+  });
+
+  return seen;
+};
 
 const players = (page: Page) => page.getByTestId("player");
 
@@ -93,34 +124,6 @@ test("two players see each other join, drop and return", async ({
 });
 
 test("each browser is only ever sent its own view", async ({ browser }) => {
-  /** Record the `you.id` of every state message a page receives. */
-  const watch = (page: Page): Array<string> => {
-    const seen: Array<string> = [];
-
-    page.on("websocket", (socket) => {
-      if (!socket.url().includes("/api/socket/")) {
-        return;
-      }
-
-      socket.on("framereceived", (frame) => {
-        if (typeof frame.payload !== "string" || frame.payload === "pong") {
-          return;
-        }
-
-        const message = JSON.parse(frame.payload) as {
-          type: string;
-          view?: { you: { id: string } };
-        };
-
-        if (message.type === "state" && message.view) {
-          seen.push(message.view.you.id);
-        }
-      });
-    });
-
-    return seen;
-  };
-
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();
   const host = await hostContext.newPage();

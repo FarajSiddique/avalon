@@ -26,6 +26,7 @@ import {
   noise2,
   seededRandom,
 } from "./kit";
+import { isMesh } from "./guards";
 import type { Palette } from "./palette";
 
 export function standard(
@@ -125,7 +126,11 @@ export function wavePennants(root: Group, time: number): void {
       return;
     }
 
-    const mesh = node as Mesh;
+    if (!isMesh(node)) {
+      return;
+    }
+
+    const mesh = node;
     const pos = mesh.geometry.getAttribute("position");
 
     for (let i = 0; i < pos.count; i++) {
@@ -226,7 +231,7 @@ export function castle(bin: Bin, p: Palette, tone: Color, seed = 3): Group {
         standard(bin, p["cloud-edge"], { flat: false }),
       );
 
-      (flag.material as MeshStandardMaterial).side = DoubleSide;
+      flag.material.side = DoubleSide;
       flag.geometry.translate(0.2, 0, 0);
       flag.position.set(x, h + r * 2.6 + 0.42, z);
       flag.name = "pennant";

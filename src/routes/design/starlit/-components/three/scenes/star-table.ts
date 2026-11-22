@@ -6,6 +6,7 @@ import {
   FogExp2,
   Group,
   HemisphereLight,
+  type IUniform,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
@@ -37,6 +38,7 @@ import {
   standard,
   wavePennants,
 } from "../props";
+import { at as nth } from "../guards";
 import { Seating } from "../seating";
 import type {
   ConceptScene,
@@ -194,8 +196,10 @@ export const createStarTable: CreateConcept = ({
   const runeTexture = runeMap(bin);
   const seats: Array<{
     rune: Mesh;
+    runeMat: MeshBasicMaterial;
     glow: Sprite;
     spoke: Mesh;
+    spokeLevel: IUniform<number>;
     slab: Mesh;
     /** Stone height on the landing, and lower in the lobby. */
     tall: number;
@@ -260,16 +264,30 @@ export const createStarTable: CreateConcept = ({
     seat.add(glow);
     scene.add(seat);
     // A line of light across the table from this seat to the fire.
+    const spokeMaterial = spokeMat.clone();
+    const spokeLevel: IUniform<number> = { value: 0 };
+
+    spokeMaterial.uniforms.uLevel = spokeLevel;
     const spoke = new Mesh(
       bin.add(new PlaneGeometry(2.4, 0.14)),
-      spokeMat.clone(),
+      spokeMaterial,
     );
 
-    bin.add(spoke.material as ShaderMaterial);
+    bin.add(spokeMaterial);
     spoke.rotation.set(-Math.PI / 2, 0, -a);
     spoke.position.set(Math.cos(a) * 2.25, 1.13, Math.sin(a) * 2.25);
     table.add(spoke);
-    seats.push({ rune, glow, spoke, slab, tall: h, low, phase: i });
+    seats.push({
+      rune,
+      runeMat,
+      glow,
+      spoke,
+      spokeLevel,
+      slab,
+      tall: h,
+      low,
+      phase: i,
+    });
   }
 
   /* ---- the moonbeam, its dust, the mist and fireflies ---- */
@@ -481,14 +499,14 @@ export const createStarTable: CreateConcept = ({
       // all dim together. In the lobby they show who is seated and ready.
       const cycle = (time % 16) / 16;
       const flare =
-        path === "create"
-          ? smooth(0.72, 0.86, flight!.progress) *
-            (1 - smooth(0.86, 1, flight!.progress))
+        flight?.path === "create"
+          ? smooth(0.72, 0.86, flight.progress) *
+            (1 - smooth(0.86, 1, flight.progress))
           : 0;
       const game = play.active();
 
       for (let i = 0; i < seats.length; i++) {
-        const seat = seats[i]!;
+        const seat = nth(seats, i);
         const on = Math.min(1, Math.max(0, (cycle * 14 - seat.phase) / 1.2));
         const heroLevel = cycle > 0.85 ? on * (1 - (cycle - 0.85) / 0.15) : on;
         const s = seating.state(i);
@@ -497,13 +515,11 @@ export const createStarTable: CreateConcept = ({
         const level = Math.min(1, mix(heroLevel, lobbyLevel, b) + flare);
         const base = mix(0.15, 0.12, b);
 
-        (seat.rune.material as MeshBasicMaterial).opacity =
-          base + level * (1 - base);
+        seat.runeMat.opacity = base + level * (1 - base);
         seat.glow.material.opacity = level * mix(0.55, 0.5, b);
         // In the game every seat is "ready": the spokes dim, so the leader
         // and the team stand out.
-        (seat.spoke.material as ShaderMaterial).uniforms.uLevel!.value =
-          level * (game ? 0.3 : 0.9);
+        seat.spokeLevel.value = level * (game ? 0.3 : 0.9);
         // The stones sink as the camera comes down to the table.
         const h = mix(seat.tall, seat.low, b);
 

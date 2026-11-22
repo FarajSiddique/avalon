@@ -5,6 +5,7 @@ import {
   CylinderGeometry,
   DoubleSide,
   Group,
+  type IUniform,
   Mesh,
   MeshBasicMaterial,
   type Object3D,
@@ -20,6 +21,7 @@ import { Line2 } from "three/addons/lines/Line2.js";
 import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import type { QuestCard } from "@/shared/views";
+import { at as nth } from "../guards";
 import { type Bin, glowSprite, glowTexture } from "../kit";
 import type { Palette } from "../palette";
 import { HEAD, type Seating, type Standing, STAND } from "../seating";
@@ -83,6 +85,8 @@ interface Card {
 interface Glow {
   level: number;
   column: Mesh;
+  /** The light level of this column's own cloned material. */
+  levelUniform: IUniform<number>;
 }
 
 /**
@@ -316,11 +320,15 @@ export class TablePlayView {
           continue;
         }
 
-        const column = new Mesh(this.columnGeo, this.columnMat.clone());
+        const columnMaterial = this.columnMat.clone();
+        const levelUniform: IUniform<number> = { value: 0 };
 
-        this.bin.add(column.material as ShaderMaterial);
+        columnMaterial.uniforms.uLevel = levelUniform;
+        const column = new Mesh(this.columnGeo, columnMaterial);
+
+        this.bin.add(columnMaterial);
         this.group.add(column);
-        glow = { level: 0, column };
+        glow = { level: 0, column, levelUniform };
         this.glows.set(s.id, glow);
       }
 
@@ -330,7 +338,7 @@ export class TablePlayView {
       s.figure.setGlow(this.teamColor, level * 0.3);
       glow.column.position.copy(s.at);
       glow.column.visible = level > 0.01;
-      (glow.column.material as ShaderMaterial).uniforms.uLevel!.value =
+      glow.levelUniform.value =
         level * (0.85 + 0.15 * Math.sin(time * 1.8 + s.angle * 3));
     }
 
@@ -401,8 +409,8 @@ export class TablePlayView {
         );
 
         for (let i = 1; i < ends.length; i++) {
-          const a = ends[i - 1]!;
-          const b = ends[i]!;
+          const a = nth(ends, i - 1);
+          const b = nth(ends, i);
           const bow = a.distanceTo(b) * 0.12;
           const segs = 16;
 
@@ -676,8 +684,8 @@ function orderChain(members: Array<Standing>): Array<Standing> {
   let at = 0;
 
   for (let i = 0; i < sorted.length; i++) {
-    const a = sorted[i]!.angle;
-    const b = sorted[(i + 1) % sorted.length]!.angle;
+    const a = nth(sorted, i).angle;
+    const b = nth(sorted, (i + 1) % sorted.length).angle;
     const gap = (b - a + Math.PI * 4) % (Math.PI * 2);
 
     if (gap > widest) {

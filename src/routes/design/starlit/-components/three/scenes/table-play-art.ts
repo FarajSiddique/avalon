@@ -12,6 +12,7 @@ import {
 import type { QuestCard } from "@/shared/views";
 import { sparklePath } from "../../art/seeded";
 import { type Bin, glowSprite, glowTexture } from "../kit";
+import { context2d, fillPath } from "../guards";
 import type { Palette } from "../palette";
 
 /* The drawn pieces of the game at the Star Table, and its hit test. */
@@ -104,6 +105,8 @@ export function crownMesh(bin: Bin, p: Palette): Group {
   return g;
 }
 
+const css = (c: Color) => `#${c.getHexString()}`;
+
 /**
  * A quest card, drawn on a canvas: the back is a night sky with the
  * banner's sparkle; Success is a sun with its rays, Fail a cracked crescent
@@ -120,8 +123,7 @@ export function drawCard(
 
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-  const css = (c: Color) => `#${c.getHexString()}`;
+  const ctx = context2d(canvas);
   const pad = 10;
   const radius = 22;
   const card = new Path2D();
@@ -134,12 +136,12 @@ export function drawCard(
 
   if (kind === "back") {
     ctx.fillStyle = css(p["sky-mid"]);
-    ctx.fill(card);
+    fillPath(ctx, card);
     ctx.strokeStyle = css(p.gold);
     ctx.lineWidth = 5;
     ctx.stroke(inner);
     ctx.fillStyle = css(p["star-blue"]);
-    const dots = [
+    const dots: Array<[number, number]> = [
       [0.25, 0.2],
       [0.72, 0.16],
       [0.3, 0.78],
@@ -151,14 +153,14 @@ export function drawCard(
 
     for (const [x, y] of dots) {
       ctx.beginPath();
-      ctx.arc(x! * w, y! * h, 3, 0, Math.PI * 2);
+      ctx.arc(x * w, y * h, 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.save();
     ctx.translate(w / 2, h / 2);
     ctx.fillStyle = css(p.gold);
-    ctx.fill(new Path2D(sparklePath(w * 0.24)));
+    fillPath(ctx, new Path2D(sparklePath(w * 0.24)));
     ctx.restore();
 
     return canvas;
@@ -167,7 +169,7 @@ export function drawCard(
   const success = kind === "success";
 
   ctx.fillStyle = css(success ? p.tent : p.banner);
-  ctx.fill(card);
+  fillPath(ctx, card);
   const ink = success ? p["tent-dark"] : p.moon;
 
   ctx.strokeStyle = css(success ? p.gold : p["star-pink"]);
@@ -199,7 +201,7 @@ export function drawCard(
     const moon = document.createElement("canvas");
 
     moon.width = moon.height = 200;
-    const m = moon.getContext("2d")!;
+    const m = context2d(moon);
 
     m.translate(100, 100);
     m.fillStyle = css(p.moon);

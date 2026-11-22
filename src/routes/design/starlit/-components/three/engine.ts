@@ -9,6 +9,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { isHtmlElement, at as nth, need } from "./guards";
 import { readPalette } from "./palette";
 import type {
   ConceptScene,
@@ -186,6 +187,7 @@ export async function mountStarTable(
   canvas.style.display = "block";
   canvas.style.width = "100%";
   canvas.style.height = "100%";
+  // oxlint-disable-next-line unicorn/prefer-dom-node-append -- the Workers types merge a different `Element#append` (HTMLRewriter) over the DOM one, so `append(canvas)` does not typecheck
   host.appendChild(canvas);
 
   const themeEl = host.closest(".theme-starlit") ?? document.documentElement;
@@ -555,7 +557,11 @@ export async function mountStarTable(
     const box = stage ? focus : whole();
 
     for (const child of overlay.children) {
-      const el = child as HTMLElement;
+      if (!isHtmlElement(child)) {
+        continue;
+      }
+
+      const el = child;
       const id = el.dataset.tag;
       const at = id ? anchors.get(id) : undefined;
 
@@ -629,10 +635,13 @@ export async function mountStarTable(
 
     for (let i = 1; i < tagOrder.length; i++) {
       for (let j = i; j > 0; j--) {
-        const a = tagOrder[j]!;
-        const b = tagOrder[j - 1]!;
+        const a = nth(tagOrder, j);
+        const b = nth(tagOrder, j - 1);
 
-        if (tags.get(a)!.natural <= tags.get(b)!.natural + TAG_REORDER_PX) {
+        if (
+          need(tags, a, "overlay tag").natural <=
+          need(tags, b, "overlay tag").natural + TAG_REORDER_PX
+        ) {
           break;
         }
 
@@ -647,7 +656,7 @@ export async function mountStarTable(
     const placed: Array<Box> = [];
 
     for (const id of tagOrder) {
-      const tag = tags.get(id)!;
+      const tag = need(tags, id, "overlay tag");
       const state = tagStates.get(id);
       const target = tagSpot(tag, placed, state?.target);
       const x = tag.x + target.x;

@@ -7,7 +7,6 @@ import {
   Group,
   IcosahedronGeometry,
   LatheGeometry,
-  type Material,
   Mesh,
   MeshBasicMaterial,
   type MeshStandardMaterial,
@@ -20,8 +19,9 @@ import {
 } from "three";
 import { CLOAK_TOKENS, type Avatar, type Emblem } from "@/design/avatar";
 import { sparklePath } from "../art/seeded";
+import { context2d, fillPath, isColorMaterial, isMesh } from "./guards";
 import { Bin } from "./kit";
-import type { ArtToken, Palette } from "./palette";
+import { isArtToken, type Palette } from "./palette";
 import { standard } from "./props";
 
 /** Emblem pictures, drawn once per scene and shared by every figure. */
@@ -46,7 +46,7 @@ function drawEmblem(emblem: Emblem): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
 
   canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = context2d(canvas);
 
   ctx.translate(size / 2, size / 2);
   ctx.fillStyle = ctx.strokeStyle = "white";
@@ -55,7 +55,7 @@ function drawEmblem(emblem: Emblem): HTMLCanvasElement {
 
   switch (emblem) {
     case "star":
-      ctx.fill(new Path2D(sparklePath(40)));
+      fillPath(ctx, new Path2D(sparklePath(40)));
       break;
     case "moon":
       ctx.beginPath();
@@ -131,7 +131,13 @@ export function figure(
 ): Figure {
   const bin = new Bin();
   const group = new Group();
-  const cloakColor = p[CLOAK_TOKENS[avatar.cloak].slice(6) as ArtToken].clone();
+  const cloakToken = CLOAK_TOKENS[avatar.cloak].slice(6);
+
+  if (!isArtToken(cloakToken)) {
+    throw new Error(`Unknown cloak token ${cloakToken}`);
+  }
+
+  const cloakColor = p[cloakToken].clone();
   const cloak = standard(bin, cloakColor);
   const cloakDeep = standard(bin, cloakColor.clone().multiplyScalar(0.72));
   const skin = standard(bin, p.tent, { flat: false, roughness: 0.8 });
@@ -212,14 +218,14 @@ export function figure(
   }> = [];
 
   group.traverse((node) => {
-    const mat = (node as Mesh).material as Material | undefined;
+    if (!isMesh(node) || Array.isArray(node.material)) {
+      return;
+    }
 
-    if (mat && "color" in mat) {
-      const m = mat as MeshStandardMaterial | MeshBasicMaterial;
+    const m = node.material;
 
-      if (!tinted.some((t) => t.material === m)) {
-        tinted.push({ material: m, color: m.color.clone() });
-      }
+    if (isColorMaterial(m) && !tinted.some((t) => t.material === m)) {
+      tinted.push({ material: m, color: m.color.clone() });
     }
   });
   const grey = p["stone-shade"];

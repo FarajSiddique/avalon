@@ -53,10 +53,19 @@ const ART_TOKENS = [
 export type ArtToken = (typeof ART_TOKENS)[number];
 export type Palette = Record<ArtToken, Color>;
 
+/** True when `name` is one of the art tokens. */
+export function isArtToken(name: string): name is ArtToken {
+  return ART_TOKENS.some((token) => token === name);
+}
+
+function isComplete(colors: Partial<Palette>): colors is Palette {
+  return ART_TOKENS.every((token) => colors[token] !== undefined);
+}
+
 /** Resolve every art token on `el` into a colour (linear, as three wants). */
 export function readPalette(el: Element): Palette {
   const style = getComputedStyle(el);
-  const out = {} as Palette;
+  const out: Partial<Palette> = {};
 
   for (const token of ART_TOKENS) {
     const value = style.getPropertyValue(`--art-${token}`).trim();
@@ -71,6 +80,10 @@ export function readPalette(el: Element): Palette {
     }
 
     out[token] = color;
+  }
+
+  if (!isComplete(out)) {
+    throw new Error("The art palette is incomplete");
   }
 
   return out;

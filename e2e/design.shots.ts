@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { withoutWebGL } from "./no-webgl";
 import { TABLE_STEPS, designPaths } from "../src/design/directions";
 
 /**
@@ -133,26 +134,7 @@ for (const viewport of VIEWPORTS) {
     }
 
     test("12-no-webgl", async ({ page }) => {
-      // Make every WebGL context fail, as on a machine without it.
-      await page.addInitScript(() => {
-        const original = HTMLCanvasElement.prototype.getContext;
-
-        HTMLCanvasElement.prototype.getContext = function (
-          this: HTMLCanvasElement,
-          type: string,
-          ...rest: Array<unknown>
-        ) {
-          if (type.startsWith("webgl")) {
-            return null;
-          }
-
-          return (original as (...a: Array<unknown>) => unknown).call(
-            this,
-            type,
-            ...rest,
-          );
-        } as typeof original;
-      });
+      await withoutWebGL(page);
       await page.goto(paths.table("propose"));
       await expect(
         page.getByRole("heading", { name: "This game needs 3D graphics" }),

@@ -12,12 +12,14 @@ import {
   Matrix4,
   Mesh,
   PlaneGeometry,
+  type IUniform,
   Points,
   ShaderMaterial,
   SRGBColorSpace,
   Vector3,
 } from "three";
 import { sparklePath } from "../../art/seeded";
+import { at, bufferAttribute, context2d, fillPath } from "../guards";
 import { type Bin, fbm2, seededRandom } from "../kit";
 import type { Palette } from "../palette";
 import { standard } from "../props";
@@ -29,7 +31,7 @@ export function clearing(bin: Bin, p: Palette): Mesh {
   const geometry = new PlaneGeometry(180, 180, 90, 90).toNonIndexed();
 
   geometry.rotateX(-Math.PI / 2);
-  const pos = geometry.getAttribute("position") as BufferAttribute;
+  const pos = bufferAttribute(geometry, "position");
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -84,11 +86,11 @@ export function runeMap(bin: Bin): CanvasTexture {
   const canvas = document.createElement("canvas");
 
   canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = context2d(canvas);
 
   ctx.translate(size / 2, size / 2);
   ctx.fillStyle = "white";
-  ctx.fill(new Path2D(sparklePath(size * 0.42)));
+  fillPath(ctx, new Path2D(sparklePath(size * 0.42)));
   ctx.strokeStyle = "white";
   ctx.lineWidth = 5;
   ctx.beginPath();
@@ -135,14 +137,14 @@ export function constellations(
 
       points.push(v);
       starPos.push(v.x, v.y, v.z);
-      const t = tints[k % tints.length]!;
+      const t = at(tints, k % tints.length);
 
       starCol.push(t.r, t.g, t.b);
     }
 
     for (let i = 1; i < points.length; i++) {
-      const from = points[i - 1]!;
-      const to = points[i]!;
+      const from = at(points, i - 1);
+      const to = at(points, i);
 
       linePos.push(from.x, from.y, from.z, to.x, to.y, to.z);
     }
@@ -177,6 +179,7 @@ export function constellations(
     "color",
     new BufferAttribute(new Float32Array(starCol), 3),
   );
+  const starTime: IUniform<number> = { value: 0 };
   const starMat = bin.add(
     new ShaderMaterial({
       transparent: true,
@@ -184,7 +187,7 @@ export function constellations(
       blending: AdditiveBlending,
       vertexColors: true,
       uniforms: {
-        uTime: { value: 0 },
+        uTime: starTime,
         uSize: {
           value: (lite ? 9 : 11) * Math.min(window.devicePixelRatio || 1, 1.75),
         },
@@ -220,7 +223,7 @@ export function constellations(
     object: group,
     update(time: number) {
       group.rotation.y = time * 0.012;
-      starMat.uniforms.uTime!.value = time;
+      starTime.value = time;
       lineMat.opacity = 0.28 + 0.1 * Math.sin(time * 0.4);
     },
   };
@@ -231,6 +234,7 @@ export function moonbeam(bin: Bin, p: Palette) {
   const geometry = bin.add(new CylinderGeometry(1.2, 4.8, 44, 48, 1, true));
 
   geometry.translate(0, 22, 0);
+  const beamTime: IUniform<number> = { value: 0 };
   const material = bin.add(
     new ShaderMaterial({
       transparent: true,
@@ -240,7 +244,7 @@ export function moonbeam(bin: Bin, p: Palette) {
       fog: false,
       uniforms: {
         uColor: { value: p.moon.clone().lerp(p["star-blue"], 0.5) },
-        uTime: { value: 0 },
+        uTime: beamTime,
       },
       vertexShader: /* glsl */ `
         varying vec3 vNormal; varying vec3 vView; varying float vY;
@@ -273,20 +277,21 @@ export function moonbeam(bin: Bin, p: Palette) {
   return {
     object: mesh,
     update(time: number) {
-      material.uniforms.uTime!.value = time;
+      beamTime.value = time;
     },
   };
 }
 
 /** Now and then a shooting star crosses the dome. */
 export function shootingStar(bin: Bin, p: Palette) {
+  const life: IUniform<number> = { value: 0 };
   const material = bin.add(
     new ShaderMaterial({
       transparent: true,
       depthWrite: false,
       blending: AdditiveBlending,
       fog: false,
-      uniforms: { uColor: { value: p.star.clone() }, uLife: { value: 0 } },
+      uniforms: { uColor: { value: p.star.clone() }, uLife: life },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
         void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -334,7 +339,7 @@ export function shootingStar(bin: Bin, p: Palette) {
         return;
       }
 
-      material.uniforms.uLife!.value = t;
+      life.value = t;
       mesh.position.copy(from).addScaledVector(dir, t * 120);
       // The streak's long axis runs along its travel, its face to the centre.
       xAxis.copy(dir);

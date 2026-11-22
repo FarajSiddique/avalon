@@ -2,6 +2,7 @@ import {
   AdditiveBlending,
   CylinderGeometry,
   DoubleSide,
+  type IUniform,
   type Object3D,
   Mesh,
   MeshBasicMaterial,
@@ -11,6 +12,7 @@ import {
 } from "three";
 import { avatarKey } from "@/design/avatar";
 import { EmblemTextures, figure, type Figure } from "./avatar";
+import { at as nth } from "./guards";
 import type { Bin } from "./kit";
 import type { Palette } from "./palette";
 import type { TablePlayer } from "./types";
@@ -82,6 +84,8 @@ export class Seating {
   private ringGeo: RingGeometry;
   private ringMats: Array<MeshBasicMaterial> = [];
   private columns: Array<Mesh> = [];
+  /** Each column's own light level, the uniform of its cloned material. */
+  private columnLevels: Array<IUniform<number>> = [];
   private rings: Array<Mesh> = [];
   private first = true;
   /** Count of figures moved out of your seat, for their keys. */
@@ -123,13 +127,18 @@ export class Seating {
     this.ringGeo = bin.add(new RingGeometry(0.62, 0.78, 40));
     angles.forEach((a) => {
       const at = new Vector3(Math.cos(a) * STAND, 0.04, Math.sin(a) * STAND);
-      const column = new Mesh(this.columnGeo, this.columnMat.clone());
+      const columnMaterial = this.columnMat.clone();
+      const level: IUniform<number> = { value: 0 };
 
-      bin.add(column.material as ShaderMaterial);
+      columnMaterial.uniforms.uLevel = level;
+      const column = new Mesh(this.columnGeo, columnMaterial);
+
+      bin.add(columnMaterial);
       column.position.copy(at);
       column.visible = false;
       parent.add(column);
       this.columns.push(column);
+      this.columnLevels.push(level);
       const ringMat = bin.add(
         new MeshBasicMaterial({
           color: p.gold.clone().multiplyScalar(1.6),
@@ -267,7 +276,7 @@ export class Seating {
 
   private place(player: TablePlayer, seat: number): Figure {
     const made = figure(this.p, player.avatar, this.emblems);
-    const a = this.angles[seat]!;
+    const a = nth(this.angles, seat);
 
     made.group.position.set(Math.cos(a) * STAND, 0, Math.sin(a) * STAND);
     made.group.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a));
@@ -339,8 +348,9 @@ export class Seating {
 
     this.angles.forEach((_, i) => {
       const seat = bySeat.get(i);
-      const column = this.columns[i]!;
-      const ringMat = this.ringMats[i]!;
+      const column = nth(this.columns, i);
+      const level = nth(this.columnLevels, i);
+      const ringMat = nth(this.ringMats, i);
 
       if (!seat) {
         column.visible = false;
@@ -356,11 +366,11 @@ export class Seating {
       const flash = t > 0 && t < 1 ? Math.sin(t * Math.PI) : 0;
 
       column.visible = flash > 0.01;
-      (column.material as ShaderMaterial).uniforms.uLevel!.value = flash * 0.55;
+      level.value = flash * 0.55;
       const { ready, connected } = seat.player;
       const pulse = 0.85 + 0.15 * Math.sin(time * 2 + seat.phase);
       const look = this.ringLook?.(seat.player.id);
-      const ring = this.rings[i]!;
+      const ring = nth(this.rings, i);
 
       if (look) {
         ringMat.opacity = look.level * (0.88 + 0.12 * pulse) * t;
@@ -396,7 +406,7 @@ export class Seating {
 
     g.position.y = risen(eased) + bob;
     g.scale.setScalar(Math.max(0.001, SCALE * Math.min(1.05, eased)));
-    const a = this.angles[seat.seat]!;
+    const a = nth(this.angles, seat.seat);
 
     g.rotation.y =
       Math.atan2(-Math.cos(a), -Math.sin(a)) +
@@ -430,7 +440,7 @@ export class Seating {
         continue;
       }
 
-      const a = this.angles[seat.seat]!;
+      const a = nth(this.angles, seat.seat);
 
       out.push({
         id: seat.player.id,

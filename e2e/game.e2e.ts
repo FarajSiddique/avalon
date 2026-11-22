@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { withoutWebGL } from "./no-webgl";
 
 // Software WebGL, so the 3D Star Table renders in headless runs. Only these
 // files: it slows every other page's painting.
@@ -30,29 +31,6 @@ function watchErrors(page: Page): Array<string> {
   });
 
   return errors;
-}
-
-/** Make every WebGL context fail, as on a machine without it. */
-async function withoutWebGL(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
-
-    HTMLCanvasElement.prototype.getContext = function (
-      this: HTMLCanvasElement,
-      type: string,
-      ...rest: Array<unknown>
-    ) {
-      if (type.startsWith("webgl")) {
-        return null;
-      }
-
-      return (original as (...a: Array<unknown>) => unknown).call(
-        this,
-        type,
-        ...rest,
-      );
-    } as typeof original;
-  });
 }
 
 const stageOf = (page: Page): Locator => page.locator("[data-stage-host]");
@@ -161,15 +139,13 @@ test("one canvas carries the table from the lobby to the role card to the round"
   await page.evaluate(() => {
     const canvas = document.querySelector("[data-stage-host] canvas");
 
-    (window as unknown as { e2eCanvas: Element | null }).e2eCanvas = canvas;
+    canvas?.setAttribute("data-e2e-original", "");
   });
   const sameCanvas = () =>
     page.evaluate(() => {
       const canvas = document.querySelector("[data-stage-host] canvas");
-      const kept = (window as unknown as { e2eCanvas?: Element | null })
-        .e2eCanvas;
 
-      return canvas !== null && canvas === kept;
+      return canvas?.hasAttribute("data-e2e-original") ?? false;
     });
 
   const nav = page.getByRole("navigation", { name: "Prototype navigation" });
@@ -721,8 +697,6 @@ test("with reduced motion, the quest result shows every card at once", async ({
   await page.addInitScript(() => {
     const seen: Array<number> = [];
 
-    (window as unknown as { e2eFaces: Array<number> }).e2eFaces = seen;
-
     const sample = () => {
       const up = document.querySelectorAll(
         'main[data-step=result] [data-face="up"]',
@@ -730,6 +704,7 @@ test("with reduced motion, the quest result shows every card at once", async ({
 
       if (seen.at(-1) !== up) {
         seen.push(up);
+        document.documentElement.dataset.e2eFaces = seen.join(",");
       }
 
       requestAnimationFrame(sample);
@@ -746,9 +721,10 @@ test("with reduced motion, the quest result shows every card at once", async ({
   await expect(cards.locator("li", { hasText: "Success" })).toHaveCount(2);
   await expect(cards.locator("li", { hasText: "Fail" })).toHaveCount(1);
   await expect(page.getByText("Quest failed")).toBeVisible();
-  const faces = await page.evaluate(
-    () => (window as unknown as { e2eFaces: Array<number> }).e2eFaces,
+  const facesSeen = await page.evaluate(
+    () => document.documentElement.dataset.e2eFaces ?? "",
   );
+  const faces = facesSeen.split(",").map(Number);
 
   expect(faces).toContain(3);
   expect(faces.filter((n) => n !== 0 && n !== 3)).toEqual([]);

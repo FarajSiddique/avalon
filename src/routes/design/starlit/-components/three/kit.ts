@@ -16,13 +16,14 @@ import {
   SpriteMaterial,
   SRGBColorSpace,
   type Camera,
+  type IUniform,
   type PerspectiveCamera,
-  type Material,
   type Object3D,
   type Texture,
   Vector3,
 } from "three";
 import { seededRandom } from "../art/seeded";
+import { at, context2d } from "./guards";
 import type { Palette } from "./palette";
 import type { Layout } from "./types";
 
@@ -106,6 +107,15 @@ export function flicker(t: number, seed = 0): number {
 
 /* ---------- resources ---------- */
 
+function isDisposable(value: unknown): value is { dispose(): void } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "dispose" in value &&
+    typeof value.dispose === "function"
+  );
+}
+
 /** Collects disposables so a scene can free everything in one call. */
 export class Bin {
   private items: Array<{ dispose(): void }> = [];
@@ -118,18 +128,20 @@ export class Bin {
   /** Track the geometry and material(s) of every mesh under `root`. */
   addTree(root: Object3D): void {
     root.traverse((node) => {
-      const n = node as Partial<Mesh>;
+      const geometry: unknown = "geometry" in node ? node.geometry : undefined;
+      const material: unknown = "material" in node ? node.material : undefined;
+      const materials: Array<unknown> = Array.isArray(material)
+        ? material
+        : [material];
 
-      if (n.geometry) {
-        this.add(n.geometry);
+      if (isDisposable(geometry)) {
+        this.add(geometry);
       }
 
-      const mat = n.material as Material | Array<Material> | undefined;
-
-      if (Array.isArray(mat)) {
-        mat.forEach((m) => this.add(m));
-      } else if (mat) {
-        this.add(mat);
+      for (const m of materials) {
+        if (isDisposable(m)) {
+          this.add(m);
+        }
       }
     });
   }
@@ -149,7 +161,7 @@ export function glowTexture(bin: Bin, falloff = 2.2): Texture {
   const canvas = document.createElement("canvas");
 
   canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = context2d(canvas);
   const image = ctx.createImageData(size, size);
 
   for (let y = 0; y < size; y++) {
@@ -296,7 +308,7 @@ export function starField(
       [Math.cos(angle) * r * radius, y * radius, Math.sin(angle) * r * radius],
       i * 3,
     );
-    const tint = tints[Math.floor(random() * tints.length)]!;
+    const tint = at(tints, Math.floor(random() * tints.length));
 
     colors.set([tint.r, tint.g, tint.b], i * 3);
     const big = random() > 0.93;
@@ -312,6 +324,7 @@ export function starField(
   geometry.setAttribute("position", new BufferAttribute(positions, 3));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.setAttribute("extra", new BufferAttribute(extra, 2));
+  const twinkleTime: IUniform<number> = { value: 0 };
   const material = bin.add(
     new ShaderMaterial({
       transparent: true,
@@ -319,7 +332,7 @@ export function starField(
       blending: AdditiveBlending,
       vertexColors: true,
       uniforms: {
-        uTime: { value: 0 },
+        uTime: twinkleTime,
         uSize: {
           value:
             (options.size ?? 2.2) *
@@ -363,7 +376,7 @@ export function starField(
   return {
     object,
     update(time) {
-      material.uniforms.uTime!.value = time;
+      twinkleTime.value = time;
     },
   };
 }
@@ -426,20 +439,24 @@ export function flame(bin: Bin, p: Palette, height = 1): Animated {
       `,
     }),
   );
-  const tongues: Array<Mesh> = [];
+  const tongues: Array<{ mesh: Mesh; time: IUniform<number> }> = [];
 
   for (const [w, h, x, z] of [
     [1.15, 1.0, 0, 0],
     [0.8, 0.8, 0.22, 0.12],
     [0.75, 0.75, -0.24, -0.08],
   ] as const) {
-    const mesh = new Mesh(geometry, material.clone());
+    const tongueMaterial = material.clone();
+    const time: IUniform<number> = { value: 0 };
 
-    bin.add(mesh.material as Material);
+    tongueMaterial.uniforms.uTime = time;
+    const mesh = new Mesh(geometry, tongueMaterial);
+
+    bin.add(tongueMaterial);
     mesh.scale.set(w * height, h * height, 1);
     mesh.position.set(x * height, 0, z * height);
     mesh.renderOrder = 5;
-    tongues.push(mesh);
+    tongues.push({ mesh, time });
     group.add(mesh);
   }
 
@@ -450,10 +467,8 @@ export function flame(bin: Bin, p: Palette, height = 1): Animated {
     object: group,
     update(time, _dt, camera) {
       camera.getWorldPosition(eye);
-      tongues.forEach((mesh, i) => {
-        const m = mesh.material as ShaderMaterial;
-
-        m.uniforms.uTime!.value = time + i * 3.7;
+      tongues.forEach(({ mesh, time: tongueTime }, i) => {
+        tongueTime.value = time + i * 3.7;
         // Face the camera, turning about the vertical only.
         mesh.getWorldPosition(world);
         mesh.lookAt(eye.x, world.y, eye.z);
@@ -507,6 +522,7 @@ export function motes(
   geometry.setAttribute("position", new BufferAttribute(base, 3));
   geometry.setAttribute("seed", new BufferAttribute(seeds, 2));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
+  const particleTime: IUniform<number> = { value: 0 };
   const material = bin.add(
     new ShaderMaterial({
       transparent: true,
@@ -514,7 +530,7 @@ export function motes(
       blending: AdditiveBlending,
       vertexColors: true,
       uniforms: {
-        uTime: { value: 0 },
+        uTime: particleTime,
         uRise: { value: options.rise },
         uLife: { value: options.life },
         uWander: { value: options.wander ?? 0.4 },
@@ -562,7 +578,7 @@ export function motes(
   return {
     object: points,
     update(time) {
-      material.uniforms.uTime!.value = time;
+      particleTime.value = time;
     },
   };
 }
@@ -573,7 +589,7 @@ export function puffTexture(bin: Bin, seed = 5): Texture {
   const canvas = document.createElement("canvas");
 
   canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = context2d(canvas);
   const random = seededRandom(seed);
 
   for (let i = 0; i < 14; i++) {

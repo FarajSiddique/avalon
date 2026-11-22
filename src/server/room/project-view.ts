@@ -20,7 +20,7 @@ import type { RoomState } from "./state";
 function seatViews(
   state: RoomState,
   connected: ReadonlySet<PlayerId>,
-): SeatView[] {
+): Array<SeatView> {
   return state.players.map((p) => ({
     id: p.id,
     name: p.name,
@@ -33,22 +33,28 @@ function seatViews(
 function startBlockers(
   state: RoomState,
   connected: ReadonlySet<PlayerId>,
-): StartBlocker[] {
-  const blockers: StartBlocker[] = [];
+): Array<StartBlocker> {
+  const blockers: Array<StartBlocker> = [];
+
   if (state.players.length < MIN_PLAYERS) {
     blockers.push({
       kind: "too_few_players",
       needed: MIN_PLAYERS - state.players.length,
     });
   }
+
   const away = state.players.filter((p) => !connected.has(p.id));
+
   if (away.length > 0) {
     blockers.push({ kind: "disconnected", playerIds: away.map((p) => p.id) });
   }
+
   const notReady = state.players.filter((p) => !p.ready);
+
   if (notReady.length > 0) {
     blockers.push({ kind: "not_ready", playerIds: notReady.map((p) => p.id) });
   }
+
   return blockers;
 }
 
@@ -72,5 +78,6 @@ export function projectView(
     you: { id: viewerId, isHost: viewerId === state.hostId },
     startBlockers: startBlockers(state, connected),
   };
+
   return view;
 }

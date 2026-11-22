@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play, type CueHandle } from "@/client/sound";
 import { useHoldToReveal } from "@/client/use-hold-to-reveal";
 import { Billow, type Lobe } from "../art/cloud";
@@ -20,17 +21,25 @@ const STARS = makeStars({
  * a little less far toward the middle, like stage curtains. The right bank
  * is the same drawing mirrored.
  */
-function bank(x: number, radius: number, step: number, seed: number): Lobe[] {
+function bank(
+  x: number,
+  radius: number,
+  step: number,
+  seed: number,
+): Array<Lobe> {
   const random = seededRandom(seed);
-  const lobes: Lobe[] = [];
+  const lobes: Array<Lobe> = [];
+
   for (let y = -24, index = 0; y < 640; y += step, index += 1) {
     const small = index % 2 === 1;
+
     lobes.push([
       round(x + (small ? 16 : -6) + random() * 8),
       round(y + random() * 10),
       round(radius * (small ? 0.78 : 1) + random() * 6),
     ]);
   }
+
   return lobes;
 }
 
@@ -94,30 +103,36 @@ function CloudBank({ side }: { side: "left" | "right" }) {
  * Sound for the card. Opening plays the clouds and the constellation (the
  * same for every role, so a neighbour learns nothing); letting go stops the
  * constellation and plays the clouds closing.
+ *
+ * The clouds are one-shots, played from the hold's own handlers
+ * (`onReveal` and `onHide`), so each opening and closing sounds once.
  */
-export function useCardSound(open: boolean): void {
-  // Start from the first value, so mounting already open makes no sound.
-  const wasOpen = useRef(open);
-  const stars = useRef<CueHandle | null>(null);
-  useEffect(() => {
-    if (open === wasOpen.current) return;
-    wasOpen.current = open;
-    if (open) {
-      play("clouds-part");
-      stars.current = play("constellation");
-    } else {
-      stars.current?.stop();
-      stars.current = null;
-      play("clouds-close");
-    }
-  }, [open]);
-  useEffect(
-    () => () => {
-      // Hidden or gone: never leave the stars ringing.
-      stars.current?.stop();
-    },
-    [],
+export function openClouds(): void {
+  play("clouds-part");
+}
+
+export function closeClouds(): void {
+  play("clouds-close");
+}
+
+/**
+ * The constellation rings for as long as the card is open. Holding it is a
+ * subscription: it starts after the commit that opens the card and stops
+ * when the card closes or goes (unmounting while held stays quiet, with no
+ * clouds closing).
+ */
+export function useCardStars(open: boolean): void {
+  useSyncExternalStore(
+    open ? holdStars : noSubscription,
+    noSnapshot,
+    noSnapshot,
   );
+}
+
+function holdStars(): () => void {
+  const stars: CueHandle = play("constellation");
+
+  return () => stars.stop();
 }
 
 /**
@@ -134,12 +149,17 @@ export function SkyCard({
   children: ReactNode;
   onHold?: () => void;
 }) {
-  const hold = useHoldToReveal();
+  // Told from the press itself, each time it opens or closes the card.
+  const hold = useHoldToReveal({
+    onReveal: () => {
+      openClouds();
+      onHold?.();
+    },
+    onHide: closeClouds,
+  });
   const revealed = hold.revealed;
-  useCardSound(revealed);
-  useEffect(() => {
-    if (revealed) onHold?.();
-  }, [revealed, onHold]);
+
+  useCardStars(revealed);
 
   return (
     <button

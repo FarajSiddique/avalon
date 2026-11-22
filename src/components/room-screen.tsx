@@ -54,7 +54,10 @@ export function RoomScreen({ code }: { code: RoomCode }) {
             event.preventDefault();
             const value = new FormData(event.currentTarget).get("name");
             const name = normalizeName(typeof value === "string" ? value : "");
-            if (name) room.join(name);
+
+            if (name) {
+              room.join(name);
+            }
           }}
         >
           <label htmlFor={nameId} className="block text-sm font-medium">

@@ -4,12 +4,15 @@
  */
 export function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
+
   return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
+    state = (state + 0x6d_2b_79_f5) >>> 0;
     let t = state;
+
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -57,9 +60,10 @@ export function makeStars({
   height,
   topBias = 1.35,
   twinkleEvery = 5,
-}: StarFieldOptions): Star[] {
+}: StarFieldOptions): Array<Star> {
   const random = seededRandom(seed);
-  const stars: Star[] = [];
+  const stars: Array<Star> = [];
+
   for (let i = 0; i < count; i += 1) {
     const size = random();
     const toneRoll = random();
@@ -72,6 +76,7 @@ export function makeStars({
           : toneRoll < 0.92
             ? "pink"
             : "amber";
+
     stars.push({
       x: round(random() * width),
       y: round(random() ** topBias * height),
@@ -88,6 +93,7 @@ export function makeStars({
           : null,
     });
   }
+
   return stars;
 }
 
@@ -95,5 +101,6 @@ export function makeStars({
 export function sparklePath(reach: number): string {
   const r = round(reach);
   const w = round(reach * 0.16);
+
   return `M0 ${-r}Q${w} ${-w} ${r} 0Q${w} ${w} 0 ${r}Q${-w} ${w} ${-r} 0Q${-w} ${-w} 0 ${-r}Z`;
 }

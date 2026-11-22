@@ -3,9 +3,11 @@
  * nothing else: the browser never computes game state on its own.
  */
 
+import type { StoreApi } from "zustand/vanilla";
 import type { ProtocolError } from "@/shared/protocol";
 import type { RoomCode, RoomView } from "@/shared/views";
 import { RoomConnection } from "./connection";
+import { createDevStore } from "./dev-store";
 import { clearToken, loadToken, saveToken } from "./session";
 
 export type RoomStatus =
@@ -33,12 +35,20 @@ const initial: RoomSnapshot = {
   online: false,
 };
 
+/**
+ * The socket is open while anything is subscribed: the first subscriber
+ * opens it and the last one closes it, so a component reads the room with
+ * `useSyncExternalStore` and needs no effect. Closing waits a microtask,
+ * because React StrictMode unsubscribes and subscribes again in the same
+ * commit and that must not drop the socket.
+ */
 export class RoomClient {
-  private snapshot: RoomSnapshot = initial;
-  private readonly listeners = new Set<() => void>();
+  private readonly store: StoreApi<RoomSnapshot>;
   private readonly connection: RoomConnection;
+  private subscribers = 0;
 
   constructor(private readonly code: RoomCode) {
+    this.store = createDevStore<RoomSnapshot>(`room:${code}`, () => initial);
     this.connection = new RoomConnection(code, {
       onOpen: this.onOpen,
       onDrop: () => this.set({ online: false }),
@@ -51,22 +61,20 @@ export class RoomClient {
   }
 
   readonly subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
+    const unsubscribe = this.store.subscribe(listener);
+
+    this.subscribers += 1;
+    this.connection.start();
+
     return () => {
-      this.listeners.delete(listener);
+      unsubscribe();
+      this.subscribers -= 1;
+      queueMicrotask(this.stopIfUnused);
     };
   };
 
-  readonly getSnapshot = (): RoomSnapshot => this.snapshot;
+  readonly getSnapshot = (): RoomSnapshot => this.store.getState();
   readonly getServerSnapshot = (): RoomSnapshot => initial;
-
-  start(): void {
-    this.connection.start();
-  }
-
-  stop(): void {
-    this.connection.stop();
-  }
 
   readonly join = (name: string): void => {
     this.set({ error: null });
@@ -84,20 +92,31 @@ export class RoomClient {
   };
 
   private set(patch: Partial<RoomSnapshot>): void {
-    this.snapshot = { ...this.snapshot, ...patch };
-    for (const listener of this.listeners) listener();
+    this.store.setState(patch);
   }
+
+  private readonly stopIfUnused = (): void => {
+    if (this.subscribers === 0) {
+      this.connection.stop();
+    }
+  };
 
   /** Runs on the first connect and on every reconnect: take the seat back. */
   private readonly onOpen = (): void => {
     this.set({ online: true });
     const token = loadToken(this.code);
+
     if (!token) {
       this.set({ status: "needs_name" });
+
       return;
     }
+
     void this.connection.request("room:resume", { token }).then((result) => {
-      if (result.ok || result.error.code === "OFFLINE") return;
+      if (result.ok || result.error.code === "OFFLINE") {
+        return;
+      }
+
       clearToken(this.code);
       this.set({ status: "needs_name", view: null });
     });

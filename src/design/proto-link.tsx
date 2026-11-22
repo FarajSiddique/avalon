@@ -12,5 +12,6 @@ type ProtoLinkProps = Omit<ComponentProps<"a">, "href"> & { href: string };
 
 export function ProtoLink({ href, ...rest }: ProtoLinkProps) {
   // The one cast: a prototype address is a string the route types cannot see.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- prototype-only untyped address, see above
   return <Link to={href as never} {...rest} />;
 }

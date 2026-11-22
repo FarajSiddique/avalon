@@ -17,6 +17,7 @@ interface KnowledgeText {
 function describeKnowledge(view: GameView): KnowledgeText {
   const { knowledge } = view.you;
   const inPlay = view.settings.optionalRoles;
+
   switch (knowledge.kind) {
     case "merlin":
       return {

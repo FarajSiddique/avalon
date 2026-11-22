@@ -1,5 +1,6 @@
 import { useId, type CSSProperties } from "react";
 import type { Alignment, Role } from "@/shared/roles";
+import { cssVars } from "@/design/css-vars";
 import { sparklePath } from "./seeded";
 
 type Point = readonly [x: number, y: number];
@@ -7,9 +8,9 @@ type Point = readonly [x: number, y: number];
 interface Figure {
   /** What the stars draw, for the caption. */
   name: string;
-  stars: readonly Point[];
+  stars: ReadonlyArray<Point>;
   /** Pairs of star indexes joined by a line. */
-  lines: readonly (readonly [number, number])[];
+  lines: ReadonlyArray<readonly [number, number]>;
   /** Index of the brightest star. */
   bright: number;
 }
@@ -119,16 +120,27 @@ const LINE_DRAW = 240;
  * reaches it, so the figure is traced star by star. The brightest star
  * lights last, as the full stop.
  */
-function timeline(figure: Figure): { lines: number[]; stars: number[] } {
+interface Timeline {
+  /** When each line starts drawing, in the figure's order. */
+  lines: Array<number>;
+  /** When each star lights, by index. */
+  stars: Array<number>;
+}
+
+function timeline(figure: Figure): Timeline {
   const stars = figure.stars.map(() => Number.POSITIVE_INFINITY);
   const lines = figure.lines.map(([from, to], index) => {
     const start = DRAW_START + index * LINE_GAP;
+
     stars[from] = Math.min(stars[from] ?? start, start);
     stars[to] = Math.min(stars[to] ?? start, start + LINE_DRAW - 40);
+
     return start;
   });
   const end = DRAW_START + figure.lines.length * LINE_GAP + LINE_DRAW;
+
   stars[figure.bright] = end;
+
   return {
     lines,
     stars: stars.map((ms) => (Number.isFinite(ms) ? ms : DRAW_START)),
@@ -136,7 +148,7 @@ function timeline(figure: Figure): { lines: number[]; stars: number[] } {
 }
 
 function delay(ms: number | undefined): CSSProperties {
-  return { "--at": `${ms ?? 0}ms` } as CSSProperties;
+  return cssVars({ "--at": `${ms ?? 0}ms` });
 }
 
 /**
@@ -156,6 +168,7 @@ export function Constellation({
   const id = useId();
   const bright = figure.stars[figure.bright];
   const times = timeline(figure);
+
   return (
     <svg
       viewBox="0 0 200 130"
@@ -169,7 +182,11 @@ export function Constellation({
       {figure.lines.map(([from, to], index) => {
         const a = figure.stars[from];
         const b = figure.stars[to];
-        if (!a || !b) return null;
+
+        if (!a || !b) {
+          return null;
+        }
+
         return (
           <path
             key={`${from}-${to}`}

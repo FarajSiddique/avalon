@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import type { LobbyView, SeatView } from "@/shared/views";
+import { cssVars } from "@/design/css-vars";
 import { IconCheck, IconCrown, IconMoon, IconRing } from "../icons";
 import { initialOf } from "../names";
 
@@ -13,6 +13,7 @@ function PlayerState({ player }: { player: SeatView }) {
       </span>
     );
   }
+
   if (!player.ready) {
     return (
       <span className="text-warning sl-pop sl-seq inline-flex items-center gap-1.5 text-base font-bold">
@@ -21,6 +22,7 @@ function PlayerState({ player }: { player: SeatView }) {
       </span>
     );
   }
+
   return (
     <span className="text-success sl-pop sl-seq sl-tick inline-flex items-center gap-1.5 text-base font-bold">
       <IconCheck size={18} />
@@ -30,7 +32,10 @@ function PlayerState({ player }: { player: SeatView }) {
 }
 
 function stateKey(player: SeatView): string {
-  if (!player.connected) return "away";
+  if (!player.connected) {
+    return "away";
+  }
+
   return player.ready ? "ready" : "waiting";
 }
 
@@ -74,7 +79,7 @@ function PlayerRow({
     <li className="border-line flex min-h-[3.75rem] items-center gap-3 border-t border-dashed py-2 first:border-t-0">
       <span
         aria-hidden="true"
-        style={{ "--i": index } as CSSProperties}
+        style={cssVars({ "--i": index })}
         className={`sl-avatar sl-seq font-display grid size-11 flex-none place-items-center rounded-full border-[1.5px] text-xl font-semibold ${
           player.connected
             ? "border-line-strong bg-well text-ink"

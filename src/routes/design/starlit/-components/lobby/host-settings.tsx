@@ -53,6 +53,7 @@ export function HostSettings({
         {OPTIONAL_ROLES.map((role) => {
           const on = view.settings.optionalRoles.includes(role);
           const tag = <AlignmentTag alignment={ROLES[role].alignment} />;
+
           return (
             <li
               key={role}

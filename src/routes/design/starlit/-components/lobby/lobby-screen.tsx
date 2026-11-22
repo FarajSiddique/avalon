@@ -1,19 +1,19 @@
 import {
-  useEffect,
+  useCallback,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
-  type CSSProperties,
 } from "react";
+import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play } from "@/client/sound";
 import { avatarFor, lookSummary } from "@/design/avatar";
 import { designPaths } from "@/design/directions";
 import { useAvatar } from "@/design/use-avatar";
-import { setYourName } from "@/design/your-name";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import type { LobbySearch } from "../../lobby";
+import { cssVars } from "@/design/css-vars";
 import { IconArrowRight, IconCheck, IconRing } from "../icons";
 import { SoundLink } from "../sound-link";
 import {
@@ -45,7 +45,9 @@ function useWide(): boolean {
   return useSyncExternalStore(
     (change) => {
       const query = window.matchMedia(WIDE);
+
       query.addEventListener("change", change);
+
       return () => query.removeEventListener("change", change);
     },
     () => window.matchMedia(WIDE).matches,
@@ -54,15 +56,24 @@ function useWide(): boolean {
 }
 
 /**
- * The moment the last blocker clears, the table plays one chord. Only on the
- * change: opening a lobby that can already start stays quiet.
+ * While `filling`, the next friend arrives after a pause. Each arrival
+ * changes `count`, which gives a new subscription and so the next timer.
  */
-function useEveryoneReadyChord(canStart: boolean): void {
-  const was = useRef(canStart);
-  useEffect(() => {
-    if (canStart && !was.current) play("all-ready");
-    was.current = canStart;
-  }, [canStart]);
+function useArrivals(
+  filling: boolean,
+  count: number,
+  arrive: () => void,
+): void {
+  const wait = useCallback(() => {
+    const timer = window.setTimeout(
+      arrive,
+      count === 1 ? ARRIVAL_MS * 1.4 : ARRIVAL_MS,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [count, arrive]);
+
+  useSyncExternalStore(filling ? wait : noSubscription, noSnapshot, noSnapshot);
 }
 
 /**
@@ -77,16 +88,11 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const reasons = startBlockerMessages(view);
   const isHost = view.you.isHost;
   const hostName = view.players.find((p) => p.isHost)?.name ?? "The host";
-  useEveryoneReadyChord(canStart);
-  // The game seats you under the name you typed (or as Wren, with none, so
-  // the lobby and the table always agree).
-  useEffect(() => {
-    setYourName(name ?? null);
-  }, [name]);
 
   // The table's open space, claimed from the shared stage.
   const stage = useStage();
   const focus = useRef<HTMLDivElement>(null);
+
   useStageSlot({ mode: "lobby", reveal: "whole", fade: 0 }, focus);
   const [arriveAt] = useState(() => (stage.pending ? AFTER_FLIGHT_MS : 0));
   const landed = stage.phase === "lobby";
@@ -94,7 +100,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   // Your figure rises once the camera has landed; everyone else is already
   // here (joining) or arrives one by one (a new room).
   const yours = useAvatar();
-  const players = useMemo<TablePlayer[]>(
+  const players = useMemo<Array<TablePlayer>>(
     () =>
       view.players
         .filter((p) => landed || p.id !== view.you.id)
@@ -109,19 +115,14 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
         })),
     [view.players, view.you.id, yours, landed],
   );
+
   useStagePlayers(players);
 
   const { arriveNext } = lobby;
   const filling = via === "create" && landed && lobby.toArrive > 0;
   const count = view.players.length;
-  useEffect(() => {
-    if (!filling) return;
-    const timer = window.setTimeout(
-      arriveNext,
-      count === 1 ? ARRIVAL_MS * 1.4 : ARRIVAL_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [filling, count, arriveNext]);
+
+  useArrivals(filling, count, arriveNext);
 
   // Sections start closed so the table shows; a wide screen has room to
   // open the player list. A section you open or close stays that way.
@@ -148,7 +149,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
       ? `Get ready, and ${hostName} starts the game.`
       : "Friends type this code to join you.";
   const arrive = (extra: number) =>
-    ({ "--arrive-at": `${arriveAt + extra}ms` }) as CSSProperties;
+    cssVars({ "--arrive-at": `${arriveAt + extra}ms` });
 
   return (
     <main

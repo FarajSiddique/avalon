@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { withoutWebGL } from "./no-webgl";
 
 // Software WebGL, so the 3D Star Table renders in headless runs. Only these
 // files: it slows every other page's painting.
@@ -19,32 +20,17 @@ test.use({ viewport: { width: 1440, height: 900 } });
 const STAGE_TIMEOUT = { timeout: 60_000 };
 
 /** Page errors and console errors, to assert none at the end of a test. */
-function watchErrors(page: Page): string[] {
-  const errors: string[] = [];
+function watchErrors(page: Page): Array<string> {
+  const errors: Array<string> = [];
+
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
+    if (m.type() === "error") {
+      errors.push(m.text());
+    }
   });
-  return errors;
-}
 
-/** Make every WebGL context fail, as on a machine without it. */
-async function withoutWebGL(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (
-      this: HTMLCanvasElement,
-      type: string,
-      ...rest: unknown[]
-    ) {
-      if (type.startsWith("webgl")) return null;
-      return (original as (...a: unknown[]) => unknown).call(
-        this,
-        type,
-        ...rest,
-      );
-    } as typeof original;
-  });
+  return errors;
 }
 
 const stageOf = (page: Page): Locator => page.locator("[data-stage-host]");
@@ -71,7 +57,11 @@ async function openOnStage(
 /** Move the mouse to the middle of an element and press the button down. */
 async function pressOn(page: Page, target: Locator): Promise<void> {
   const box = await target.boundingBox();
-  if (!box) throw new Error("Nothing to press");
+
+  if (!box) {
+    throw new Error("Nothing to press");
+  }
+
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
 }
@@ -83,6 +73,7 @@ const roleName = (page: Page, name = "Merlin"): Locator =>
 /** Hold the role card once and let go, so Continue unlocks. */
 async function holdCardOnce(page: Page): Promise<void> {
   const card = page.locator("main button.sl-skycard");
+
   await pressOn(page, card);
   await expect(card).toHaveAttribute("aria-pressed", "true");
   await page.mouse.up();
@@ -94,11 +85,14 @@ test("the role card on the stage is hidden until held, and Continue waits for a 
 }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
+
   await openOnStage(page, "/design/starlit/role/merlin", "role");
   const main = page.locator("main[data-role-stage]");
+
   await expect(main).toHaveAttribute("data-role-stage", "arrived");
 
   const card = main.locator("button.sl-skycard");
+
   await expect(card).toHaveAttribute("aria-pressed", "false");
   await expect(roleName(page)).toHaveCount(0);
   await expect(main).not.toContainText("The Sage's Hat");
@@ -134,6 +128,7 @@ test("one canvas carries the table from the lobby to the role card to the round"
 }) => {
   test.setTimeout(240_000);
   const errors = watchErrors(page);
+
   await page.goto("/design/starlit/lobby");
   await page.evaluate(() => {
     localStorage.clear();
@@ -143,17 +138,18 @@ test("one canvas carries the table from the lobby to the role card to the round"
   // Remember the canvas element itself, to compare after each move.
   await page.evaluate(() => {
     const canvas = document.querySelector("[data-stage-host] canvas");
-    (window as unknown as { e2eCanvas: Element | null }).e2eCanvas = canvas;
+
+    canvas?.setAttribute("data-e2e-original", "");
   });
   const sameCanvas = () =>
     page.evaluate(() => {
       const canvas = document.querySelector("[data-stage-host] canvas");
-      const kept = (window as unknown as { e2eCanvas?: Element | null })
-        .e2eCanvas;
-      return canvas !== null && canvas === kept;
+
+      return canvas?.hasAttribute("data-e2e-original") ?? false;
     });
 
   const nav = page.getByRole("navigation", { name: "Prototype navigation" });
+
   await nav.getByRole("link", { name: "Role", exact: true }).click();
   await expect(page.locator("main[data-role-stage]")).toBeVisible();
   await expect(stageOf(page)).toHaveAttribute(
@@ -185,6 +181,7 @@ test("the name you typed in the lobby is yours at the role card and the table", 
 }) => {
   test.setTimeout(240_000);
   const errors = watchErrors(page);
+
   await page.goto("/design/starlit/lobby");
   await page.evaluate(() => sessionStorage.clear());
   await openOnStage(page, "/design/starlit/lobby?name=Faraj", "lobby");
@@ -198,10 +195,15 @@ test("the name you typed in the lobby is yours at the role card and the table", 
 
   await openOnStage(page, "/design/starlit/table/propose", "table");
   const tag = page.locator('[data-tag="p-wren"]');
+
   await expect(tag).toContainText("Faraj");
   await expect(tag).toHaveAttribute("aria-label", /^Faraj \(you\)/);
   await expect(page.getByRole("list", { name: "Team" })).toContainText("Faraj");
-  for (const words of await tagWords(page)) expect(words).not.toContain("Wren");
+
+  for (const words of await tagWords(page)) {
+    expect(words).not.toContain("Wren");
+  }
+
   expect(errors).toEqual([]);
 });
 
@@ -210,6 +212,7 @@ test("the leader picks the team by tag and by the Team list", async ({
 }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
+
   // This checks picking, not motion. CI draws WebGL in software at about
   // one frame a second, so the camera's move in (and the tags riding it)
   // never holds still long enough to click. Reduced motion cuts to the shot.
@@ -240,6 +243,7 @@ test("the leader picks the team by tag and by the Team list", async ({
   await expect(round).toContainText("3 of 3 chosen");
   await expect(propose).toHaveCount(0);
   const ready = round.getByRole("link", { name: "Propose this team" });
+
   await expect(ready).toBeVisible();
 
   // The list takes him off again, and the tag follows.
@@ -262,7 +266,7 @@ test("the leader picks the team by tag and by the Team list", async ({
 });
 
 /** Each tag's words, seen and read aloud. */
-function tagWords(page: Page): Promise<string[]> {
+function tagWords(page: Page): Promise<Array<string>> {
   return page
     .locator("[data-tag]")
     .evaluateAll((tags) =>
@@ -277,9 +281,12 @@ test("votes stay hidden on the tags until all turn over at the reveal", async ({
 }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
+
   await openOnStage(page, "/design/starlit/table/vote", "table");
   const tags = page.locator("[data-tag]");
+
   await expect(tags).toHaveCount(7);
+
   for (const words of await tagWords(page)) {
     expect(words).not.toMatch(/approve|reject/i);
     expect(words).toMatch(/Voted|Waiting/);
@@ -289,6 +296,7 @@ test("votes stay hidden on the tags until all turn over at the reveal", async ({
   await page.getByRole("button", { name: "Approve" }).click();
   await expect(page.getByText("Your vote is locked")).toBeVisible();
   await expect(page.locator('[data-tag="p-wren"]')).toContainText("Voted");
+
   for (const words of await tagWords(page)) {
     expect(words).not.toMatch(/approve|reject/i);
   }
@@ -298,10 +306,13 @@ test("votes stay hidden on the tags until all turn over at the reveal", async ({
   const turned = page.locator(
     '[data-tag][data-status="approve"], [data-tag][data-status="reject"]',
   );
+
   await expect(turned).toHaveCount(7);
+
   for (const words of await tagWords(page)) {
     expect(words).toMatch(/Approve|Reject/);
   }
+
   await expect(page.locator('[data-tag][data-status="reject"]')).toHaveCount(2);
   expect(errors).toEqual([]);
 });
@@ -357,6 +368,7 @@ test("on a phone the round's sheet collapses to a peek and the table grows", asy
 }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
+
   await page.setViewportSize({ width: 390, height: 844 });
   await openOnStage(page, "/design/starlit/table/propose", "table");
   const main = page.locator("main[data-step=propose]");
@@ -370,8 +382,10 @@ test("on a phone the round's sheet collapses to a peek and the table grows", asy
 
   // The handle is a button: collapse without swiping.
   const hide = page.getByRole("button", { name: /hide the round/i });
+
   await expect(hide).toHaveAttribute("aria-expanded", "true");
   const box = await hide.boundingBox();
+
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
   // By keyboard: focus moves to the other handle, never to the page.
@@ -380,6 +394,7 @@ test("on a phone the round's sheet collapses to a peek and the table grows", asy
   await expect(main).toHaveAttribute("data-sheet", "collapsed");
   await expect(sheet).toBeHidden();
   const show = page.getByRole("button", { name: /show the round/i });
+
   await expect(show).toBeFocused();
   await expect(show).toHaveAttribute("aria-expanded", "false");
   await expect(show).toHaveAccessibleName(/Choose your team, 2 of 3 chosen/);
@@ -391,6 +406,7 @@ test("on a phone the round's sheet collapses to a peek and the table grows", asy
   await expect(main).toHaveAttribute("data-sheet", "open");
   await expect(hide).toBeFocused();
   const team = page.getByRole("list", { name: "Team" });
+
   await expect(team).toBeVisible();
   await expect.poll(slotHeight).toBeLessThan(openHeight + 2);
   await team.getByRole("button", { name: "Bram" }).click();
@@ -415,9 +431,11 @@ test("Your role on a table step shows the card only while held", async ({
 }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
+
   await openOnStage(page, "/design/starlit/table/quest", "table");
   const peek = page.locator("main button[data-role-peek]");
   const card = page.locator("[data-role-peek-card]");
+
   await expect(peek).toHaveAttribute("aria-pressed", "false");
   await expect(card).toHaveCount(0);
   await expect(roleName(page)).toHaveCount(0);
@@ -429,6 +447,7 @@ test("Your role on a table step shows the card only while held", async ({
   await expect(card).toContainText("Let go to hide it again.");
   // The name tags step back while the card is open, so none sit over it.
   const tags = page.locator("main .sl-stage-tags");
+
   await expect(tags).toBeHidden();
 
   await page.mouse.up();
@@ -444,6 +463,7 @@ test("without WebGL, the game screens say so and the landing form still works", 
 }) => {
   test.setTimeout(120_000);
   const errors = watchErrors(page);
+
   await withoutWebGL(page);
   const notice = page.getByRole("heading", {
     name: "This game needs 3D graphics",
@@ -461,6 +481,7 @@ test("without WebGL, the game screens say so and the landing form still works", 
       new Promise<number>((resolve) => {
         let n = 0;
         const observer = new MutationObserver((list) => (n += list.length));
+
         observer.observe(document.body, { childList: true, subtree: true });
         setTimeout(() => {
           observer.disconnect();
@@ -468,6 +489,7 @@ test("without WebGL, the game screens say so and the landing form still works", 
         }, 2000);
       }),
   );
+
   expect(changes).toBeLessThan(5);
   await page.getByLabel("Your name").fill("Faraj");
   await page.getByRole("link", { name: "Create a room" }).click();
@@ -488,6 +510,7 @@ test("without WebGL, the game screens say so and the landing form still works", 
 
   // A client move to another screen stays on the notice.
   const nav = page.getByRole("navigation", { name: "Prototype navigation" });
+
   await nav.getByRole("link", { name: "Role", exact: true }).click();
   await expect(page).toHaveURL(/\/role\/merlin/);
   await expect(notice).toBeVisible();
@@ -499,8 +522,11 @@ async function openSection(page: Page, name: string): Promise<void> {
   const summary = page.locator(
     `[data-section="${name}"] button[aria-expanded]`,
   );
-  if ((await summary.getAttribute("aria-expanded")) !== "true")
+
+  if ((await summary.getAttribute("aria-expanded")) !== "true") {
     await summary.click();
+  }
+
   await expect(summary).toHaveAttribute("aria-expanded", "true");
 }
 
@@ -508,7 +534,8 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
   page,
 }) => {
   test.setTimeout(240_000);
-  const errors: string[] = [];
+  const errors: Array<string> = [];
+
   page.on("pageerror", (e) => errors.push(String(e)));
   // This checks who is seated, not how they rise. Arrivals run on frame
   // time, and CI draws WebGL in software at about one frame a second, so
@@ -518,6 +545,7 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   const stage = page.locator("[data-stage-host]");
+
   await expect(stage.locator("canvas")).toBeVisible({ timeout: 60_000 });
   // Opened directly, the lobby is already settled: no flight.
   await expect(stage).toHaveAttribute("data-stage", "lobby");
@@ -535,6 +563,7 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
   // A look chosen in "Your look" is kept for next time.
   await openSection(page, "look");
   const helm = page.locator('[data-look="headwear:helm"]');
+
   await helm.click();
   await page.locator('[data-look="cloak:moss"]').click();
   await expect(helm).toHaveAttribute("aria-pressed", "true");
@@ -558,6 +587,7 @@ test("lobby sections open and close, and say their state when closed", async ({
   await page.goto("/design/starlit/lobby");
   const players = page.locator('[data-section="players"]');
   const summary = players.locator("button[aria-expanded]");
+
   // On a phone every section starts closed, so the table shows.
   await expect(summary).toHaveAttribute("aria-expanded", "false");
   await expect(summary).toContainText("7 of 10, 5 ready, 1 away");
@@ -582,12 +612,14 @@ test("creating a room flies the camera from the landing into a new lobby", async
   page,
 }) => {
   test.setTimeout(300_000);
-  const errors: string[] = [];
+  const errors: Array<string> = [];
+
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto("/design/starlit");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   const stage = page.locator("[data-stage-host]");
+
   await expect(stage).toHaveAttribute("data-stage", "hero", {
     timeout: 60_000,
   });
@@ -624,12 +656,14 @@ test("joining a room flies in to someone else's table as a guest", async ({
   page,
 }) => {
   test.setTimeout(300_000);
-  const errors: string[] = [];
+  const errors: Array<string> = [];
+
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto("/design/starlit");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   const stage = page.locator("[data-stage-host]");
+
   await expect(stage).toHaveAttribute("data-stage", "hero", {
     timeout: 60_000,
   });
@@ -656,32 +690,42 @@ test("with reduced motion, the quest result shows every card at once", async ({
 }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   // Sample how many cards are face up on every frame from the first paint:
   // the cards must go from none to all, never one at a time.
   await page.addInitScript(() => {
-    const seen: number[] = [];
-    (window as unknown as { e2eFaces: number[] }).e2eFaces = seen;
+    const seen: Array<number> = [];
+
     const sample = () => {
       const up = document.querySelectorAll(
         'main[data-step=result] [data-face="up"]',
       ).length;
-      if (seen.at(-1) !== up) seen.push(up);
+
+      if (seen.at(-1) !== up) {
+        seen.push(up);
+        document.documentElement.dataset.e2eFaces = seen.join(",");
+      }
+
       requestAnimationFrame(sample);
     };
+
     requestAnimationFrame(sample);
   });
   await openOnStage(page, "/design/starlit/table/result", "table");
   const cards = page.getByRole("list", { name: "The quest cards, shuffled" });
+
   await expect(cards.locator('[data-face="up"]')).toHaveCount(3);
   await expect(cards).not.toContainText("Face down");
   // The mock quest had two Success cards and one Fail, in shuffled order.
   await expect(cards.locator("li", { hasText: "Success" })).toHaveCount(2);
   await expect(cards.locator("li", { hasText: "Fail" })).toHaveCount(1);
   await expect(page.getByText("Quest failed")).toBeVisible();
-  const faces = await page.evaluate(
-    () => (window as unknown as { e2eFaces: number[] }).e2eFaces,
+  const facesSeen = await page.evaluate(
+    () => document.documentElement.dataset.e2eFaces ?? "",
   );
+  const faces = facesSeen.split(",").map(Number);
+
   expect(faces).toContain(3);
   expect(faces.filter((n) => n !== 0 && n !== 3)).toEqual([]);
   expect(errors).toEqual([]);

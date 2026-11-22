@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { RoomCode } from "@/shared/views";
 import { RoomClient, type RoomSnapshot } from "./room-client";
 
@@ -6,13 +6,9 @@ export interface UseRoom extends RoomSnapshot {
   join: (name: string) => void;
 }
 
+/** The room's latest state. Subscribing opens the socket; see RoomClient. */
 export function useRoom(code: RoomCode): UseRoom {
   const [client] = useState(() => new RoomClient(code));
-
-  useEffect(() => {
-    client.start();
-    return () => client.stop();
-  }, [client]);
 
   const snapshot = useSyncExternalStore(
     client.subscribe,

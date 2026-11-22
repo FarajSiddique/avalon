@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import {
   isEnabled,
   setEnabled,
@@ -6,17 +6,21 @@ import {
   stopAmbienceLoop,
   subscribe,
 } from "./engine";
+import { noSnapshot, noSubscription } from "../no-subscription";
 
 const serverSnapshot = () => false;
 
-/** The sound preference, for a toggle. False on the server and first paint. */
-export function useSoundToggle(): {
+export interface SoundToggle {
   enabled: boolean;
   setEnabled: (on: boolean) => void;
   toggle: () => void;
-} {
+}
+
+/** The sound preference, for a toggle. False on the server and first paint. */
+export function useSoundToggle(): SoundToggle {
   const enabled = useSyncExternalStore(subscribe, isEnabled, serverSnapshot);
   const toggle = useCallback(() => setEnabled(!isEnabled()), []);
+
   return { enabled, setEnabled, toggle };
 }
 
@@ -26,9 +30,18 @@ export function useSoundToggle(): {
  * effect clean-ups) and when sound is switched off.
  */
 export function useAmbience(on: boolean): void {
-  useEffect(() => {
-    if (!on) return;
-    startAmbienceLoop();
-    return () => stopAmbienceLoop();
-  }, [on]);
+  // Subscribing holds the loop and unsubscribing lets it go. The loop is
+  // reference counted, so StrictMode's extra subscribe is harmless. A new
+  // subscribe function when `on` changes makes React swap them.
+  useSyncExternalStore(
+    on ? holdAmbience : noSubscription,
+    noSnapshot,
+    noSnapshot,
+  );
+}
+
+function holdAmbience(): () => void {
+  startAmbienceLoop();
+
+  return stopAmbienceLoop;
 }

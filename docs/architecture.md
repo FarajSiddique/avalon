@@ -347,7 +347,7 @@ URL per phase would let the address bar disagree with the room.
   `protocol.ts` has no runtime dependencies, which keeps zod out of the
   browser bundle.
 
-ESLint enforces these (`no-restricted-imports` in `eslint.config.mjs`). Typed
+oxlint enforces these (`no-restricted-imports` in `oxlint.config.ts`). Typed
 routes add a second net: a link to a route that does not exist is a type
 error.
 
@@ -668,8 +668,11 @@ newer client against an older room fails politely.
   heartbeat so a phone that slept notices a dead socket, and turns requests
   into promises that always resolve (with an `OFFLINE` error if the socket is
   down). Nothing above it knows the transport is a WebSocket.
-- `src/client/room-client.ts` keeps the latest view and resumes the seat on
-  every open. `useRoom(code)` exposes it to React with `useSyncExternalStore`.
+- `src/client/room-client.ts` keeps the latest view in a Zustand vanilla
+  store and resumes the seat on every open. `useRoom(code)` exposes it to
+  React with `useSyncExternalStore`. Subscribing opens the socket and the
+  last unsubscribe closes it (a microtask later, so StrictMode's
+  unsubscribe and resubscribe does not drop it).
 - Screens are pure functions of the view: `stage` picks lobby or game,
   `phase.name` picks the game screen. The client holds no game state of its
   own beyond short-lived UI state (a selection in progress, an open sheet).
@@ -690,9 +693,41 @@ newer client against an older room fails politely.
   own form submission.
 - Sound is synthesised in the browser (`src/client/sound`), and stays off
   until the player turns it on.
-- No Zustand (one server-sent object is the whole store) and no shadcn/ui
-  (the chosen direction's components are bespoke; native elements such as
-  `<dialog>` cover the rest).
+- Client state lives in Zustand stores (`zustand/vanilla`, read with
+  `useSyncExternalStore` and an explicit server snapshot so the first paint
+  matches the server). The room store holds only the `RoomView` the server
+  sent. TanStack Query is not used: room state is pushed over the socket, not
+  fetched, and `createRoom` is a single server function call. (Decided 21
+  November 2026, replacing the earlier "no Zustand".)
+- Every store is made with `createDevStore` (`src/client/dev-store.ts`). In
+  development it adds the `devtools` middleware (Redux DevTools extension)
+  and lists the store, with its last 100 states, on
+  `window.__AVALON_STORES__`. A store is listed once it is first subscribed
+  to or written, so a copy React builds and throws away is never shown.
+  `pnpm stores <path>` prints them all from a headless browser. Production
+  builds leave the registry out and devtools off.
+- No shadcn/ui (the chosen direction's components are bespoke; native
+  elements such as `<dialog>` cover the rest).
+
+### Effects
+
+`useEffect`, `useLayoutEffect` and `useInsertionEffect` are banned (oxlint
+`no-restricted-imports` and `no-restricted-properties` in
+`oxlint.config.ts`). Instead:
+
+- **Subscribing to something outside React** (the socket, window or document
+  events, timers that track something, a store): `useSyncExternalStore`. The
+  subscribe function does the set-up and returns the teardown. It needs a
+  stable identity; a new one when an input changes re-runs it. Examples:
+  `useRoom`, `useAmbience`.
+- **Set-up and teardown tied to an element** (listeners, observers,
+  measuring, a WebGL canvas): a React 19 ref callback that returns a
+  clean-up, kept stable with `useCallback`. It runs before paint, so it also
+  replaces `useLayoutEffect`. Example: `useHoldToReveal`.
+- **Something that should happen because the user did something**: do it in
+  the event handler.
+- **State that follows a prop**: derive it while rendering, or reset it with
+  a `key`.
 
 ## Deployment
 
@@ -975,6 +1010,7 @@ Also answered on 16 November 2026:
 | Question                           | Answer                                                                                    |
 | ---------------------------------- | ----------------------------------------------------------------------------------------- |
 | Linter and formatter               | oxlint replaces ESLint. Prettier stays.                                                   |
+| Lint rules (21 November 2026)      | `@cloudflare/oxlint-config` with type-aware rules now (tsrs), not after TypeScript 7.     |
 | Starlit prototype during the build | Kept as a reference until Phase 4 ends. The other two directions go in Phase 0.           |
 | Deploys                            | Automatic on merge to `main`, with a preview for every pull request. Merging is approval. |
 | Roadmap                            | Tracked in Notion. The repo stays the source for how things are built.                    |

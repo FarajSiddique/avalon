@@ -1,10 +1,41 @@
 import { expect, test, type Page } from "@playwright/test";
+import { z } from "zod";
 
 /**
  * The real-time proof for this checkpoint: two separate browsers (separate
  * storage, like two phones) join one room through the real Worker and its room
  * object, and see each other arrive, leave and come back.
  */
+
+const stateMessage = z.object({
+  type: z.string(),
+  view: z.object({ you: z.object({ id: z.string() }) }).optional(),
+});
+
+/** Record the `you.id` of every state message a page receives. */
+const watch = (page: Page): Array<string> => {
+  const seen: Array<string> = [];
+
+  page.on("websocket", (socket) => {
+    if (!socket.url().includes("/api/socket/")) {
+      return;
+    }
+
+    socket.on("framereceived", (frame) => {
+      if (typeof frame.payload !== "string" || frame.payload === "pong") {
+        return;
+      }
+
+      const parsed = stateMessage.safeParse(JSON.parse(frame.payload));
+
+      if (parsed.success && parsed.data.type === "state" && parsed.data.view) {
+        seen.push(parsed.data.view.you.id);
+      }
+    });
+  });
+
+  return seen;
+};
 
 const players = (page: Page) => page.getByTestId("player");
 
@@ -32,6 +63,7 @@ test("two players see each other join, drop and return", async ({
   await host.getByRole("button", { name: "Create a room" }).click();
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
+
   await expect(host).toHaveURL(new RegExp(`/room/${code}$`));
   await expect(players(host)).toHaveCount(1);
   await expect(players(host).first()).toContainText("Wren (you)");
@@ -52,6 +84,7 @@ test("two players see each other join, drop and return", async ({
     await expect(players(page).nth(0)).toContainText("Wren");
     await expect(players(page).nth(1)).toContainText("Ansel");
   }
+
   await expect(players(guest).nth(1)).toContainText("Ansel (you)");
   await expect(players(host).nth(0)).toContainText("Host");
   await expectConnected(guest);
@@ -59,6 +92,7 @@ test("two players see each other join, drop and return", async ({
   // A name that is already taken is refused with a message.
   const strangerContext = await browser.newContext();
   const stranger = await strangerContext.newPage();
+
   await stranger.goto(`/room/${code}`);
   await field(stranger, "Your name").fill("wren");
   await stranger.getByRole("button", { name: "Join room" }).click();
@@ -74,6 +108,7 @@ test("two players see each other join, drop and return", async ({
 
   // Guest comes back in a new tab of the same browser: same seat, no name form.
   const guestAgain = await guestContext.newPage();
+
   await guestAgain.goto(`/room/${code}`);
   await expect(players(guestAgain)).toHaveCount(2);
   await expect(players(guestAgain).nth(1)).toContainText("Ansel (you)");
@@ -89,27 +124,6 @@ test("two players see each other join, drop and return", async ({
 });
 
 test("each browser is only ever sent its own view", async ({ browser }) => {
-  /** Record the `you.id` of every state message a page receives. */
-  const watch = (page: Page): string[] => {
-    const seen: string[] = [];
-    page.on("websocket", (socket) => {
-      if (!socket.url().includes("/api/socket/")) return;
-      socket.on("framereceived", (frame) => {
-        if (typeof frame.payload !== "string" || frame.payload === "pong") {
-          return;
-        }
-        const message = JSON.parse(frame.payload) as {
-          type: string;
-          view?: { you: { id: string } };
-        };
-        if (message.type === "state" && message.view) {
-          seen.push(message.view.you.id);
-        }
-      });
-    });
-    return seen;
-  };
-
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();
   const host = await hostContext.newPage();

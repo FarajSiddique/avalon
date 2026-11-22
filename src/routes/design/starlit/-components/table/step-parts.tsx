@@ -1,4 +1,11 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play, type CueHandle, type CueName } from "@/client/sound";
 import { designPaths, type TableStep } from "@/design/directions";
 import type { TeamDraft } from "@/design/use-team-draft";
@@ -11,27 +18,80 @@ import {
   IconSun,
 } from "../icons";
 import { SoundLink } from "../sound-link";
+import { cssVars } from "@/design/css-vars";
 import { ms } from "./result-timeline";
 
 const paths = designPaths();
 
 /**
  * Play cues as a step opens, on the audio clock. They stop if the step is
- * left (Next hides the old page, which runs this clean-up) or skipped.
+ * left (Next hides the old page, which unsubscribes) or skipped.
+ *
+ * The cues are fixed for each step, so the first render's are kept. Playing
+ * them is a subscription: React subscribes after the step commits and
+ * unsubscribes when it goes, exactly when an effect would run and clean up
+ * (StrictMode's extra subscribe stops the first set before the second plays).
  */
 export function useOpeningCues(
-  cues: readonly { cue: CueName; at: number }[],
-): React.RefObject<CueHandle[]> {
-  const handles = useRef<CueHandle[]>([]);
-  useEffect(() => {
+  cues: ReadonlyArray<{ cue: CueName; at: number }>,
+): RefObject<Array<CueHandle>> {
+  const handles = useRef<Array<CueHandle>>([]);
+  const [playCues] = useState(() => () => {
     handles.current = cues.map(({ cue, at }) =>
       play(cue, { delay: at / 1000 }),
     );
+
     return () => handles.current.forEach((handle) => handle.stop());
-    // The cues are fixed for each step.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
+
+  useSyncExternalStore(playCues, noSnapshot, noSnapshot);
+
   return handles;
+}
+
+/**
+ * A step's clock: timers from the moment the step is shown, one per mark.
+ * The snapshot is the latest mark reached (-1 before the first).
+ */
+class Timeline {
+  readonly marks: ReadonlyArray<number>;
+  reached = -1;
+
+  constructor(marks: ReadonlyArray<number>) {
+    this.marks = marks;
+  }
+
+  subscribe = (change: () => void): (() => void) => {
+    const timers = this.marks.map((at) =>
+      window.setTimeout(() => {
+        this.reached = Math.max(this.reached, at);
+        change();
+      }, at),
+    );
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  };
+
+  read = (): number => this.reached;
+}
+
+/**
+ * The latest of `marks` (milliseconds, fixed for the step) that has passed
+ * since the step was shown, or -1. The timers run while `running` is true:
+ * they start after the step commits and are cleared when it goes or stops
+ * running (a skip, reduced motion), as an effect's would be.
+ */
+export function useTimeline(
+  marks: ReadonlyArray<number>,
+  running: boolean,
+): number {
+  const [timeline] = useState(() => new Timeline(marks));
+
+  return useSyncExternalStore(
+    running ? timeline.subscribe : noSubscription,
+    timeline.read,
+    timeline.read,
+  );
 }
 
 export function ContinueLink({
@@ -83,7 +143,7 @@ export function LockedNote({
       role="status"
       aria-live="polite"
       className="bg-well border-line sl-rise sl-lock sl-seq flex items-center justify-center gap-2 rounded-md border px-4 py-3 text-[1.0625rem] font-bold"
-      style={{ "--at": ms(at) } as CSSProperties}
+      style={cssVars({ "--at": ms(at) })}
     >
       <IconLock size={20} className="text-accent" />
       {children}
@@ -91,10 +151,16 @@ export function LockedNote({
   );
 }
 
+interface CardFace {
+  label: string;
+  icon: typeof IconSun;
+  className: string;
+}
+
 export const CARD = {
   success: { label: "Success", icon: IconSun, className: "sl-card--success" },
   fail: { label: "Fail", icon: IconCrackedMoon, className: "sl-card--fail" },
-} as const satisfies Record<QuestCard, unknown>;
+} as const satisfies Record<QuestCard, CardFace>;
 
 /**
  * Toggle a pick with its sound: each pick is one note higher, and the last
@@ -106,14 +172,17 @@ export function pickWithSound(
 ): (id: PlayerId) => void {
   return (id) => {
     const count = draft.draftIds.length;
+
     if (draft.isPicked(id)) {
       play("unpick");
     } else if (count < teamSize) {
       play("pick", { index: count });
+
       if (count + 1 === teamSize) {
         play("team-complete", { delay: 0.2 });
       }
     }
+
     draft.toggle(id);
   };
 }

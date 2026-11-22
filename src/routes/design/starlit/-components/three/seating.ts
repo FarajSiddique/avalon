@@ -2,6 +2,7 @@ import {
   AdditiveBlending,
   CylinderGeometry,
   DoubleSide,
+  type IUniform,
   type Object3D,
   Mesh,
   MeshBasicMaterial,
@@ -11,6 +12,7 @@ import {
 } from "three";
 import { avatarKey } from "@/design/avatar";
 import { EmblemTextures, figure, type Figure } from "./avatar";
+import { at as nth } from "./guards";
 import type { Bin } from "./kit";
 import type { Palette } from "./palette";
 import type { TablePlayer } from "./types";
@@ -19,6 +21,7 @@ import type { TablePlayer } from "./types";
 export const STAND = 5.2;
 /** How much bigger than the 1.5 unit model each figure is drawn. */
 const SCALE = 2.05;
+
 /** Height of the name tag's anchor over a standing figure's feet. */
 export const HEAD = 2.15 * SCALE;
 /** Seconds for a figure to rise into place, or sink away. */
@@ -79,9 +82,11 @@ export class Seating {
   private columnMat: ShaderMaterial;
   private columnGeo: CylinderGeometry;
   private ringGeo: RingGeometry;
-  private ringMats: MeshBasicMaterial[] = [];
-  private columns: Mesh[] = [];
-  private rings: Mesh[] = [];
+  private ringMats: Array<MeshBasicMaterial> = [];
+  private columns: Array<Mesh> = [];
+  /** Each column's own light level, the uniform of its cloned material. */
+  private columnLevels: Array<IUniform<number>> = [];
+  private rings: Array<Mesh> = [];
   private first = true;
   /** Count of figures moved out of your seat, for their keys. */
   private ghosts = 0;
@@ -96,7 +101,7 @@ export class Seating {
     private p: Palette,
     bin: Bin,
     private parent: Object3D,
-    private angles: readonly number[],
+    private angles: ReadonlyArray<number>,
     private startSeat: number,
   ) {
     this.emblems = new EmblemTextures(bin);
@@ -122,12 +127,18 @@ export class Seating {
     this.ringGeo = bin.add(new RingGeometry(0.62, 0.78, 40));
     angles.forEach((a) => {
       const at = new Vector3(Math.cos(a) * STAND, 0.04, Math.sin(a) * STAND);
-      const column = new Mesh(this.columnGeo, this.columnMat.clone());
-      bin.add(column.material as ShaderMaterial);
+      const columnMaterial = this.columnMat.clone();
+      const level: IUniform<number> = { value: 0 };
+
+      columnMaterial.uniforms.uLevel = level;
+      const column = new Mesh(this.columnGeo, columnMaterial);
+
+      bin.add(columnMaterial);
       column.position.copy(at);
       column.visible = false;
       parent.add(column);
       this.columns.push(column);
+      this.columnLevels.push(level);
       const ringMat = bin.add(
         new MeshBasicMaterial({
           color: p.gold.clone().multiplyScalar(1.6),
@@ -138,6 +149,7 @@ export class Seating {
         }),
       );
       const ring = new Mesh(this.ringGeo, ringMat);
+
       ring.rotation.x = -Math.PI / 2;
       ring.position.copy(at);
       parent.add(ring);
@@ -147,12 +159,16 @@ export class Seating {
   }
 
   /** Who is at the table. Seats follow list order. */
-  set(players: readonly TablePlayer[]): void {
+  set(players: ReadonlyArray<TablePlayer>): void {
     const list = players.slice(0, this.angles.length);
     const keep = new Set(list.map((p) => p.id));
+
     for (const [id, seat] of this.seats) {
-      if (!keep.has(id)) seat.leaving = true;
+      if (!keep.has(id)) {
+        seat.leaving = true;
+      }
     }
+
     // Everyone staying keeps their seat. A newcomer takes the seat its place
     // in the list asks for when it is free, else the next free one round
     // the table, so two figures never share a seat (the lobby's guests
@@ -161,22 +177,34 @@ export class Seating {
     // in it moves to a free one.
     const kept = new Set<number>();
     const leavingSeats = new Set<number>();
-    for (const seat of this.seats.values())
+
+    for (const seat of this.seats.values()) {
       (seat.leaving ? leavingSeats : kept).add(seat.seat);
+    }
+
     const n = this.angles.length;
+
     const seatFor = (index: number, wanted = (this.startSeat + index) % n) => {
-      for (const avoid of [true, false])
+      for (const avoid of [true, false]) {
         for (let k = 0; k < n; k++) {
           const at = (wanted + k) % n;
-          if (!kept.has(at) && !(avoid && leavingSeats.has(at))) return at;
+
+          if (!kept.has(at) && !(avoid && leavingSeats.has(at))) {
+            return at;
+          }
         }
+      }
+
       return wanted;
     };
+
     list.forEach((player, index) => {
       const look = avatarKey(player.avatar);
       const existing = this.seats.get(player.id);
+
       if (existing && !existing.leaving) {
         existing.player = player;
+
         if (existing.look !== look) {
           // A new look swaps the figure in place, no arrival.
           this.parent.remove(existing.figure.group);
@@ -184,20 +212,26 @@ export class Seating {
           existing.figure = this.place(player, existing.seat);
           existing.look = look;
         }
+
         existing.figure.setAway(!player.connected);
+
         return;
       }
+
       if (existing) {
         this.parent.remove(existing.figure.group);
         existing.figure.dispose();
         this.seats.delete(player.id);
         leavingSeats.delete(existing.seat);
       }
+
       const wanted = (this.startSeat + index) % n;
+
       if (player.isYou) {
         const holder = [...this.seats.values()].find(
           (s) => !s.leaving && s.seat === wanted,
         );
+
         if (holder) {
           // The one in your seat sinks away there and rises at a free seat.
           this.seats.set(`${holder.player.id}\u0000${this.ghosts++}`, {
@@ -208,6 +242,7 @@ export class Seating {
           kept.delete(wanted);
           leavingSeats.add(wanted);
           const to = seatFor(index, (wanted + 1) % n);
+
           kept.add(to);
           holder.seat = to;
           holder.figure = this.place(holder.player, to);
@@ -216,10 +251,13 @@ export class Seating {
           holder.delay = 0;
         }
       }
+
       const seatIndex =
         player.isYou && !kept.has(wanted) ? wanted : seatFor(index);
+
       kept.add(seatIndex);
       const made = this.place(player, seatIndex);
+
       made.setAway(!player.connected);
       this.seats.set(player.id, {
         player,
@@ -238,11 +276,13 @@ export class Seating {
 
   private place(player: TablePlayer, seat: number): Figure {
     const made = figure(this.p, player.avatar, this.emblems);
-    const a = this.angles[seat]!;
+    const a = nth(this.angles, seat);
+
     made.group.position.set(Math.cos(a) * STAND, 0, Math.sin(a) * STAND);
     made.group.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a));
     made.group.scale.setScalar(0.001);
     this.parent.add(made.group);
+
     return made;
   }
 
@@ -252,6 +292,7 @@ export class Seating {
       seat.delay = 0;
       seat.arrive = seat.leaving ? 0 : 1;
     }
+
     this.sweep();
     this.pose(0);
   }
@@ -262,11 +303,14 @@ export class Seating {
         seat.delay = Math.max(0, seat.delay - dt);
         continue;
       }
+
       const step = dt / RISE;
+
       seat.arrive = seat.leaving
         ? Math.max(0, seat.arrive - step)
         : Math.min(1, seat.arrive + step);
     }
+
     this.sweep();
     this.pose(time);
   }
@@ -284,34 +328,50 @@ export class Seating {
 
   private pose(time: number): void {
     const bySeat = new Map<number, Seat>();
+
     for (const seat of this.seats.values()) {
       const there = bySeat.get(seat.seat);
-      if (!there || there.leaving) bySeat.set(seat.seat, seat);
+
+      if (!there || there.leaving) {
+        bySeat.set(seat.seat, seat);
+      }
     }
+
     this.anchorMap.clear();
+
     // A figure sinking away where a newcomer rises still sinks.
-    for (const seat of this.seats.values())
-      if (bySeat.get(seat.seat) !== seat) this.poseFigure(seat, time);
+    for (const seat of this.seats.values()) {
+      if (bySeat.get(seat.seat) !== seat) {
+        this.poseFigure(seat, time);
+      }
+    }
+
     this.angles.forEach((_, i) => {
       const seat = bySeat.get(i);
-      const column = this.columns[i]!;
-      const ringMat = this.ringMats[i]!;
+      const column = nth(this.columns, i);
+      const level = nth(this.columnLevels, i);
+      const ringMat = nth(this.ringMats, i);
+
       if (!seat) {
         column.visible = false;
         ringMat.opacity = 0;
+
         return;
       }
+
       const t = seat.arrive;
       const eased = this.poseFigure(seat, time);
       const g = seat.figure.group;
       // A column of light while rising, gone once standing.
       const flash = t > 0 && t < 1 ? Math.sin(t * Math.PI) : 0;
+
       column.visible = flash > 0.01;
-      (column.material as ShaderMaterial).uniforms.uLevel!.value = flash * 0.55;
+      level.value = flash * 0.55;
       const { ready, connected } = seat.player;
       const pulse = 0.85 + 0.15 * Math.sin(time * 2 + seat.phase);
       const look = this.ringLook?.(seat.player.id);
-      const ring = this.rings[i]!;
+      const ring = nth(this.rings, i);
+
       if (look) {
         ringMat.opacity = look.level * (0.88 + 0.12 * pulse) * t;
         ring.scale.setScalar(look.scale);
@@ -319,9 +379,10 @@ export class Seating {
         ringMat.opacity = !connected ? 0 : ready ? 0.75 * pulse * t : 0.18 * t;
         ring.scale.setScalar(1);
       }
+
       // The tag's anchor rises with the figure but leaves out its idle bob,
       // so a name tag holds still over a figure at rest.
-      if (t > 0.05)
+      if (t > 0.05) {
         this.anchorMap.set(
           seat.player.id,
           seat.head.set(
@@ -330,6 +391,7 @@ export class Seating {
             g.position.z,
           ),
         );
+      }
     });
   }
 
@@ -341,35 +403,45 @@ export class Seating {
     const eased = t >= 1 ? 1 : 1 + (k + 1) * (t - 1) ** 3 + k * (t - 1) ** 2;
     const g = seat.figure.group;
     const bob = Math.sin(time * 1.6 + seat.phase) * 0.025 * t;
+
     g.position.y = risen(eased) + bob;
     g.scale.setScalar(Math.max(0.001, SCALE * Math.min(1.05, eased)));
-    const a = this.angles[seat.seat]!;
+    const a = nth(this.angles, seat.seat);
+
     g.rotation.y =
       Math.atan2(-Math.cos(a), -Math.sin(a)) +
       Math.sin(time * 0.45 + seat.phase) * 0.18 * t;
+
     return eased;
   }
 
   /** Per seat stone: who is there, for its rune. */
   state(seatIndex: number): SeatState {
     for (const seat of this.seats.values()) {
-      if (seat.seat === seatIndex && !seat.leaving)
+      if (seat.seat === seatIndex && !seat.leaving) {
         return {
           present: true,
           ready: seat.player.ready,
           away: !seat.player.connected,
           arrive: seat.arrive,
         };
+      }
     }
+
     return { present: false, ready: false, away: false, arrive: 0 };
   }
 
   /** Every figure that is not leaving, in seat order. */
-  standing(): Standing[] {
-    const out: Standing[] = [];
+  standing(): Array<Standing> {
+    const out: Array<Standing> = [];
+
     for (const seat of this.seats.values()) {
-      if (seat.leaving) continue;
-      const a = this.angles[seat.seat]!;
+      if (seat.leaving) {
+        continue;
+      }
+
+      const a = nth(this.angles, seat.seat);
+
       out.push({
         id: seat.player.id,
         isYou: seat.player.isYou,
@@ -379,6 +451,7 @@ export class Seating {
         figure: seat.figure,
       });
     }
+
     return out.sort((x, y) => x.angle - y.angle);
   }
 
@@ -388,13 +461,21 @@ export class Seating {
 
   seated(): number {
     let n = 0;
-    for (const seat of this.seats.values())
-      if (!seat.leaving && seat.arrive >= 0.999) n++;
+
+    for (const seat of this.seats.values()) {
+      if (!seat.leaving && seat.arrive >= 0.999) {
+        n++;
+      }
+    }
+
     return n;
   }
 
   dispose(): void {
-    for (const seat of this.seats.values()) seat.figure.dispose();
+    for (const seat of this.seats.values()) {
+      seat.figure.dispose();
+    }
+
     this.seats.clear();
   }
 }

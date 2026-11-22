@@ -58,7 +58,7 @@ function seat(
 }
 
 /** Seat order is clockwise. Wren is the host and, in most views, "you". */
-const seatedPlayers: SeatView[] = [
+const seatedPlayers: Array<SeatView> = [
   seat(ids.wren, "Wren", { isHost: true }),
   seat(ids.ansel, "Ansel"),
   seat(ids.mira, "Mira"),
@@ -98,13 +98,13 @@ const quest3Team = [ids.wren, ids.mira, ids.bram];
 
 const everyone = seatedPlayers.map((p) => p.id);
 
-function votes(rejecting: PlayerId[]): ProposalRecord["votes"] {
+function votes(rejecting: Array<PlayerId>): ProposalRecord["votes"] {
   return Object.fromEntries(
     everyone.map((id) => [id, rejecting.includes(id) ? "reject" : "approve"]),
   );
 }
 
-const pastProposals: ProposalRecord[] = [
+const pastProposals: Array<ProposalRecord> = [
   {
     questIndex: 0,
     leaderId: ids.tobias,
@@ -145,13 +145,15 @@ export const voteReveal: ProposalRecord = {
 };
 
 /** Quest 3's cards, already shuffled, shown at the "result" step. */
-export const questReveal: {
+export interface MockQuestReveal {
   questIndex: number;
-  team: PlayerId[];
-  cards: QuestCard[];
+  team: Array<PlayerId>;
+  cards: Array<QuestCard>;
   failCount: number;
   outcome: "success" | "fail";
-} = {
+}
+
+export const questReveal: MockQuestReveal = {
   questIndex: 2,
   team: quest3Team,
   cards: ["success", "fail", "success"],
@@ -159,7 +161,7 @@ export const questReveal: {
   outcome: "fail",
 };
 
-const questsBefore: QuestView[] = [
+const questsBefore: Array<QuestView> = [
   {
     teamSize: 2,
     failsRequired: 1,
@@ -179,7 +181,7 @@ const questsBefore: QuestView[] = [
   { teamSize: 4, failsRequired: 1, status: "upcoming" },
 ];
 
-const questsAfter: QuestView[] = [
+const questsAfter: Array<QuestView> = [
   ...questsBefore.slice(0, 2),
   {
     teamSize: 3,
@@ -335,7 +337,7 @@ export function playerName(view: LobbyView | GameView, id: PlayerId): string {
 
 export function playerNames(
   view: LobbyView | GameView,
-  playerIds: readonly PlayerId[],
-): string[] {
+  playerIds: ReadonlyArray<PlayerId>,
+): Array<string> {
   return playerIds.map((id) => playerName(view, id));
 }

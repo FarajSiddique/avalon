@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { withoutWebGL } from "./no-webgl";
 import { TABLE_STEPS, designPaths } from "../src/design/directions";
 
 /**
@@ -35,7 +36,12 @@ const STAGE_TIMEOUT = { timeout: 90_000 };
 type Phase = "hero" | "lobby" | "role" | "table";
 
 const paths = designPaths();
-const SHOTS: { name: string; url: string; phase: Phase; hold?: boolean }[] = [
+const SHOTS: Array<{
+  name: string;
+  url: string;
+  phase: Phase;
+  hold?: boolean;
+}> = [
   { name: "01-landing", url: paths.landing, phase: "hero" },
   { name: "02-lobby", url: paths.lobby, phase: "lobby" },
   { name: "03-role-hidden", url: paths.role("merlin"), phase: "role" },
@@ -53,12 +59,16 @@ const SHOTS: { name: string; url: string; phase: Phase; hold?: boolean }[] = [
 ];
 
 /** Collect page and console errors, to assert none at the end. */
-function watchErrors(page: Page): string[] {
-  const errors: string[] = [];
+function watchErrors(page: Page): Array<string> {
+  const errors: Array<string> = [];
+
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "error") {
+      errors.push(message.text());
+    }
   });
+
   return errors;
 }
 
@@ -69,6 +79,7 @@ async function capture(page: Page, name: string, width: number) {
       document.documentElement.scrollWidth -
       document.documentElement.clientWidth,
   );
+
   expect(overflow, "horizontal overflow in px").toBeLessThanOrEqual(0);
   mkdirSync(OUT, { recursive: true });
   await page.screenshot({
@@ -90,8 +101,10 @@ for (const viewport of VIEWPORTS) {
       test(shot.name, async ({ page }) => {
         test.setTimeout(180_000);
         const errors = watchErrors(page);
+
         await page.goto(shot.url);
         const stage = page.locator("[data-stage-host]");
+
         await expect(stage.locator("canvas")).toHaveCount(1, STAGE_TIMEOUT);
         await expect(stage).toHaveAttribute(
           "data-stage",
@@ -99,14 +112,20 @@ for (const viewport of VIEWPORTS) {
           STAGE_TIMEOUT,
         );
         await page.evaluate(() => document.fonts.ready);
+
         if (shot.hold) {
           const card = page.locator("main button.sl-skycard");
           const box = await card.boundingBox();
-          if (!box) throw new Error("No role card");
+
+          if (!box) {
+            throw new Error("No role card");
+          }
+
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.mouse.down();
           await expect(card).toHaveAttribute("aria-pressed", "true");
         }
+
         // Let entrance motion settle so captures are comparable.
         await page.waitForTimeout(1500);
         await capture(page, shot.name, viewport.width);
@@ -115,22 +134,7 @@ for (const viewport of VIEWPORTS) {
     }
 
     test("12-no-webgl", async ({ page }) => {
-      // Make every WebGL context fail, as on a machine without it.
-      await page.addInitScript(() => {
-        const original = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function (
-          this: HTMLCanvasElement,
-          type: string,
-          ...rest: unknown[]
-        ) {
-          if (type.startsWith("webgl")) return null;
-          return (original as (...a: unknown[]) => unknown).call(
-            this,
-            type,
-            ...rest,
-          );
-        } as typeof original;
-      });
+      await withoutWebGL(page);
       await page.goto(paths.table("propose"));
       await expect(
         page.getByRole("heading", { name: "This game needs 3D graphics" }),

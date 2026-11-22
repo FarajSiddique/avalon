@@ -1,15 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ProtoLink as Link } from "@/design/proto-link";
-import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useId, useRef, useState, type MouseEvent } from "react";
 import { designPaths } from "@/design/directions";
 import {
   NAME_MAX_LENGTH,
   ROOM_CODE_LENGTH,
   normalizeRoomCode,
 } from "@/shared/constants";
+import type { LobbySearch } from "../lobby";
 import { IconArrowRight, IconStar } from "./icons";
 import { useStage } from "./stage/stage-context";
-import type { FlightPath } from "./three/types";
 
 const paths = designPaths();
 
@@ -28,25 +28,47 @@ export function LandingForm() {
   const navigate = useNavigate();
   const { depart, status } = useStage();
   const timer = useRef(0);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  // The form owns the pending navigation: when it leaves the page, so does
+  // the timer. Stable, so React attaches it once.
+  const owner = useCallback(() => () => window.clearTimeout(timer.current), []);
 
-  const go = (event: MouseEvent<HTMLAnchorElement>, via: FlightPath) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
+  const go = (
+    event: MouseEvent<HTMLAnchorElement>,
+    via: NonNullable<LobbySearch["via"]>,
+  ) => {
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.button !== 0
+    ) {
       return;
+    }
+
     event.preventDefault();
     // Without WebGL there is no camera to fly: go straight there.
     const still =
       status === "failed" ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (status !== "failed") depart(via);
+
+    if (status !== "failed") {
+      depart(via);
+    }
+
     window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
-    const search: Record<string, string> = { via };
-    if (name.trim()) search.name = name.trim();
-    if (via === "join" && code.length === ROOM_CODE_LENGTH) search.code = code;
+    const search: LobbySearch = { via };
+
+    if (name.trim()) {
+      search.name = name.trim();
+    }
+
+    if (via === "join" && code.length === ROOM_CODE_LENGTH) {
+      search.code = code;
+    }
+
     timer.current = window.setTimeout(
       () => {
-        // A prototype address the route types cannot see, as in ProtoLink.
-        void navigate({ to: paths.lobby as never, search: search as never });
+        void navigate({ to: paths.lobby, search });
       },
       still ? 0 : LEAVE_MS,
     );
@@ -54,6 +76,7 @@ export function LandingForm() {
 
   return (
     <form
+      ref={owner}
       className="flex flex-col gap-4"
       onSubmit={(event) => event.preventDefault()}
     >

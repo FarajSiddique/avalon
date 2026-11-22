@@ -28,7 +28,7 @@ export interface RoomState {
   code: RoomCode;
   hostId: PlayerId;
   /** Seat order. New players are appended. */
-  players: PlayerRecord[];
+  players: Array<PlayerRecord>;
   settings: GameSettings;
   createdAt: number;
   /** When the last seated socket left, or null while anyone is connected. */
@@ -67,12 +67,15 @@ function hashSecret(secret: string): string {
   return createHash("sha256").update(secret).digest("hex");
 }
 
-function newPlayer(
-  code: RoomCode,
-  name: string,
-  deps: RoomDeps,
-): { player: PlayerRecord; token: string } {
+/** A new seat, and the token that claims it (sent to that player only). */
+interface NewPlayer {
+  player: PlayerRecord;
+  token: string;
+}
+
+function newPlayer(code: RoomCode, name: string, deps: RoomDeps): NewPlayer {
   const secret = deps.newSecret();
+
   return {
     player: {
       id: deps.newId(),
@@ -92,6 +95,7 @@ export function createRoom(
 ): Seated {
   const { player, token } = newPlayer(code, hostName, deps);
   const now = deps.now();
+
   return {
     state: {
       code,
@@ -115,14 +119,19 @@ export function joinRoom(
   if (state.game !== null) {
     throw new RoomError("ROOM_IN_PROGRESS", "That game has already started.");
   }
+
   if (state.players.length >= MAX_PLAYERS) {
     throw new RoomError("ROOM_FULL", "That room is full.");
   }
+
   const wanted = name.toLocaleLowerCase();
+
   if (state.players.some((p) => p.name.toLocaleLowerCase() === wanted)) {
     throw new RoomError("NAME_TAKEN", "Someone in the room has that name.");
   }
+
   const { player, token } = newPlayer(state.code, name, deps);
+
   return {
     state: { ...state, players: [...state.players, player] },
     player,
@@ -133,13 +142,18 @@ export function joinRoom(
 /** The seat a token belongs to. Tokens look like `CODE.secret`. */
 export function findSeat(state: RoomState, token: string): PlayerRecord {
   const dot = token.indexOf(".");
+
   if (dot !== -1 && token.slice(0, dot) === state.code) {
     const hash = Buffer.from(hashSecret(token.slice(dot + 1)), "hex");
     const player = state.players.find((p) =>
       timingSafeEqual(Buffer.from(p.tokenHash, "hex"), hash),
     );
-    if (player) return player;
+
+    if (player) {
+      return player;
+    }
   }
+
   throw new RoomError(
     "SESSION_INVALID",
     "That seat no longer exists. Join the room again.",
@@ -155,6 +169,7 @@ export function withPresence(
   if (anyoneConnected) {
     return state.emptySince === null ? state : { ...state, emptySince: null };
   }
+
   return state.emptySince !== null ? state : { ...state, emptySince: now };
 }
 
@@ -170,5 +185,6 @@ export function nextExpiryCheck(
   const idleAt =
     state.emptySince === null ? Infinity : state.emptySince + EMPTY_ROOM_TTL_MS;
   const at = Math.min(tooOldAt, idleAt);
+
   return now >= at ? "expired" : at;
 }

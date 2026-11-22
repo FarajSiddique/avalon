@@ -1,5 +1,11 @@
 # Code Standards and CI/CD Implementation Plan
 
+> **Update, 21 November 2026:** Task A1 was done differently. The owner chose
+> `@cloudflare/oxlint-config` with type-aware rules now (through tsrs), so the
+> config is `oxlint.config.ts`, not `.oxlintrc.json`, and Part C is no longer
+> needed for type-aware linting. Effects are banned and Zustand is in. See
+> `docs/architecture.md`. Tasks A2 to A5 and Part B are unchanged.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fix the repo's folder layout and lint rules before the game is built, then make every pull request get a preview and every merge to `main` deploy itself.

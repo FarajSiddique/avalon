@@ -50,12 +50,12 @@ export interface TablePlay {
   /** The leader's ring is lit. Null: nobody's. */
   leaderId: string | null;
   /** These figures glow and lines of light join them. Empty: no team. */
-  teamIds: readonly string[];
+  teamIds: ReadonlyArray<string>;
   /**
    * Quest cards lying face down at the table's centre, in shuffled order
    * (never placed by or near the seat that played them). Null: none.
    */
-  cards: readonly QuestCard[] | null;
+  cards: ReadonlyArray<QuestCard> | null;
   /** How many of `cards` are face up, from the first. */
   cardsShown: number;
 }
@@ -119,7 +119,7 @@ export interface ConceptScene {
   /** The moment shown as a still frame when motion is reduced. */
   posterTime: number;
   /** Lobby: who is at the table. Arrivals and departures animate. */
-  setPlayers?(players: readonly TablePlayer[]): void;
+  setPlayers?(players: ReadonlyArray<TablePlayer>): void;
   /** Lobby: where each player's name tag goes, in world space. */
   anchors?(): ReadonlyMap<string, Vector3>;
   /** Lobby: how many figures are standing at the table now. */

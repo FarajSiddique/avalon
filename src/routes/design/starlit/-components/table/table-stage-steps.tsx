@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import { play } from "@/client/sound";
 import type { TableStep } from "@/design/directions";
 import {
@@ -31,7 +31,9 @@ import {
   PlayedCards,
   pickWithSound,
   useOpeningCues,
+  useTimeline,
 } from "./step-parts";
+import { cssVars } from "@/design/css-vars";
 import { TableShell } from "./table-stage-shell";
 import { tallyOf } from "./vote-history";
 
@@ -42,7 +44,7 @@ type Phase<Name extends GameView["phase"]["name"]> = Extract<
 
 interface StepProps {
   view: GameView;
-  players: readonly TablePlayer[];
+  players: ReadonlyArray<TablePlayer>;
 }
 
 /** Leader and team marks for everyone; `status` adds the step's state. */
@@ -54,7 +56,7 @@ function marksFor(
     status,
   }: {
     leaderId?: PlayerId;
-    teamIds: readonly PlayerId[];
+    teamIds: ReadonlyArray<PlayerId>;
     status?: (id: PlayerId) => SeatMark["status"];
   },
 ): Record<PlayerId, SeatMark> {
@@ -86,6 +88,7 @@ function ProposeStep({
   phase,
 }: StepProps & { phase: Phase<"team_building"> }) {
   const draft = useTeamDraft(phase.teamSize, phase.draftIds);
+
   useOpeningCues([{ cue: "crown", at: 250 }]);
   const youLead = view.leaderId === view.you.id;
   const toggle = pickWithSound(draft, phase.teamSize);
@@ -149,6 +152,7 @@ function ProposeStep({
             >
               {view.players.map((p) => {
                 const picked = draft.isPicked(p.id);
+
                 return (
                   <li key={p.id}>
                     <button
@@ -231,11 +235,13 @@ function VoteStep({
     }),
     [view.leaderId, phase.teamIds],
   );
+
   const cast = (choice: Vote) => {
     // One sound for both votes: a neighbour can hear the phone.
     play("vote-lock");
     setVote(choice);
   };
+
   const choices = (
     <div className="flex gap-3">
       <button
@@ -316,22 +322,18 @@ function VoteStep({
 
 /* ----------------------------------------------------------------- reveal */
 
+/** The reveal's clock: when the votes turn. */
+const REVEAL_MARKS = [REVEAL_TIMELINE.turn];
+
 /** Before the turn, the table still reads as it did during the vote. */
 const BEFORE_REVEAL = tableViews.vote;
 
 function RevealStep({ view, players }: StepProps) {
   const still = useReducedMotion();
-  // One state for every tag: they all turn in the same render.
-  const [timeUp, setTimeUp] = useState(false);
-  useEffect(() => {
-    if (still) return;
-    const timer = window.setTimeout(
-      () => setTimeUp(true),
-      REVEAL_TIMELINE.turn,
-    );
-    return () => window.clearTimeout(timer);
-  }, [still]);
+  // One clock for every tag: they all turn in the same render.
+  const timeUp = useTimeline(REVEAL_MARKS, !still) >= REVEAL_TIMELINE.turn;
   const turned = still || timeUp;
+
   useOpeningCues([
     { cue: "suspense", at: 0 },
     { cue: "votes-turn", at: REVEAL_TIMELINE.turn },
@@ -412,7 +414,7 @@ function RevealStep({ view, players }: StepProps) {
           <div
             role="status"
             className="sl-rise sl-tally sl-seq flex flex-col items-center gap-0.5 text-center"
-            style={{ "--at": ms(REVEAL_TIMELINE.tally) } as CSSProperties}
+            style={cssVars({ "--at": ms(REVEAL_TIMELINE.tally) })}
           >
             <p
               className={`font-display flex items-center gap-2 text-[1.75rem] leading-tight font-medium ${voteReveal.approved ? "text-success" : "text-fail"}`}
@@ -447,13 +449,16 @@ function QuestStep({
   // Only that a card was played is kept, never which one.
   const [played, setPlayed] = useState(phase.yourCard !== null);
   const [justPlayed, setJustPlayed] = useState(false);
+
   useOpeningCues([{ cue: "deal", at: 80 }]);
+
   const playCard = () => {
     // One sound for both cards: a neighbour can hear the phone.
     play("card-play");
     setPlayed(true);
     setJustPlayed(true);
   };
+
   const playedIds =
     played && !phase.playedIds.includes(view.you.id)
       ? [...phase.playedIds, view.you.id]
@@ -569,20 +574,33 @@ function QuestStep({
  * fixed seed (so every render and the server's picture agree), and never
  * in seat order. The scene, the words and the sounds all use this order.
  */
-const RESULT_CARDS: readonly QuestCard[] = (() => {
+const RESULT_CARDS: ReadonlyArray<QuestCard> = (() => {
   const cards = [...questReveal.cards];
-  const random = seededRandom(0x5eed + questReveal.questIndex);
+  const random = seededRandom(0x5e_ed + questReveal.questIndex);
+
   for (let i = cards.length - 1; i > 0; i -= 1) {
     const j = Math.floor(random() * (i + 1));
     const a = cards[i];
     const b = cards[j];
+
     if (a !== undefined && b !== undefined) {
       cards[i] = b;
       cards[j] = a;
     }
   }
+
   return cards;
 })();
+
+/** The result's clock: each card turning, the score, the crown. */
+const RESULT_TURNS = RESULT_CARDS.map(
+  (_, index) => RESULT_TIMELINE.turns[index] ?? 0,
+);
+const RESULT_MARKS = [
+  ...RESULT_TURNS,
+  RESULT_TIMELINE.score,
+  RESULT_TIMELINE.crown,
+];
 
 /** Before the score settles, the closed Quests line still says the old score. */
 const BEFORE_RESULT = tableViews.quest;
@@ -593,9 +611,6 @@ function ResultStep({ view, players }: StepProps) {
   const failed = questReveal.outcome === "fail";
   const fails = questReveal.failCount;
   const next = view.quests[view.questIndex];
-  const [shown, setShown] = useState(0);
-  const [scored, setScored] = useState(false);
-  const [crowned, setCrowned] = useState(false);
   const [skipped, setSkipped] = useState(false);
   const done = still || skipped;
 
@@ -611,27 +626,20 @@ function ResultStep({ view, players }: StepProps) {
   ]);
 
   // The cards turn one at a time, on the same clock as the sounds.
-  useEffect(() => {
-    if (done) return;
-    const timers = [
-      ...RESULT_CARDS.map((_, index) =>
-        window.setTimeout(
-          () => setShown(index + 1),
-          timeline.turns[index] ?? 0,
-        ),
-      ),
-      window.setTimeout(() => setScored(true), timeline.score),
-      window.setTimeout(() => setCrowned(true), timeline.crown),
-    ];
-    return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [done, timeline]);
+  const reached = useTimeline(RESULT_MARKS, !done);
+  const shown = RESULT_TURNS.filter((at) => at <= reached).length;
+  const scored = reached >= timeline.score;
+  const crowned = reached >= timeline.crown;
   const cardsShown = done ? RESULT_CARDS.length : shown;
   const scoreIn = done || scored;
   const crownIn = done || crowned;
 
   // A tap anywhere skips to the end.
   const skip = () => {
-    if (done || crownIn) return;
+    if (done || crownIn) {
+      return;
+    }
+
     handles.current.forEach((handle) => handle.stop());
     setSkipped(true);
   };
@@ -669,10 +677,10 @@ function ResultStep({ view, players }: StepProps) {
       bumped={failed ? "evil" : "good"}
       settled={questReveal.questIndex}
       rootProps={{
-        style: {
+        style: cssVars({
           "--settle-at": ms(timeline.outcome),
           "--score-at": ms(timeline.score),
-        } as CSSProperties,
+        }),
         onPointerDown: skip,
         "data-skip": skipped,
       }}
@@ -692,6 +700,7 @@ function ResultStep({ view, players }: StepProps) {
             {RESULT_CARDS.map((card, index) => {
               const face = CARD[card];
               const up = index < cardsShown;
+
               return (
                 <li
                   key={index}
@@ -717,7 +726,7 @@ function ResultStep({ view, players }: StepProps) {
           </ul>
           <div
             className="sl-rise sl-seq"
-            style={{ "--at": ms(timeline.outcome) } as CSSProperties}
+            style={cssVars({ "--at": ms(timeline.outcome) })}
           >
             <p
               className={`font-display mt-2 flex items-center gap-2 text-[1.625rem] leading-tight font-medium ${failed ? "text-fail" : "text-success"}`}
@@ -741,7 +750,7 @@ function ResultStep({ view, players }: StepProps) {
           {next && (
             <p
               className="bg-well border-line sl-rise sl-seq flex items-start gap-2 rounded-md border px-3 py-2 text-base leading-snug"
-              style={{ "--at": ms(timeline.crown) } as CSSProperties}
+              style={cssVars({ "--at": ms(timeline.crown) })}
             >
               <IconStar size={18} className="text-accent mt-0.5 flex-none" />
               <span>
@@ -770,6 +779,7 @@ export function TableStageStep({
   players,
 }: StepProps & { step: TableStep }) {
   const { phase } = view;
+
   switch (step) {
     case "propose":
       return phase.name === "team_building" ? (

@@ -48,9 +48,19 @@ export interface SeatMark {
 function tagLabel(player: TablePlayer, mark?: SeatMark): string {
   const status = statusOf(player, mark);
   const parts = [player.isYou ? `${player.name} (you)` : player.name];
-  if (mark?.leader) parts.push("leader");
-  if (mark?.chosen && status !== "chosen") parts.push("on the team");
-  if (status) parts.push(STATUS[status].label.toLowerCase());
+
+  if (mark?.leader) {
+    parts.push("leader");
+  }
+
+  if (mark?.chosen && status !== "chosen") {
+    parts.push("on the team");
+  }
+
+  if (status) {
+    parts.push(STATUS[status].label.toLowerCase());
+  }
+
   return parts.join(", ");
 }
 
@@ -65,6 +75,7 @@ function statusOf(
 function TagBody({ player, mark }: { player: TablePlayer; mark?: SeatMark }) {
   const status = statusOf(player, mark);
   const shown = status ? STATUS[status] : null;
+
   return (
     <>
       {mark?.leader ? (
@@ -103,19 +114,22 @@ export function StageTags({
   pickable = false,
   onPick,
 }: {
-  players: readonly TablePlayer[];
+  players: ReadonlyArray<TablePlayer>;
   marks?: Readonly<Record<string, SeatMark>>;
   /** Tags are buttons (`aria-pressed` = chosen) that call `onPick`. */
   pickable?: boolean;
   onPick?: (id: string) => void;
 }) {
   const layer = useRef<HTMLDivElement>(null);
+
   useTagLayer(layer);
+
   return (
     <div ref={layer} className="sl-stage-tags">
       {players.map((player) => {
         const mark = marks?.[player.id];
         const className = `sl-name-tag sl-seat-tag absolute top-0 left-0 opacity-0 ${mark?.chosen ? "sl-seat-tag--chosen" : ""}`;
+
         return pickable ? (
           <button
             key={player.id}

@@ -23,6 +23,7 @@ export function Disclosure({
   children: ReactNode;
 }) {
   const id = useId();
+
   return (
     <div className="sl-disclosure" data-open={open} data-section={name}>
       <h2>

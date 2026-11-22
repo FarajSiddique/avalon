@@ -7,7 +7,7 @@
 export type Lobe = readonly [cx: number, cy: number, r: number];
 
 interface BillowProps {
-  lobes: readonly Lobe[];
+  lobes: ReadonlyArray<Lobe>;
   body?: string;
   /** The lighter rim along the top. */
   rim?: string;
@@ -80,7 +80,7 @@ function lens(x: number, y: number, width: number, height: number): string {
   return `M${x} ${y}Q${x + width / 2} ${y - height} ${x + width} ${y}Q${x + width / 2} ${y + height * 0.55} ${x} ${y}Z`;
 }
 
-const PUFFY: readonly Lobe[] = [
+const PUFFY: ReadonlyArray<Lobe> = [
   [52, 70, 26],
   [228, 72, 24],
   [96, 54, 38],

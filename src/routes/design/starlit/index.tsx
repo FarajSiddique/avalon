@@ -6,6 +6,7 @@ import { TitleMark } from "./-components/title-mark";
 
 function StarlitLandingPage() {
   const { leaving } = useStage();
+
   return (
     <main
       className="sl-landing relative flex flex-1 flex-col lg:justify-center"

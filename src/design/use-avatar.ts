@@ -1,55 +1,61 @@
 import { useSyncExternalStore } from "react";
+import { createDevStore } from "@/client/dev-store";
 import { DEFAULT_AVATAR, sanitizeAvatar, type Avatar } from "./avatar";
 
 /** Your look, saved in this browser (the prototype has no account). */
 const KEY = "avalon:starlit-avatar:v1";
-const listeners = new Set<() => void>();
-let cached: { raw: string | null; value: Avatar } | null = null;
 
-function read(): Avatar {
-  let raw: string | null = null;
+function load(): Avatar {
   try {
-    raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY);
+
+    return raw ? sanitizeAvatar(JSON.parse(raw)) : DEFAULT_AVATAR;
   } catch {
-    // Storage blocked: keep the default.
+    // Storage blocked or a bad value: keep the default.
+    return DEFAULT_AVATAR;
   }
-  if (cached && cached.raw === raw) return cached.value;
-  let value = DEFAULT_AVATAR;
-  if (raw) {
-    try {
-      value = sanitizeAvatar(JSON.parse(raw));
-    } catch {
-      value = DEFAULT_AVATAR;
-    }
-  }
-  cached = { raw, value };
-  return value;
 }
 
+const store = createDevStore<Avatar>("avatar", () =>
+  typeof window === "undefined" ? DEFAULT_AVATAR : load(),
+);
+
+/**
+ * Another tab changed the look. Listening only while something is
+ * subscribed keeps the listener off the server and out of idle pages.
+ */
 function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
+  const unsubscribe = store.subscribe(listener);
+
   const onStorage = (event: StorageEvent) => {
-    if (event.key === KEY) listener();
+    if (event.key === KEY) {
+      store.setState(load(), true);
+    }
   };
+
   window.addEventListener("storage", onStorage);
+
   return () => {
-    listeners.delete(listener);
+    unsubscribe();
     window.removeEventListener("storage", onStorage);
   };
 }
 
 export function setAvatar(next: Partial<Avatar>): void {
-  const value = sanitizeAvatar({ ...read(), ...next });
+  const value = sanitizeAvatar({ ...store.getState(), ...next });
+
   try {
     localStorage.setItem(KEY, JSON.stringify(value));
   } catch {
     // Storage blocked: the change lasts until the page closes.
-    cached = { raw: JSON.stringify(value), value };
   }
-  for (const listener of listeners) listener();
+
+  store.setState(value, true);
 }
+
+const serverSnapshot = (): Avatar => DEFAULT_AVATAR;
 
 /** Your saved look. The server render (and first paint) uses the default. */
 export function useAvatar(): Avatar {
-  return useSyncExternalStore(subscribe, read, () => DEFAULT_AVATAR);
+  return useSyncExternalStore(subscribe, store.getState, serverSnapshot);
 }

@@ -67,6 +67,7 @@ export const EMBLEM_LABELS: Record<Emblem, string> = {
 export function lookSummary(look: Avatar): string {
   const headwear = HEADWEAR_LABELS[look.headwear].toLowerCase();
   const emblem = EMBLEM_LABELS[look.emblem].toLowerCase();
+
   return `${CLOAK_LABELS[look.cloak]} cloak, ${headwear}, ${emblem} emblem`;
 }
 
@@ -83,38 +84,55 @@ export const CLOAK_TOKENS: Record<Cloak, string> = {
 };
 
 function pick<T extends string>(
-  list: readonly T[],
+  list: ReadonlyArray<T>,
   value: unknown,
   fallback: T,
 ): T {
-  return typeof value === "string" &&
-    (list as readonly string[]).includes(value)
-    ? (value as T)
-    : fallback;
+  return list.find((item) => item === value) ?? fallback;
 }
 
 /** Accept anything and return a valid look. */
 export function sanitizeAvatar(input: unknown): Avatar {
-  const v =
-    typeof input === "object" && input !== null
-      ? (input as Record<string, unknown>)
-      : {};
+  const v = typeof input === "object" && input !== null ? input : {};
+
   return {
-    cloak: pick(CLOAKS, v.cloak, DEFAULT_AVATAR.cloak),
-    headwear: pick(HEADWEAR, v.headwear, DEFAULT_AVATAR.headwear),
-    emblem: pick(EMBLEMS, v.emblem, DEFAULT_AVATAR.emblem),
+    cloak: pick(CLOAKS, "cloak" in v ? v.cloak : null, DEFAULT_AVATAR.cloak),
+    headwear: pick(
+      HEADWEAR,
+      "headwear" in v ? v.headwear : null,
+      DEFAULT_AVATAR.headwear,
+    ),
+    emblem: pick(
+      EMBLEMS,
+      "emblem" in v ? v.emblem : null,
+      DEFAULT_AVATAR.emblem,
+    ),
   };
+}
+
+/** An item of a non-empty constant list. */
+function itemAt<T>(list: ReadonlyArray<T>, index: number): T {
+  const item = list[index];
+
+  if (item === undefined) {
+    throw new Error(`No item at ${index} of a ${list.length}-item list.`);
+  }
+
+  return item;
 }
 
 /** A stable made-up look for a mock player, from their id. */
 export function avatarFor(id: string): Avatar {
-  let h = 2166136261;
+  let h = 2_166_136_261;
+
   for (let i = 0; i < id.length; i++) {
     h ^= id.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+    h = Math.imul(h, 16_777_619);
   }
-  const at = <T>(list: readonly T[], shift: number): T =>
-    list[((h >>> shift) & 0xff) % list.length]!;
+
+  const at = <T>(list: ReadonlyArray<T>, shift: number): T =>
+    itemAt(list, ((h >>> shift) & 0xff) % list.length);
+
   return {
     cloak: at(CLOAKS, 0),
     headwear: at(HEADWEAR, 8),

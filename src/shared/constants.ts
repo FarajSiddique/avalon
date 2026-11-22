@@ -65,12 +65,12 @@ export const NAME_PATTERN = /^[\p{L}\p{N}](?:[\p{L}\p{N} _'-]*[\p{L}\p{N}])?$/u;
 
 /** Trim and collapse inner whitespace. Run this before validating a name. */
 export function normalizeName(raw: string): string {
-  return raw.trim().replace(/\s+/g, " ");
+  return raw.trim().replaceAll(/\s+/g, " ");
 }
 
 /** Normalize what a player typed into a room code field. */
 export function normalizeRoomCode(raw: string): string {
-  return raw.replace(/[^a-zA-Z]/g, "").toUpperCase();
+  return raw.replaceAll(/[^a-zA-Z]/g, "").toUpperCase();
 }
 
 /** A room with nobody connected is deleted after this long. */

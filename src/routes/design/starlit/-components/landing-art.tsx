@@ -13,10 +13,12 @@ export function LandingArt({ className }: { className?: string }) {
   const { status } = useStage();
   const place = useRef<HTMLDivElement>(null);
   const onStage = status !== "failed";
+
   useStageSlot(
     onStage ? { mode: "hero", reveal: "focus", fade: FADE } : null,
     place,
   );
+
   return (
     <div
       ref={place}

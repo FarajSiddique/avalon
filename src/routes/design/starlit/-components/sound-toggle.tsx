@@ -13,6 +13,7 @@ import { IconSound, IconSoundOff } from "./icons";
 export function SoundToggle() {
   const { enabled, toggle } = useSoundToggle();
   const Icon = enabled ? IconSound : IconSoundOff;
+
   return (
     <button
       type="button"

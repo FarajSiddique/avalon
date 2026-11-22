@@ -20,6 +20,7 @@ import { IconCheck, IconMoon, IconSun } from "../icons";
  */
 export function AvatarMaker() {
   const look = useAvatar();
+
   return (
     <div>
       <p className="text-ink-muted text-base leading-snug">

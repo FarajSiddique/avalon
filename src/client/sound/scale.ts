@@ -12,6 +12,7 @@ export function pitch(degree: number): number {
   const octave = Math.floor(degree / STEPS.length);
   const index = ((degree % STEPS.length) + STEPS.length) % STEPS.length;
   const semitones = (STEPS[index] ?? 0) + 12 * octave;
+
   return D4 * 2 ** (semitones / 12);
 }
 
@@ -23,5 +24,6 @@ const TRIAD = [0, 2, 3] as const;
 
 export function triadDegree(index: number): number {
   const safe = Math.max(0, Math.floor(index));
+
   return (TRIAD[safe % TRIAD.length] ?? 0) + 5 * Math.floor(safe / 3);
 }

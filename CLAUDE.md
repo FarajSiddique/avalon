@@ -16,7 +16,9 @@ The full design is in `docs/architecture.md`. Read it before changing structure.
 | Real-time  | Plain WebSockets to one Durable Object per room (`src/server/room`)        |
 | Game logic | A plain typed reducer in `src/server/game` (no XState)                     |
 | State      | In each room's Durable Object storage. No other database                   |
+| Client     | Zustand vanilla stores read with `useSyncExternalStore`. No TanStack Query |
 | Validation | zod, in `src/shared/schemas.ts`                                            |
+| Lint       | oxlint with `@cloudflare/oxlint-config`, type-aware (`oxlint.config.ts`)   |
 | Tests      | Vitest (pure logic), Playwright (browser flows on the built Worker), Bruno |
 
 TanStack Start reached 1.0 in October 2026 and Cloudflare's tooling moves fast.
@@ -29,7 +31,8 @@ official sites) before using an API you are not sure about.
 pnpm dev           # app and rooms in Cloudflare's local runtime, http://localhost:3000
 pnpm build         # production build into dist/
 pnpm start         # serve the production build locally (run pnpm build first)
-pnpm lint          # eslint
+pnpm lint          # wrangler types + oxlint (fails on any warning)
+pnpm lint:fix      # oxlint autofixes (blank lines, braces, ...), then run pnpm format
 pnpm typecheck     # wrangler types + tsc --noEmit
 pnpm test          # vitest
 pnpm test:e2e      # playwright against the production build (run pnpm build first)
@@ -97,7 +100,12 @@ its memory. In `src/server/room/room-object.ts`:
   `src/server/game`, tested in plain Node.
 - `pnpm test:restart` must keep passing.
 
-**Import boundaries** (enforced by ESLint):
+**No effects** (enforced by oxlint). `useEffect`, `useLayoutEffect` and
+`useInsertionEffect` are banned. Subscribe with `useSyncExternalStore` (or a
+Zustand store), do element set-up in a ref callback that returns a clean-up, and
+react to the user in event handlers. See "Effects" in `docs/architecture.md`.
+
+**Import boundaries** (enforced by oxlint):
 
 - Browser code (`src/routes` except `src/routes/api`, `src/components`, `src/client`,
   `src/design`) must not import `src/server` or `cloudflare:*`. It reaches the server
@@ -109,6 +117,10 @@ its memory. In `src/server/room/room-object.ts`:
 ## Conventions
 
 - TypeScript strict, no `any`. Prettier on every file you touch (`pnpm format`).
+- Blank lines between statements come from oxlint, not Prettier (Prettier keeps
+  them but never adds them): before `return`, after `const`/`let` groups, and
+  around multi-line blocks. `pnpm lint:fix` adds them.
+- An `oxlint-disable-next-line` comment names the rule and gives a reason after `--`.
 - Colours, fonts and radii come from the tokens in `src/styles.css` (`bg-canvas`,
   `text-ink`, `border-line`, `font-display`, ...). No raw colour values in
   components.

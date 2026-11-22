@@ -1,22 +1,14 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { DIRECTIONS, designPaths, type DirectionSlug } from "./directions";
+import { designPaths } from "./directions";
 import { ProtoLink } from "./proto-link";
 
 /**
  * Prototype-only bar above every design screen. It is deliberately plain so
- * it is never mistaken for part of a direction.
+ * it is never mistaken for part of the design.
  */
-export function DesignNav({
-  direction,
-  extra = [],
-}: {
-  direction: DirectionSlug;
-  /** Extra screens one direction has and the others do not. */
-  extra?: { label: string; href: string }[];
-}) {
+export function DesignNav() {
   const pathname = useLocation({ select: (location) => location.pathname });
-  const paths = designPaths(direction);
-  const current = DIRECTIONS.find((d) => d.slug === direction);
+  const paths = designPaths();
 
   const screens = [
     {
@@ -35,10 +27,6 @@ export function DesignNav({
       href: paths.table("propose"),
       active: pathname.startsWith(`${paths.landing}/table`),
     },
-    ...extra.map((screen) => ({
-      ...screen,
-      active: pathname.startsWith(screen.href),
-    })),
   ];
 
   return (
@@ -48,14 +36,14 @@ export function DesignNav({
       style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}
     >
       <Link
-        to="/design"
+        to="/"
         className="flex h-11 shrink-0 items-center px-2 text-white/60 hover:text-white"
-        aria-label="All design directions"
+        aria-label="Back to Avalon"
       >
-        ← All
+        ← Avalon
       </Link>
       <span className="shrink-0 px-1 font-semibold text-white">
-        {current?.name}
+        Starlit Vale
       </span>
       <span className="mx-1 h-4 w-px shrink-0 bg-white/20" aria-hidden />
       {screens.map((screen) => (

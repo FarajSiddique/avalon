@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { isRoleVariant } from "@/design/directions";
-import { RoleScreen } from "./-components/role/role-screen";
+import { NoWebGLNotice } from "./-components/no-webgl-notice";
 import { RoleStageScreen } from "./-components/role/role-stage-screen";
 import { useStage } from "./-components/stage/stage-context";
 
@@ -17,9 +17,9 @@ function RolePage() {
   const { status } = useStage();
   if (!isRoleVariant(role)) return null;
   // A different role is a different screen: remount so nothing carries over.
-  // Without WebGL (a failed stage stays failed) the flat card is the screen.
+  // Without WebGL (a failed stage stays failed) the game cannot be shown.
   return status === "failed" ? (
-    <RoleScreen key={role} variant={role} />
+    <NoWebGLNotice />
   ) : (
     <RoleStageScreen key={role} variant={role} />
   );

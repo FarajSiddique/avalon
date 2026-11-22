@@ -14,7 +14,6 @@ import { setYourName } from "@/design/your-name";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import type { LobbySearch } from "../../lobby";
-import { Campfire } from "../art/campfire";
 import { IconArrowRight, IconCheck, IconRing } from "../icons";
 import { SoundLink } from "../sound-link";
 import {
@@ -30,7 +29,7 @@ import { PlayerList } from "./player-list";
 import { RoomCode } from "./room-code";
 import { playersSummary, settingsSummary } from "./summaries";
 
-const paths = designPaths("starlit");
+const paths = designPaths();
 
 /** Seconds between friends arriving in a new room (prototype). */
 const ARRIVAL_MS = 1300;
@@ -90,7 +89,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const focus = useRef<HTMLDivElement>(null);
   useStageSlot({ mode: "lobby", reveal: "whole", fade: 0 }, focus);
   const [arriveAt] = useState(() => (stage.pending ? AFTER_FLIGHT_MS : 0));
-  const landed = stage.phase === "lobby" || stage.status === "failed";
+  const landed = stage.phase === "lobby";
 
   // Your figure rises once the camera has landed; everyone else is already
   // here (joining) or arrives one by one (a new room).
@@ -172,7 +171,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
           </p>
         </div>
         <div className="hidden lg:block">
-          <RoomCode code={view.code} compact />
+          <RoomCode code={view.code} />
         </div>
       </header>
 
@@ -181,13 +180,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
         ref={focus}
         data-stage-slot="lobby"
         className="absolute inset-x-0 top-[4.5rem] bottom-[24rem] lg:top-28 lg:right-[28rem] lg:bottom-0"
-      >
-        {stage.status === "failed" ? (
-          <div className="flex h-full items-end justify-center pb-2">
-            <Campfire className="w-[12rem] lg:w-[16rem]" />
-          </div>
-        ) : null}
-      </div>
+      />
 
       <section
         aria-label="Room"
@@ -195,7 +188,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
         style={arrive(140)}
       >
         <div className="flex items-center gap-3 px-4 pt-3 lg:hidden">
-          <RoomCode code={view.code} compact />
+          <RoomCode code={view.code} />
           <p className="text-ink-muted min-w-0 text-base leading-snug">
             {short}
           </p>
@@ -208,12 +201,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
             open={open.players}
             onToggle={toggle("players")}
           >
-            <PlayerList
-              view={view}
-              onToggleReady={lobby.toggleReady}
-              allReady={canStart}
-              bare
-            />
+            <PlayerList view={view} allReady={canStart} />
             <div className="mt-3 flex flex-wrap gap-x-4">
               <button
                 type="button"

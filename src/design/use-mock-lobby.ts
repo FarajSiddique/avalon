@@ -13,7 +13,7 @@ import { lobbyView } from "./mock";
  * Local stand-in for the live lobby. Same shape the server will send, so a
  * prototype lobby screen only has to swap this hook for the real one.
  */
-export interface MockLobby {
+interface MockLobby {
   view: LobbyView;
   /** Toggle your own ready state. */
   toggleReady: () => void;
@@ -34,7 +34,7 @@ export interface MockLobby {
   canStart: boolean;
 }
 
-export interface MockLobbyOptions {
+interface MockLobbyOptions {
   /** "create": you host a new, empty room. "join": you are a guest. */
   via?: "create" | "join";
   /** Your name, as typed on the landing. */

@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Cloud } from "./cloud";
 import { makeValleyLights } from "./lights";
 import { makeStars } from "./seeded";
-import { DEFAULT_SKY, type SkyOptions } from "./sky-options";
 import { StarField } from "./star-field";
 
 const HAMLETS = [
@@ -21,30 +20,21 @@ const HAMLETS = [
  * in it is brighter than a few pixels, so text can sit on it safely; anything
  * that needs a guarantee sits on a panel.
  */
-export function NightSky({ sky = DEFAULT_SKY }: { sky?: SkyOptions }) {
+export function NightSky() {
   const stars = useMemo(
     () =>
       makeStars({
-        count: sky.starCount,
-        seed: sky.starSeed,
+        count: 430,
+        seed: 1136,
         width: 1000,
         height: 880,
-        topBias: sky.starTopBias,
-        twinkleEvery: sky.twinkleEvery,
+        // Above 1 crowds the stars toward the top of the sky.
+        topBias: 1.35,
+        twinkleEvery: 5,
       }),
-    [sky.starCount, sky.starSeed, sky.starTopBias, sky.twinkleEvery],
+    [],
   );
-  const lights = useMemo(
-    () =>
-      makeValleyLights(
-        HAMLETS.map(
-          ([x, y, count]) =>
-            [x, y, Math.round(count * sky.lightsDensity)] as const,
-        ),
-        sky.lightsSeed,
-      ),
-    [sky.lightsDensity, sky.lightsSeed],
-  );
+  const lights = useMemo(() => makeValleyLights(HAMLETS, 52), []);
   return (
     <div className="sl-sky" aria-hidden="true">
       <svg

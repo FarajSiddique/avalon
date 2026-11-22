@@ -51,7 +51,7 @@ export function mixPose(out: Pose, a: Pose, b: Pose, t: number): Pose {
   return out;
 }
 
-export interface ShotInput {
+interface ShotInput {
   layout: Layout;
   standing: readonly Standing[];
   teamIds: readonly string[];

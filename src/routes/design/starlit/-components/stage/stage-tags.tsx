@@ -1,9 +1,40 @@
-import { useRef } from "react";
-import { IconCrown, IconStar } from "../icons";
+import { useRef, type ReactNode } from "react";
+import {
+  IconApprove,
+  IconCheck,
+  IconCrown,
+  IconMoon,
+  IconReject,
+  IconRing,
+  IconStar,
+} from "../icons";
 import type { TablePlayer } from "../three/types";
-import { STATUS, type SeatStatus } from "../table/seat-ring";
 import "../table/table-stage.css";
 import { useTagLayer } from "./stage-context";
+
+type SeatStatus =
+  | "chosen"
+  | "voted"
+  | "waiting"
+  | "approve"
+  | "reject"
+  | "played"
+  | "choosing"
+  | "away";
+
+const STATUS: Record<
+  SeatStatus,
+  { label: string; tone: string; icon: (props: { size?: number }) => ReactNode }
+> = {
+  chosen: { label: "Chosen", tone: "text-accent", icon: IconStar },
+  voted: { label: "Voted", tone: "text-ink", icon: IconCheck },
+  waiting: { label: "Waiting", tone: "text-ink-muted", icon: IconRing },
+  approve: { label: "Approve", tone: "text-success", icon: IconApprove },
+  reject: { label: "Reject", tone: "text-fail", icon: IconReject },
+  played: { label: "Played", tone: "text-ink", icon: IconCheck },
+  choosing: { label: "Choosing", tone: "text-ink-muted", icon: IconRing },
+  away: { label: "Away", tone: "text-ink-muted", icon: IconMoon },
+};
 
 /** What a tag over a head says during the game. Display only. */
 export interface SeatMark {
@@ -14,7 +45,7 @@ export interface SeatMark {
 }
 
 /** The words a tag says: "Mira, leader, chosen" (also its accessible name). */
-export function tagLabel(player: TablePlayer, mark?: SeatMark): string {
+function tagLabel(player: TablePlayer, mark?: SeatMark): string {
   const status = statusOf(player, mark);
   const parts = [player.isYou ? `${player.name} (you)` : player.name];
   if (mark?.leader) parts.push("leader");

@@ -17,7 +17,7 @@ import {
   IconStar,
   IconSun,
 } from "../icons";
-import { useReducedMotion } from "../motion/use-reduced-motion";
+import { useReducedMotion } from "../use-reduced-motion";
 import { seededRandom } from "../art/seeded";
 import { joinNames, numberWord } from "../names";
 import type { SeatMark } from "../stage/stage-tags";
@@ -31,7 +31,7 @@ import {
   PlayedCards,
   pickWithSound,
   useOpeningCues,
-} from "./stages";
+} from "./step-parts";
 import { TableShell } from "./table-stage-shell";
 import { tallyOf } from "./vote-history";
 
@@ -531,7 +531,7 @@ function QuestStep({
  * fixed seed (so every render and the server's picture agree), and never
  * in seat order. The scene, the words and the sounds all use this order.
  */
-export const RESULT_CARDS: readonly QuestCard[] = (() => {
+const RESULT_CARDS: readonly QuestCard[] = (() => {
   const cards = [...questReveal.cards];
   const random = seededRandom(0x5eed + questReveal.questIndex);
   for (let i = cards.length - 1; i > 0; i -= 1) {
@@ -591,7 +591,7 @@ function ResultStep({ view, players }: StepProps) {
   const scoreIn = done || scored;
   const crownIn = done || crowned;
 
-  // A tap anywhere skips to the end, as on the flat table.
+  // A tap anywhere skips to the end.
   const skip = () => {
     if (done || crownIn) return;
     handles.current.forEach((handle) => handle.stop());

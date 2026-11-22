@@ -733,7 +733,7 @@ is the chosen direction, so this is settled as follows, and Phase 0 carries it
 out:
 
 - The Worker sends a light page: the layout, the text and the form. The night
-  sky, the camp scene, the seat ring and the other large drawings are rendered
+  sky, the 3D stage and the other large drawings are rendered
   in the browser only (a client-only wrapper around those components, with a
   plain background colour until they appear).
 - `/room/$code` gains nothing from server rendering, because everything on it
@@ -819,9 +819,10 @@ The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
 - Its primitives and drawings move to `src/components/ui` and
   `src/components/art`. Its lobby, role and table components stay in the
   prototype until the phase that builds each screen moves them.
-- Ember & Rune and Lavender Vigil are deleted, with their specs, screenshots
-  and fonts.
-- **The Starlit prototype and its motion gallery stay** at `/design/starlit`
+- Ember & Rune and Lavender Vigil are already deleted, with their specs and
+  fonts, and so are the tweak studio, the motion gallery and the flat 2D game
+  screens (21 November 2026).
+- **The Starlit prototype stays** at `/design/starlit`
   as the reference for screens that are not built yet (owner's decision, 16
   November 2026). They import the moved code, so there is one copy of
   everything. They are deleted when Phase 4 ends.

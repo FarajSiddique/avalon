@@ -11,7 +11,7 @@ import type { TablePlayer } from "../three/types";
  * under the name you typed (if any). Every screen, 3D or flat, reads the
  * view through this so the name is the same everywhere.
  */
-export function withYourName(view: GameView, name: string | null): GameView {
+function withYourName(view: GameView, name: string | null): GameView {
   if (!name || view.you.id !== PLAYER_IDS.wren) return view;
   return {
     ...view,

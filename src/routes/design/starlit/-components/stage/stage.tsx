@@ -7,8 +7,8 @@ import {
 } from "react";
 import { TABLE_STEPS } from "@/design/directions";
 import type { Mounted, Rect, StageTarget } from "../three/engine";
-import type { FlightPath } from "../three/types";
-import { NameTag } from "../three/hero-3d";
+import type { FlightPath, TablePlayer } from "../three/types";
+import { IconCheck, IconCrown, IconMoon, IconRing } from "../icons";
 import { useStage } from "./stage-context";
 
 /**
@@ -107,8 +107,8 @@ function LiveStage() {
     let cancelled = false;
     setStatus("loading");
     void import("../three/engine")
-      .then(({ mountConcept }) =>
-        mountConcept(el, "table", {
+      .then(({ mountStarTable }) =>
+        mountStarTable(el, {
           interactive: true,
           backdrop: true,
           players: latestPlayers.current,
@@ -149,7 +149,7 @@ function LiveStage() {
       mounted.current?.stop();
       mounted.current = null;
       picker.current = null;
-      // A failure sticks: the screens show their drawings from then on,
+      // A failure sticks: the screens show the notice from then on,
       // rather than claiming the stage again and failing again.
       setStatus((status) => (status === "failed" ? status : "idle"));
       setPhase(null);
@@ -201,12 +201,7 @@ function LiveStage() {
       style={height ? { height: `${height}px` } : undefined}
       aria-hidden="true"
     >
-      <div
-        ref={host}
-        data-stage-host=""
-        data-concept="table"
-        className="sl-backstage__canvas"
-      />
+      <div ref={host} data-stage-host="" className="sl-backstage__canvas" />
       <div ref={overlay} className="sl-backstage__tags">
         {/* A screen with its own tag layer draws its own tags. */}
         {tagLayer
@@ -244,4 +239,31 @@ function screenOf(path: string): string | null {
     path,
   );
   return match?.[1] ?? null;
+}
+
+/**
+ * A name over a figure's head. Positioned by the engine every frame. The
+ * state is an icon, never colour alone; the player list says it in words.
+ */
+function NameTag({ player }: { player: TablePlayer }) {
+  const icon = !player.connected ? (
+    <IconMoon size={13} className="text-ink-muted shrink-0" />
+  ) : player.ready ? (
+    <IconCheck size={13} className="text-success shrink-0" />
+  ) : (
+    <IconRing size={13} className="text-warning shrink-0" />
+  );
+  return (
+    <div
+      data-tag={player.id}
+      className="sl-name-tag absolute top-0 left-0 opacity-0"
+    >
+      {icon}
+      <span className="min-w-0 truncate">{player.name}</span>
+      {player.isHost ? (
+        <IconCrown size={13} className="text-accent shrink-0" />
+      ) : null}
+      {player.isYou ? <span className="sl-name-tag__you">You</span> : null}
+    </div>
+  );
 }

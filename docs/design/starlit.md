@@ -2,7 +2,7 @@
 
 A painted storybook night: a camp on a hill above a sleeping valley, a deep blue sky full of stars, and one small warm fire where the secrets are told.
 
-Prototype: `/design/starlit`. Motion and sound gallery: `/design/starlit/motion`. Code: `src/routes/design/starlit/`.
+Prototype: `/design/starlit`. Code: `src/routes/design/starlit/`.
 
 ## Mood
 
@@ -67,7 +67,7 @@ Blue dominant. All values live in `-theme.css` under `.theme-starlit`.
 
 ### Component tokens
 
-Defined after the semantic layer and built only from it or from primitives: `--panel-bg` (the surface at 92% opacity), `--panel-border`, `--panel-highlight`, `--panel-shadow`, `--chart-bg` (the well at 90%, behind the seat ring), `--bar-bg`, `--surface-raised`, `--glow-fire`, `--glow-star`, `--button-height` (52px), `--button-radius`, `--input-height` (54px), `--seat-size`, `--seat-cell`, `--ring-height`, `--moon-size`, `--skycard-height`, `--ease-out`, `--ease-in`, `--ease-spring`, `--ease-travel`, `--dur-control` (250ms), `--dur-reveal` (420ms), `--dur-part` (560ms), `--dur-close` (280ms), and one `--art-*` token for every colour used in the illustrations. Seat, ring, moon and card sizes are overridden once at 1024px.
+Defined after the semantic layer and built only from it or from primitives: `--panel-bg` (the surface at 92% opacity), `--panel-border`, `--panel-highlight`, `--panel-shadow`, `--surface-raised`, `--glow-fire`, `--glow-star`, `--button-height` (52px), `--button-radius`, `--input-height` (54px), `--seat-size`, `--moon-size`, `--skycard-height`, `--ease-out`, `--ease-in`, `--ease-spring`, `--ease-travel`, `--dur-control` (250ms), `--dur-part` (560ms), `--dur-close` (280ms), and one `--art-*` token for every colour used in the illustrations. Seat, moon and card sizes are overridden once at 1024px.
 
 ### Contrast
 
@@ -160,25 +160,23 @@ Sizes: wordmark `clamp(68px, 19vw, 152px)`; room code `clamp(52px, 15vw, 76px)`;
 
 ## Texture and illustration
 
-Flat, cel-shaded vector art: solid fills in two or three steps of one colour, no blur, no photographic texture, and a fine dark outline on foreground objects only. All of it is original work created for this repo (inline SVG and CSS, no image files, no icon package), so it is covered by the repo's licence.
+The landing hero and the game are the 3D Star Table (see "The 3D stage" below). Everything else is flat, cel-shaded vector art: solid fills in two or three steps of one colour, no blur, no photographic texture, and a fine dark outline on foreground objects only. All of it is original work created for this repo (inline SVG and CSS, no image files, no icon package), so it is covered by the repo's licence.
 
-| Piece                      | Where                                                        | How it is made                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| -------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sky                        | Every screen (`art/night-sky.tsx`)                           | A fixed layer: a CSS gradient from near-black blue to indigo, plus an SVG of 430 stars placed by a seeded generator (`art/seeded.ts`, mulberry32), so the server and the browser draw the same sky. Four star colours, three sizes, a few four-point sparkles.                                                                                                                                                                                                         |
-| Horizon                    | Every screen, along the bottom                               | One SVG: three hills in receding blues, wisps of cloud with pink undersides, seeded village lights, and a far-off tent and fire.                                                                                                                                                                                                                                                                                                                                       |
-| Camp scene                 | Landing (`art/camp-scene.tsx`)                               | One SVG, 1440 by 700: crescent moon with a halo, clouds, four ranges of hills, a castle on a ridge, a river, village lights, a striped pavilion with a scalloped valance and a pennant, a banner, crossed spears with two shields, log seats, a sword in a stone, the campfire, and a large tree framing the right edge. The firelight on the grass is three flat ellipses, not a blur. The important parts sit in the right-hand 60%, which is what a phone crops to. |
-| Campfire                   | Landing and the middle of the seat ring (`art/campfire.tsx`) | Stones, two crossed logs, three flat flames, four sparks, and a radial gradient for the glow (the one soft edge in the artwork, because it is light).                                                                                                                                                                                                                                                                                                                  |
-| Clouds                     | Landing, horizon, role card (`art/cloud.tsx`)                | Round lobes drawn in three passes (lighter copies nudged up, pink copies nudged down, the body on top), which leaves a thin light rim on top and a pink rim underneath.                                                                                                                                                                                                                                                                                                |
-| Role constellations        | Role card (`art/constellation.tsx`)                          | Star points and lines per role: the Sage's Hat for Merlin, the Dagger for the Assassin, and a Shield or a Thorn for roles without their own figure yet.                                                                                                                                                                                                                                                                                                                |
-| Icons                      | Everywhere (`icons.tsx`)                                     | 18 icons on a 24px grid with 1.9px round strokes, coloured by `currentColor`.                                                                                                                                                                                                                                                                                                                                                                                          |
-| Panels                     | Everywhere                                                   | CSS only: the surface at 92% opacity, a 1px border, a 1px inner highlight, 24px corners. No backdrop blur.                                                                                                                                                                                                                                                                                                                                                             |
-| Seat stars and quest moons | Table                                                        | CSS discs. A lit star gets four rays from a `clip-path` behind the disc.                                                                                                                                                                                                                                                                                                                                                                                               |
+| Piece               | Where                                         | How it is made                                                                                                                                                                                                                                                 |
+| ------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sky                 | Every screen (`art/night-sky.tsx`)            | A fixed layer: a CSS gradient from near-black blue to indigo, plus an SVG of 430 stars placed by a seeded generator (`art/seeded.ts`, mulberry32), so the server and the browser draw the same sky. Four star colours, three sizes, a few four-point sparkles. |
+| Horizon             | Every screen, along the bottom                | One SVG: three hills in receding blues, wisps of cloud with pink undersides, seeded village lights, and a far-off tent and fire.                                                                                                                               |
+| Clouds              | Landing, horizon, role card (`art/cloud.tsx`) | Round lobes drawn in three passes (lighter copies nudged up, pink copies nudged down, the body on top), which leaves a thin light rim on top and a pink rim underneath.                                                                                        |
+| Role constellations | Role card (`art/constellation.tsx`)           | Star points and lines per role: the Sage's Hat for Merlin, the Dagger for the Assassin, and a Shield or a Thorn for roles without their own figure yet.                                                                                                        |
+| Icons               | Everywhere (`icons.tsx`)                      | 18 icons on a 24px grid with 1.9px round strokes, coloured by `currentColor`.                                                                                                                                                                                  |
+| Panels              | Everywhere                                    | CSS only: the surface at 92% opacity, a 1px border, a 1px inner highlight, 24px corners. No backdrop blur.                                                                                                                                                     |
+| Quest moons         | Table                                         | CSS discs.                                                                                                                                                                                                                                                     |
 
 Glow is reserved for light sources: the fire, the moon, a lit star, the current quest moon, the primary button (it is firelight) and the role card while it is held open.
 
 ## Motion
 
-Motion in the vale has one job: say what just happened, whose turn it is, or that the game is waiting on someone. Decoration lives only in the sky. Every moment can be watched, replayed and read about in the gallery at `/design/starlit/motion`, grouped by stage of the game.
+Motion in the vale has one job: say what just happened, whose turn it is, or that the game is waiting on someone. Decoration lives only in the sky. The motion gallery that showed every moment below was removed once the 3D table was picked; rows marked "Gallery" are not on any screen now, and their cues are kept in `src/client/sound` for the real game. Rows about the flat seat ring (seat stars, lines, the crown pass) and the drawn camp (fire, sparks, pennant) describe screens and CSS that were removed with it; the 3D table acts the same moments out in the scene and on its tags.
 
 ### Rules
 
@@ -209,43 +207,43 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 "Wired" says whether the moment plays in the click-through or only in the gallery. Every row has a static end state under reduced motion: `src/styles.css` cuts durations to almost nothing, and `-theme.css` also zeroes every delay inside `.theme-starlit`, so a timed sequence lands on its end at once (sound may still play).
 
-| Stage        | Moment                     | What moves                                                                                                                    | Duration                                                             | Easing              | Cue                                                     | Wired                                       | Reduced motion                              |
-| ------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------------------------------------- | ------------------------------------------- | ------------------------------------------- |
-| Landing      | The living sky             | One star in five twinkles, clouds drift, fire breathes and flickers, sparks rise, pennant stirs, a shooting star now and then | Loops of 0.9 to 7.5s; clouds 110 and 160s; shooting star 1.1s        | ease-in-out         | `shooting-star` (gallery)                               | Yes (loops)                                 | Loops off; sparks and shooting star removed |
-| Landing      | The title arriving         | Eyebrow rises, the word rises and fades in, the line and the form follow, a star lights above the last letter                 | 250ms; 900ms from 120ms; 360ms; 520ms; star 520ms at 880ms           | ease-out, spring    | `title` (gallery only: no gesture yet on a first visit) | Yes                                         | Title, line and star shown at once          |
-| Landing      | A button press             | Button sinks 2%; a ring of firelight tightens while held, opens back to the edge and fades on release                         | Press 60ms, release 450ms                                            | ease-out            | `tap` (Continue buttons)                                | Yes, every primary                          | Ring appears and goes without travel        |
-| Lobby        | A player joins             | An empty dashed seat becomes a star, one ring opens round it, the count pops                                                  | Star 420ms, ring 640ms                                               | spring, ease-out    | `join` (climbs a D major chord)                         | Gallery                                     | Full table shown                            |
-| Lobby        | Ready, away and back       | The new state pops in where the old one was (ring to tick, Ready to Away with a moon)                                         | 250ms                                                                | spring              | `ready`, `unready`, `away`, `back`                      | Yes (your ready)                            | New state shown                             |
-| Lobby        | The code copied            | A wave runs through the four letters; the copy icon pops into a tick                                                          | 440ms a letter, 55ms apart; tick 250ms                               | ease-out, spring    | `copy`                                                  | Yes                                         | "Copied" shown                              |
-| Lobby        | Everyone ready             | Stars link up round the ring (gallery); the stars by each name flare in turn (lobby); status line rises; Start wakes          | Lines 380ms, 70ms apart; flare 520 to 640ms, 70ms apart; bloom 900ms | ease-out            | `all-ready`                                             | Yes                                         | Linked and ready, no bloom                  |
-| Lobby        | The game starting          | The lobby gives way and the clouded role card rises into place                                                                | Card 600ms after 80ms                                                | ease-out            | `start`                                                 | Yes                                         | Card in place                               |
-| Role         | The clouds part            | Two banks of cloud slide apart, three layers at different speeds, then thin; the rim warms; the role rises                    | 560ms (fade starts at 196ms); role 250ms after 90ms                  | travel, ease-out    | `clouds-part`, `constellation`                          | Yes                                         | Opens at once                               |
-| Role         | The constellation          | Lines draw one after another, each star lights as a line reaches it, the bright star last with its glow                       | Line 240ms, 120ms apart from 160ms; star 320ms; bright 640ms         | ease-out, spring    | `constellation`                                         | Yes                                         | Whole figure shown                          |
-| Role         | Letting go                 | The role is removed at once; the clouds close                                                                                 | 280ms                                                                | ease-in             | `clouds-close`                                          | Yes                                         | Closes at once                              |
-| Role         | Confirming                 | Button blooms, your pip turns from a ring into a star, the count pops                                                         | Pip 520ms, count 250ms                                               | spring              | `confirm`                                               | Sound only (the link moves on)              | Star shown                                  |
-| Role         | Everyone confirmed         | The last pips light in turn, the row swells once, the line rises                                                              | 220ms apart; swell 520ms; about 1.6s                                 | spring, ease-out    | `vote-in` each, `all-confirmed`                         | Gallery                                     | All lit                                     |
-| Proposal     | The crown arrives          | The crown drops onto the leader's star and settles                                                                            | 600ms after 200ms                                                    | spring              | `crown`                                                 | Yes (step opens)                            | Crown in place                              |
-| Proposal     | Picking a seat             | Star fills, four rays turn out, one ring flares, a line grows from the star lit before, "Chosen" pops                         | 250ms; ring 560ms; line 420ms; label 250ms                           | ease-out, spring    | `pick` (one step higher each pick)                      | Yes                                         | Lit, lines drawn                            |
-| Proposal     | Unpicking                  | Rays fold back, fill fades, its lines go                                                                                      | 250ms                                                                | ease-out            | `unpick`                                                | Yes                                         | Unlit                                       |
-| Proposal     | The team complete          | Last line closes the shape, count pops, Propose wakes with one bloom                                                          | Line 420ms; bloom 900ms from 120ms                                   | ease-out            | `pick` then `team-complete`                             | Yes                                         | Complete, no bloom                          |
-| Proposal     | Proposing                  | Button blooms; the team's stars flare and lines redraw as the vote step opens                                                 | 450ms; 420 to 560ms                                                  | ease-out            | `propose`                                               | Yes                                         | Shown at once                               |
-| Vote         | Locking your vote          | Choices give way to the locked line, which rises; the shackle drops shut; your seat pops to Voted                             | Rise 250ms; shackle 340ms after 120ms                                | ease-out, spring    | `vote-lock` (+ 14ms buzz)                               | Yes                                         | Locked line shown                           |
-| Vote         | Votes arriving             | Each seat's dashed ring pops into a tick and "Voted"; the count pops                                                          | 250ms each                                                           | spring              | `vote-in`                                               | Gallery (pops wired)                        | All voted                                   |
-| Vote         | The wait                   | Only seats still to vote move: their dashed ring turns and breathes                                                           | One turn in 9s, one breath in 2.4s, looping                          | linear, ease-in-out | None                                                    | Yes                                         | Still                                       |
-| Reveal       | Approved                   | A held breath (each "Voted" swells once), then every chip turns over at the same instant, then the tally rises                | Breath 700ms; turn 160ms out, 240ms in; tally at 1.0s; done 1.3s     | ease-in, ease-out   | `suspense`, `votes-turn`, `approved`                    | Yes (step opens)                            | Votes and tally shown                       |
-| Reveal       | Rejected                   | The same turn, then the rejected-team pip spins into a star and the crown flies on                                            | Pip 520ms at 1.45s; crown 620ms from 1.75s                           | spring, travel      | `rejected`, `track-advance`, `crown-pass`               | Gallery (the mock vote is approved)         | End shown                                   |
-| Quest cards  | The cards arriving         | Success and Fail slide up with a slight turn, one after the other                                                             | 380ms each, 90ms apart                                               | ease-out            | `deal`                                                  | Yes (step opens)                            | Cards in place                              |
-| Quest cards  | Playing a card             | Both cards turn face down together, merge into one, which rises toward the fire and fades; the locked line rises              | 820ms; line at 520ms                                                 | ease-out            | `card-play` (+ 16ms buzz)                               | Yes                                         | Locked line shown, no cards                 |
-| Quest cards  | The others' cards          | A face-down card drops onto the pile by the fire for each player who has played; the count pops                               | 520ms each                                                           | ease-out            | `card-in`                                               | Gallery                                     | Pile shown                                  |
-| Quest result | Shuffled and turned        | Face-down cards slide over each other, turn one at a time; the last lifts and waits (the held breath) before it turns         | Shuffle 520ms; turns at 0.6, 0.95 and 1.7s; outcome at 2.05s         | ease-out, ease-in   | `shuffle`, `card-success` / `card-fail`, `quest-fail`   | Yes (step opens, tap skips)                 | Faces and outcome shown                     |
-| Quest result | Success / fail on the moon | The quest's moon grows into its outcome with one ring of light, the badge pops, its words fade in, the next moon brightens    | 560ms; ring 760ms; badge after 260ms; next at 420ms                  | spring, ease-out    | `quest-success` / `quest-fail`                          | Yes                                         | Outcome shown                               |
-| Quest result | The score                  | The old number rolls up and away, the new one rolls in                                                                        | 260ms out, 340ms in                                                  | ease-in, spring     | `score`                                                 | Yes                                         | New score                                   |
-| Quest result | The crown passes           | The crown lifts, arcs over and lands on the next seat clockwise                                                               | 620ms (at 2.35s in the result)                                       | travel              | `crown-pass`                                            | Yes                                         | Crown on the new leader                     |
-| End of game  | The Assassin choosing      | A dashed coral ring moves from Good seat to Good seat, then snaps solid on the one named                                      | 320ms moves about 450ms apart; strike 420ms                          | ease-out, spring    | `assassin-aim`, `assassin-strike`                       | Gallery (no screen yet)                     | Ring on the named seat                      |
-| End of game  | Good wins                  | First light rises from the horizon, stars pale, a few falling stars, the verdict rises                                        | Dawn 1.8s; stars 1.6s; falling stars 1.1s each; title at 1.2s        | ease-out, ease-in   | `good-wins`                                             | Gallery                                     | Dawn and title shown                        |
-| End of game  | Evil wins                  | Stars go out one by one, a shadow slides over the moon, a coral ring burns round it, the verdict rises                        | Stars 600ms, 14ms apart; eclipse 1.1s; ring at 1.2s; title at 1.3s   | ease-in, travel     | `evil-wins`                                             | Gallery                                     | Eclipse and title shown                     |
-| Connection   | Away, and back             | The seat's star dims and its edge turns dashed, "Away" with a moon pops in; on return it brightens                            | 420ms fade; label 250ms                                              | ease-out, spring    | `away`, `back`                                          | Seat ring supports it; mock has nobody away | Shown at once                               |
-| Connection   | Reconnecting               | Table dims, a banner drops in with three stars pulsing in turn; on return it turns to a tick and the table brightens          | Banner 320ms; pulses 1.2s, 200ms apart (loop); fade 420ms            | ease-out            | `reconnected` on return only                            | Gallery                                     | Banner, no pulse                            |
+| Stage        | Moment                     | What moves                                                                                                                    | Duration                                                             | Easing              | Cue                                                     | Wired                                 | Reduced motion                              |
+| ------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------------------------------------- | ------------------------------------- | ------------------------------------------- |
+| Landing      | The living sky             | One star in five twinkles, clouds drift, fire breathes and flickers, sparks rise, pennant stirs, a shooting star now and then | Loops of 0.9 to 7.5s; clouds 110 and 160s; shooting star 1.1s        | ease-in-out         | `shooting-star` (gallery)                               | Yes (loops)                           | Loops off; sparks and shooting star removed |
+| Landing      | The title arriving         | Eyebrow rises, the word rises and fades in, the line and the form follow, a star lights above the last letter                 | 250ms; 900ms from 120ms; 360ms; 520ms; star 520ms at 880ms           | ease-out, spring    | `title` (gallery only: no gesture yet on a first visit) | Yes                                   | Title, line and star shown at once          |
+| Landing      | A button press             | Button sinks 2%; a ring of firelight tightens while held, opens back to the edge and fades on release                         | Press 60ms, release 450ms                                            | ease-out            | `tap` (Continue buttons)                                | Yes, every primary                    | Ring appears and goes without travel        |
+| Lobby        | A player joins             | An empty dashed seat becomes a star, one ring opens round it, the count pops                                                  | Star 420ms, ring 640ms                                               | spring, ease-out    | `join` (climbs a D major chord)                         | Gallery                               | Full table shown                            |
+| Lobby        | Ready, away and back       | The new state pops in where the old one was (ring to tick, Ready to Away with a moon)                                         | 250ms                                                                | spring              | `ready`, `unready`, `away`, `back`                      | Yes (your ready)                      | New state shown                             |
+| Lobby        | The code copied            | A wave runs through the four letters; the copy icon pops into a tick                                                          | 440ms a letter, 55ms apart; tick 250ms                               | ease-out, spring    | `copy`                                                  | Yes                                   | "Copied" shown                              |
+| Lobby        | Everyone ready             | Stars link up round the ring (gallery); the stars by each name flare in turn (lobby); status line rises; Start wakes          | Lines 380ms, 70ms apart; flare 520 to 640ms, 70ms apart; bloom 900ms | ease-out            | `all-ready`                                             | Yes                                   | Linked and ready, no bloom                  |
+| Lobby        | The game starting          | The lobby gives way and the clouded role card rises into place                                                                | Card 600ms after 80ms                                                | ease-out            | `start`                                                 | Yes                                   | Card in place                               |
+| Role         | The clouds part            | Two banks of cloud slide apart, three layers at different speeds, then thin; the rim warms; the role rises                    | 560ms (fade starts at 196ms); role 250ms after 90ms                  | travel, ease-out    | `clouds-part`, `constellation`                          | Yes                                   | Opens at once                               |
+| Role         | The constellation          | Lines draw one after another, each star lights as a line reaches it, the bright star last with its glow                       | Line 240ms, 120ms apart from 160ms; star 320ms; bright 640ms         | ease-out, spring    | `constellation`                                         | Yes                                   | Whole figure shown                          |
+| Role         | Letting go                 | The role is removed at once; the clouds close                                                                                 | 280ms                                                                | ease-in             | `clouds-close`                                          | Yes                                   | Closes at once                              |
+| Role         | Confirming                 | Button blooms, your pip turns from a ring into a star, the count pops                                                         | Pip 520ms, count 250ms                                               | spring              | `confirm`                                               | Sound only (the link moves on)        | Star shown                                  |
+| Role         | Everyone confirmed         | The last pips light in turn, the row swells once, the line rises                                                              | 220ms apart; swell 520ms; about 1.6s                                 | spring, ease-out    | `vote-in` each, `all-confirmed`                         | Gallery                               | All lit                                     |
+| Proposal     | The crown arrives          | The crown drops onto the leader's star and settles                                                                            | 600ms after 200ms                                                    | spring              | `crown`                                                 | Yes (step opens)                      | Crown in place                              |
+| Proposal     | Picking a seat             | Star fills, four rays turn out, one ring flares, a line grows from the star lit before, "Chosen" pops                         | 250ms; ring 560ms; line 420ms; label 250ms                           | ease-out, spring    | `pick` (one step higher each pick)                      | Yes                                   | Lit, lines drawn                            |
+| Proposal     | Unpicking                  | Rays fold back, fill fades, its lines go                                                                                      | 250ms                                                                | ease-out            | `unpick`                                                | Yes                                   | Unlit                                       |
+| Proposal     | The team complete          | Last line closes the shape, count pops, Propose wakes with one bloom                                                          | Line 420ms; bloom 900ms from 120ms                                   | ease-out            | `pick` then `team-complete`                             | Yes                                   | Complete, no bloom                          |
+| Proposal     | Proposing                  | Button blooms; the team's stars flare and lines redraw as the vote step opens                                                 | 450ms; 420 to 560ms                                                  | ease-out            | `propose`                                               | Yes                                   | Shown at once                               |
+| Vote         | Locking your vote          | Choices give way to the locked line, which rises; the shackle drops shut; your seat pops to Voted                             | Rise 250ms; shackle 340ms after 120ms                                | ease-out, spring    | `vote-lock` (+ 14ms buzz)                               | Yes                                   | Locked line shown                           |
+| Vote         | Votes arriving             | Each seat's dashed ring pops into a tick and "Voted"; the count pops                                                          | 250ms each                                                           | spring              | `vote-in`                                               | Gallery (pops wired)                  | All voted                                   |
+| Vote         | The wait                   | Only seats still to vote move: their dashed ring turns and breathes                                                           | One turn in 9s, one breath in 2.4s, looping                          | linear, ease-in-out | None                                                    | Yes                                   | Still                                       |
+| Reveal       | Approved                   | A held breath (each "Voted" swells once), then every chip turns over at the same instant, then the tally rises                | Breath 700ms; turn 160ms out, 240ms in; tally at 1.0s; done 1.3s     | ease-in, ease-out   | `suspense`, `votes-turn`, `approved`                    | Yes (step opens)                      | Votes and tally shown                       |
+| Reveal       | Rejected                   | The same turn, then the rejected-team pip spins into a star and the crown flies on                                            | Pip 520ms at 1.45s; crown 620ms from 1.75s                           | spring, travel      | `rejected`, `track-advance`, `crown-pass`               | Gallery (the mock vote is approved)   | End shown                                   |
+| Quest cards  | The cards arriving         | Success and Fail slide up with a slight turn, one after the other                                                             | 380ms each, 90ms apart                                               | ease-out            | `deal`                                                  | Yes (step opens)                      | Cards in place                              |
+| Quest cards  | Playing a card             | Both cards turn face down together, merge into one, which rises toward the fire and fades; the locked line rises              | 820ms; line at 520ms                                                 | ease-out            | `card-play` (+ 16ms buzz)                               | Yes                                   | Locked line shown, no cards                 |
+| Quest cards  | The others' cards          | A face-down card drops onto the pile by the fire for each player who has played; the count pops                               | 520ms each                                                           | ease-out            | `card-in`                                               | Gallery                               | Pile shown                                  |
+| Quest result | Shuffled and turned        | Face-down cards slide over each other, turn one at a time; the last lifts and waits (the held breath) before it turns         | Shuffle 520ms; turns at 0.6, 0.95 and 1.7s; outcome at 2.05s         | ease-out, ease-in   | `shuffle`, `card-success` / `card-fail`, `quest-fail`   | Yes (step opens, tap skips)           | Faces and outcome shown                     |
+| Quest result | Success / fail on the moon | The quest's moon grows into its outcome with one ring of light, the badge pops, its words fade in, the next moon brightens    | 560ms; ring 760ms; badge after 260ms; next at 420ms                  | spring, ease-out    | `quest-success` / `quest-fail`                          | Yes                                   | Outcome shown                               |
+| Quest result | The score                  | The old number rolls up and away, the new one rolls in                                                                        | 260ms out, 340ms in                                                  | ease-in, spring     | `score`                                                 | Yes                                   | New score                                   |
+| Quest result | The crown passes           | The crown lifts, arcs over and lands on the next seat clockwise                                                               | 620ms (at 2.35s in the result)                                       | travel              | `crown-pass`                                            | Yes                                   | Crown on the new leader                     |
+| End of game  | The Assassin choosing      | A dashed coral ring moves from Good seat to Good seat, then snaps solid on the one named                                      | 320ms moves about 450ms apart; strike 420ms                          | ease-out, spring    | `assassin-aim`, `assassin-strike`                       | Gallery (no screen yet)               | Ring on the named seat                      |
+| End of game  | Good wins                  | First light rises from the horizon, stars pale, a few falling stars, the verdict rises                                        | Dawn 1.8s; stars 1.6s; falling stars 1.1s each; title at 1.2s        | ease-out, ease-in   | `good-wins`                                             | Gallery                               | Dawn and title shown                        |
+| End of game  | Evil wins                  | Stars go out one by one, a shadow slides over the moon, a coral ring burns round it, the verdict rises                        | Stars 600ms, 14ms apart; eclipse 1.1s; ring at 1.2s; title at 1.3s   | ease-in, travel     | `evil-wins`                                             | Gallery                               | Eclipse and title shown                     |
+| Connection   | Away, and back             | The seat's star dims and its edge turns dashed, "Away" with a moon pops in; on return it brightens                            | 420ms fade; label 250ms                                              | ease-out, spring    | `away`, `back`                                          | Tags support it; mock has nobody away | Shown at once                               |
+| Connection   | Reconnecting               | Table dims, a banner drops in with three stars pulsing in turn; on return it turns to a tick and the table brightens          | Banner 320ms; pulses 1.2s, 200ms apart (loop); fade 420ms            | ease-out            | `reconnected` on return only                            | Gallery                               | Banner, no pulse                            |
 
 ### Privacy in the motion
 
@@ -272,7 +270,7 @@ Every sound is made in code with the Web Audio API (`src/client/sound/`), so the
 - **Level:** a master gain of 0.7 into a compressor set as a gentle limiter (threshold -10dB, ratio 12:1, 2ms attack). The loudest single cue peaks at 0.27 (-11.5 dBFS); four copies of any cue at once stay under 0.8.
 - **Voices:** at most 8 cues sound at once; the oldest fades out in 50ms to make room. The same cue asked for twice within 40ms plays once.
 - **Off until switched on.** Sound starts off on every device, because browsers block audio before a tap and ten phones in one room should not all start chiming. The choice is stored in `localStorage` (`avalon:sound`), and every storage access is guarded. The `AudioContext` is created on demand and only after the page has had a gesture (`navigator.userActivation`), and resumed on the first tap. On the server, or in a browser without Web Audio, every call does nothing and never throws.
-- **The switch** is on every Starlit screen: a small pill labelled "Sound" with On or Off and a speaker icon, `aria-pressed`. On a phone it sits just under the prototype bar beside each screen's eyebrow; from 640px wide it sits in the empty right end of the bar. It comes after the page in the DOM, so the page's own controls come first by keyboard and in tests. The gallery has its own Sound and Campfire ambience switches at the top.
+- **The switch** is on every Starlit screen: a small pill labelled "Sound" with On or Off and a speaker icon, `aria-pressed`. On a phone it sits just under the prototype bar beside each screen's eyebrow; from 640px wide it sits in the empty right end of the bar. It comes after the page in the DOM, so the page's own controls come first by keyboard and in tests.
 - **Buzz:** `vote-lock` (14ms) and `card-play` (16ms) also call `navigator.vibrate`, guarded, and only when sound is on. It works on Android. iPhones have no Vibration API, so on an iPhone nothing happens.
 
 ### API
@@ -290,7 +288,7 @@ createMasterChain(context)       the same output stage, for offline renders
 
 ### Ambience
 
-A campfire and a very quiet night, off unless the gallery's Campfire ambience switch is on (and Sound is on). It fades in over 2.5s and out over 1.2s.
+A campfire and a very quiet night (`useAmbience`). No prototype screen turns it on now. It fades in over 2.5s and out over 1.2s.
 
 - **Crackle:** an 11.7s buffer of seeded pops, single snaps and small clusters, through a band-pass at 2.4kHz. Pops that run past the end are written round to the start, so the loop has no seam.
 - **Roar:** low-passed noise at 240Hz with a slow swell (0.13Hz).
@@ -415,60 +413,25 @@ Not taken: **`spring-physics`** (real springs need a library or WAAPI maths; a s
 
 One place the skill's advice was not followed in the original direction: "animate one or two key elements per view". The sky has many small ambient animations. They are slow, low-contrast, opacity or transform only, and off under reduced motion; the functional motion on each screen is still one thing at a time.
 
-## Tweak studio
+## The 3D stage
 
-`/design/studio` puts every token of the theme on a dial and previews the real
-prototype screens live, at phone (390 by 844) and wide (1440 by 900) width, in
-iframes. It exists so the owner can refine Starlit by hand and hand the result
-to Claude. Code: `src/design/tweaks/`.
+The landing hero and every game screen are one WebGL scene, The Star Table: a
+round stone table for ten in a clearing, seat runes, a moonbeam and a turning
+dome of constellations, built with three.js. Code is in `-components/three`:
+`engine.ts` (renderer, bloom, pointer parallax, pausing off-screen, a still
+frame under reduced motion), `kit.ts` and `props.ts` (sky, stars, flame,
+embers, pine, castle, campfire) and `scenes/`. Every colour is read from the
+`--art-*` tokens at runtime. three.js is about 143 KB gzip, in a chunk loaded
+only in the browser, never in the Worker. On a wide screen the camera's film
+offset slides the subject right of the title. Not yet checked on a real phone
+or Safari: frame rate and battery there are the open question.
 
-- **What it dials.** All of the tokens in `.theme-starlit`, read from the
-  live stylesheet, so there is no second copy of the defaults: every palette
-  primitive, the semantic layer (each one picks a primitive from a swatch grid
-  or takes a custom colour), the art colours, motion curves and durations,
-  shapes, and the table layout with separate phone and wide values. On top of
-  that it adds OKLCH hue, chroma and lightness shifts for the whole palette and
-  for each colour family, the sky drawing (star count, pattern, twinkle ratio,
-  village lights), and the root type scale.
-- **Artwork versions.** The tent (striped pavilion, bell tent, ridge tent,
-  none), the campfire (crossed logs, log tipi, cauldron, iron brazier) and
-  the castle (small keep, fairytale spires, ruin, walled fortress, none) each
-  have versions, all original inline SVG on the art tokens. The first of
-  each is the original drawing and the default. `/design/starlit/artwork` is
-  a contact sheet of every version; choosing one there or in the studio's
-  Artwork section applies it everywhere through `SceneArtContext`
-  (`-components/art/scene-context.tsx`), including the fire in the seat ring
-  and the motion gallery.
-- **Backdrops.** Four whole-scene alternatives to the vale, in
-  `-components/art/backdrops.tsx`: Moonlit lake (the castle on an island,
-  reflected, with the moon laid across the water), Clifftop by the sea (a
-  headland camp, the castle on the far cliffs, sea stacks), Standing stones (a
-  clearing walled in by pines, a trilithon behind the fire, fireflies) and
-  Mountain pass (snowy peaks, the castle on a crag with a bridge and a
-  waterfall). Each one draws the chosen tent, campfire and castle, placed by
-  `backdrop-layout.ts`. They keep the vale's rules: same palette tokens, open
-  sky for the star field, landmarks right of x 760 (clear of the title and
-  form at 1440, inside the phone's crop at 390), and dark ground along the
-  bottom edge. Only the landing and the motion gallery's arrival scene draw a
-  backdrop; the seat ring and the other motion scenes pick up the fire alone.
-- **3D landing heroes.** Three WebGL concepts built with three.js, picked as
-  "Landing hero" (the drawn scene stays the default): Ember Isle (the camp on
-  a floating island above a sea of cloud, a waterfall spilling into the void,
-  the castle on a second island, circling stones), Lantern Lake (a mirror lake
-  with a true reflection, paper lanterns rising off the water, an aurora, the
-  castle lit on the far shore) and The Star Table (a round stone table for ten
-  in a clearing, seat runes lighting one by one, a moonbeam, a turning dome of
-  constellations). Code is in `-components/three`: `engine.ts` (renderer,
-  bloom, pointer parallax, pausing off-screen, a still frame under reduced
-  motion, rebuilding when a dial changes the colours), `kit.ts` and `props.ts`
-  (sky, stars, flame, embers, pine, pavilion, castle, campfire) and one file
-  per scene. Every colour is read from the `--art-*` tokens at runtime, so the
-  palette and the studio's dials apply. three.js is about 143 KB gzip, in a
-  chunk loaded only when a 3D hero is chosen, and never in the Worker. On a
-  wide screen the camera's film offset slides the subject right of the title.
-  Thumbnails on the artwork page draw one frame, keep it as an image and free
-  the GPU. Not yet checked on a real phone or Safari: frame rate and battery
-  there are the open question.
+Without WebGL (or when the GPU drops the context) the lobby, role and table
+screens show one short notice instead (`-components/no-webgl-notice.tsx`):
+"This game needs 3D graphics. Try another browser, or turn on hardware
+acceleration in this one." The landing keeps its form; the hero band stays
+empty.
+
 - **Lobby table and avatars.** The prototype lobby opens on The Star Table
   framed from above, with every player standing at a seat as a small
   low-poly figure in their own look: a cloak colour (art tokens only, never
@@ -484,12 +447,10 @@ to Claude. Code: `src/design/tweaks/`.
   (`src/design/use-avatar.ts`). The model is `src/design/avatar.ts`, shaped
   to become `avatar` on `SeatView` and the join input; mock players get a
   stable look from their id. Code: `-components/three/avatar.ts` (the
-  figure), `seating.ts` (seats, arrivals, tags) and the lobby variant of
-  `scenes/star-table.ts`. Player changes go to the running scene, so it is
-  never rebuilt; a dial change rebuilds it with everyone already standing.
-  Without WebGL the drawn campfire stands in.
-- **Landing to lobby: one stage, one flight.** With The Star Table as the
-  landing hero, the landing and the lobby share one live scene, mounted in
+  figure), `seating.ts` (seats, arrivals, tags) and `scenes/star-table.ts`. Player changes go to the running scene, so it is
+  never rebuilt.
+- **Landing to lobby: one stage, one flight.** The landing and the lobby
+  share one live scene, mounted in
   the Starlit layout (`-components/stage/`), so going from one to the other
   is a camera flight rather than a page change. The canvas is always the
   size of the screen. The scene frames itself for a "focus" box (the landing
@@ -510,8 +471,7 @@ to Claude. Code: `src/design/tweaks/`.
   the lobby's overlays rise in as the camera lands. A direct load or reload
   of the lobby starts settled, with no flight; under reduced motion every
   change is a cut. How you arrived is in the address (`?via=create|join`,
-  with `name` and `code`). With any other hero, the lobby mounts its own
-  stage and fades in.
+  with `name` and `code`).
 - **Lobby over the scene.** The table fills the screen. On a phone, the
   title sits over the sky and a bottom sheet holds the room code, the
   sections and the action bar; on a wide screen the title and code sit top
@@ -527,7 +487,7 @@ to Claude. Code: `src/design/tweaks/`.
   name you typed on the landing (kept for the visit in `sessionStorage`).
   - _Role card._ The camera settles low behind your seat and the cloud card
     sits over the scene: press and hold to part the clouds, let go and they
-    close, exactly as the flat card. The scene never changes while you hold
+    close. The scene never changes while you hold
     (no marks over the heads of players you know). "Continue to the table"
     unlocks after the first hold. On every table step, "Your role" is the
     same hold in a small button.
@@ -545,50 +505,29 @@ to Claude. Code: `src/design/tweaks/`.
     Quests. The step panel and action bar are always in view.
   - _Camera._ Each step to the next is a 1.2s move (1.6s from the lobby to
     the role card), swinging round the table. Any other jump, a direct load
-    and reduced motion cut. Without WebGL every screen is the flat version.
-- **Tuning tokens.** Values that were hardcoded are now tokens at their old
-  values, in the "Tuning dials" block of `-theme.css`: Fraunces SOFT and
+    and reduced motion cut.
+- **Tuning values.** Values that were hardcoded are tokens at their old
+  values, in the "Tuning values" block of `-theme.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel
   opacity, highlight and border, fire and star glow, sky gradient stops,
   star and cloud visibility, horizon height, and every ambient animation
-  duration with one `--ambient-tempo` multiplier. With no dial set, the
-  phone screenshots match the old ones pixel for pixel; the wide ones differ
-  only by the new "Tweak studio" link in the prototype nav.
-- **How it applies.** The dial lives in `localStorage`. The Starlit layout
-  turns it into a `<style>` with a doubled `.theme-starlit` selector, and
-  passes the sky options to `NightSky`. A token with a wide value gets its
-  phone override only below 1024px. The server always renders the plain theme.
-- **Checks.** A live WCAG table for the text pairs the design relies on.
-  `src/design/tweaks/tweaks.test.ts` fails if the shipped theme or a
-  proposed dial drops below its target.
-- **Working with Claude.** Write notes on the dial and on single tokens
-  ("warmer, but not orange"), then use Share: "Copy brief for Claude" gives
-  Markdown with the notes, every change, contrast failures and the JSON to
-  reload it. A share link (`?tweaks=...`) opens any Starlit screen with the
-  dial applied, on any device, phones included. Claude proposes dials by
-  adding them to `src/design/tweaks/presets.ts`; they appear under
-  "Proposed by Claude". "Copy CSS diff" is the patch for `-theme.css` once
-  a dial is final.
-- **Phase 0.** When the tokens move to `:root`, change `THEME_SELECTOR` in
-  `src/design/tweaks/catalog.ts` and the selector in the test's parser.
+  duration with one `--ambient-tempo` multiplier.
 
 ## Known gaps
 
-- Built and looked at with the 7-player mock only. The seat layout is computed for 5 to 10 seats, but other counts have not been viewed. At 10 players on a phone a seat cell is about 70px wide, which will be tight for long names.
+- Built and looked at with the 7-player mock only. The table seats 5 to 10, but other counts have not been viewed in the game screens.
 - Screens not designed yet: Lady of the Lake, assassination, game over, the table as seen by someone who is not the leader or not on the team, a rejected vote, and error or reconnecting states.
 - The disabled Fail card with "Good players can only play Success" (required by the brief) tells anyone looking over a shoulder that the player is Good. The real game should think about this, for example by keeping both cards behind a hold.
 - In the prototype the role text is passed to the card as React children, so it is in the page payload even while hidden. In the real game it should come from the private socket message and only be kept in memory.
 - On a 1440 by 900 window the quest-card and quest-result steps are 945px and 923px tall, so they scroll slightly. The other table steps, the lobby, the role screen and the landing fit exactly.
-- On a phone the flat table (the no-WebGL fallback) still shows the vote history as a long list under the table. The 3D table has it in a collapsed section.
 - On a phone the 3D table's open space is about 210 to 280px tall between the header and the sheet, so figures are small and seven tags crowd. Picking by the Team list is the dependable way there.
 - The 3D table's frame rate was not measured, on a laptop or a phone.
 - Bright sparkle stars in the fixed sky can pass behind a page title while scrolling. They are a few pixels wide and titles stay readable, but text that must be guaranteed sits on a panel.
 - With three start blockers at once (someone away, someone not ready, too many Evil roles) the sticky bar in the lobby is about 190px tall on a phone. It still works, but a long list of reasons should probably collapse to the first one plus "and 2 more".
 - Sound was checked by measurement only (length, peak, not silent, no clicks at loop points), never by ear. The mix between cues, and how they sound on a phone speaker, needs a listen.
 - Motion was checked in headless Chromium (video and still frames). Not yet on a real phone, in Safari, or on a slow device: the result sequence animates about twenty elements at once.
-- The gallery's lobby, end-of-game and reconnecting scenes are new vignettes; the real screens for the assassination, the end of the game and a lost connection do not exist yet.
+- The real screens for the assassination, the end of the game and a lost connection do not exist yet.
 - A page's entrance replays every time it is opened. That is intended for the prototype; the real game should animate on changes in the room view, not on page open.
-- The ambience is in the gallery only. The click-through has no fire crackle.
-- The Assassin's mark and the crown use container query units (`cqw`, `cqh`) on the seat ring. They are supported in current browsers but not in old ones (Safari before 16).
+- The click-through has no fire crackle.
 - Checked in Chromium through Playwright only. Not yet checked on a real phone, in Safari, with the on-screen keyboard open over the sticky bar, or with a screen reader.
 - The sky is about 430 SVG circles with around 90 animating opacity. It was smooth on a laptop; it has not been profiled on a low-end phone.

@@ -21,8 +21,7 @@ import { StageTags, type SeatMark } from "../stage/stage-tags";
 import type { TablePlay, TablePlayer } from "../three/types";
 import { QuestTrack } from "./quest-track";
 import { Scoreboard } from "./scoreboard";
-import { headingFor } from "./table-screen";
-import { historySummary, questsSummary } from "./table-summaries";
+import { headingFor, historySummary, questsSummary } from "./table-summaries";
 import { VoteHistory } from "./vote-history";
 import "./table-stage.css";
 
@@ -252,7 +251,6 @@ export function TableShell({
           >
             <VoteHistory
               view={proposals ? { ...view, proposals: [...proposals] } : view}
-              bare
             />
           </Disclosure>
         </div>

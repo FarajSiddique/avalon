@@ -10,7 +10,8 @@ test.use({
 
 /**
  * The game at the 3D Star Table: the role card and the five table steps on
- * the shared stage, and their flat fallback without WebGL.
+ * the shared stage, the landing and lobby flights, and the notice without
+ * WebGL.
  */
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -372,39 +373,211 @@ test("Your role on a table step shows the card only while held", async ({
   expect(errors).toEqual([]);
 });
 
-test("without WebGL, the role card and the table are the flat screens", async ({
+test("without WebGL, the game screens say so and the landing form still works", async ({
   page,
 }) => {
   test.setTimeout(120_000);
   const errors = watchErrors(page);
   await withoutWebGL(page);
+  const notice = page.getByRole("heading", {
+    name: "This game needs 3D graphics",
+  });
 
-  await page.goto("/design/starlit/role/merlin");
-  await expect(page.locator("main button.sl-skycard")).toBeVisible();
-  await expect(page.locator("main[data-role-stage]")).toHaveCount(0);
-  await expect(page.locator("[data-stage-host] canvas")).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "Written in the stars" }),
-  ).toBeVisible();
-  await expect(roleName(page)).toHaveCount(0);
+  // The landing keeps its form, and a failed stage is not claimed again and
+  // again: count changes to the page for two seconds once it has settled.
+  await page.goto("/design/starlit");
+  await expect(page.getByLabel("Your name")).toBeVisible();
+  await expect(page.locator("[data-stage-host]")).toHaveCount(0, {
+    timeout: 30_000,
+  });
+  const changes = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let n = 0;
+        const observer = new MutationObserver((list) => (n += list.length));
+        observer.observe(document.body, { childList: true, subtree: true });
+        setTimeout(() => {
+          observer.disconnect();
+          resolve(n);
+        }, 2000);
+      }),
+  );
+  expect(changes).toBeLessThan(5);
+  await page.getByLabel("Your name").fill("Faraj");
+  await page.getByRole("link", { name: "Create a room" }).click();
+  await expect(notice).toBeVisible();
+  await expect(page).toHaveURL(/via=create/);
 
-  await page.goto("/design/starlit/table/propose");
-  await expect(page.locator("main.sl-table")).toBeVisible();
-  await expect(page.locator(".sl-ring")).toBeVisible();
-  await expect(page.locator("main[data-step]")).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "Choose your team" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Vote history" }),
-  ).toBeVisible();
-  await expect(page.locator("[data-stage-host] canvas")).toHaveCount(0);
+  for (const url of [
+    "/design/starlit/role/merlin",
+    "/design/starlit/table/propose",
+  ]) {
+    await page.goto(url);
+    await expect(notice).toBeVisible();
+    await expect(
+      page.locator("main[data-role-stage], main[data-step]"),
+    ).toHaveCount(0);
+    await expect(page.locator("[data-stage-host] canvas")).toHaveCount(0);
+  }
 
-  // A client move to the next step stays flat.
+  // A client move to another screen stays on the notice.
   const nav = page.getByRole("navigation", { name: "Prototype navigation" });
   await nav.getByRole("link", { name: "Role", exact: true }).click();
-  await expect(page.locator("main button.sl-skycard")).toBeVisible();
-  await expect(page.locator("main[data-role-stage]")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/role\/merlin/);
+  await expect(notice).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+/** Open a collapsible lobby section if it is closed. */
+async function openSection(page: Page, name: string): Promise<void> {
+  const summary = page.locator(
+    `[data-section="${name}"] button[aria-expanded]`,
+  );
+  if ((await summary.getAttribute("aria-expanded")) !== "true")
+    await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "true");
+}
+
+test("the lobby table seats everyone, takes newcomers and keeps your look", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto("/design/starlit/lobby");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const stage = page.locator("[data-stage-host]");
+  await expect(stage.locator("canvas")).toBeVisible({ timeout: 60_000 });
+  // Opened directly, the lobby is already settled: no flight.
+  await expect(stage).toHaveAttribute("data-stage", "lobby");
+  // The mock lobby has seven players; the engine reports who is standing.
+  await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
+  await expect(page.locator("[data-tag]")).toHaveCount(7);
+  await expect(page.locator('[data-tag="p-wren"]')).toContainText("You");
+
+  await openSection(page, "players");
+  await page.getByRole("button", { name: "Prototype: someone joins" }).click();
+  await expect(stage).toHaveAttribute("data-seated", "8", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Prototype: someone leaves" }).click();
+  await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
+
+  // A look chosen in "Your look" is kept for next time.
+  await openSection(page, "look");
+  const helm = page.locator('[data-look="headwear:helm"]');
+  await helm.click();
+  await page.locator('[data-look="cloak:moss"]').click();
+  await expect(helm).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.locator('[data-section="look"] button[aria-expanded]'),
+  ).toContainText("Moss cloak, helm");
+  await page.reload();
+  await openSection(page, "look");
+  await expect(helm).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-look="cloak:moss"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(errors).toEqual([]);
+});
+
+test("lobby sections open and close, and say their state when closed", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/design/starlit/lobby");
+  const players = page.locator('[data-section="players"]');
+  const summary = players.locator("button[aria-expanded]");
+  // On a phone every section starts closed, so the table shows.
+  await expect(summary).toHaveAttribute("aria-expanded", "false");
+  await expect(summary).toContainText("7 of 10, 5 ready, 1 away");
+  await expect(
+    players.getByRole("button", { name: "Prototype: someone joins" }),
+  ).toBeHidden();
+  await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    players.getByRole("button", { name: "Prototype: someone joins" }),
+  ).toBeVisible();
+  await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "false");
+  // The room code, the blockers and the actions are always in view.
+  await expect(
+    page.locator('section[aria-label="Room code"]:visible'),
+  ).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "I'm ready" })).toBeVisible();
+});
+
+test("creating a room flies the camera from the landing into a new lobby", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto("/design/starlit");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const stage = page.locator("[data-stage-host]");
+  await expect(stage).toHaveAttribute("data-stage", "hero", {
+    timeout: 60_000,
+  });
+  await page.getByLabel("Your name").fill("Faraj");
+  await page.getByRole("link", { name: "Create a room" }).click();
+  // The same scene flies on: it never unmounts on the way.
+  await expect(stage).toHaveAttribute("data-stage", "flying");
+  await expect(
+    page.getByRole("heading", { name: "Gather at the fire" }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page).toHaveURL(/via=create/);
+  await expect(stage).toHaveAttribute("data-stage", "lobby", {
+    timeout: 60_000,
+  });
+  // You host a new room; friends arrive one by one.
+  await expect(page.locator('[data-tag="p-wren"]')).toContainText("Faraj");
+  // Friends keep arriving while the test runs, so check the trend, not an
+  // exact moment: too few to start, and more than just you before long.
+  await expect(page.getByText(/more players? (is|are) needed/)).toBeVisible();
+  await expect
+    .poll(() => page.locator("[data-tag]").count(), { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(2);
+
+  // Back to the landing: the camera flies back out.
+  await page.getByRole("link", { name: "Landing", exact: true }).click();
+  await expect(stage).toHaveAttribute("data-stage", "hero", {
+    timeout: 60_000,
+  });
+  await expect(page.getByRole("link", { name: "Create a room" })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("joining a room flies in to someone else's table as a guest", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto("/design/starlit");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const stage = page.locator("[data-stage-host]");
+  await expect(stage).toHaveAttribute("data-stage", "hero", {
+    timeout: 60_000,
+  });
+  await page.getByLabel("Room code").fill("rose");
+  await page.getByRole("link", { name: "Join" }).click();
+  await expect(page).toHaveURL(/via=join/, { timeout: 30_000 });
+  await expect(stage).toHaveAttribute("data-stage", "lobby", {
+    timeout: 60_000,
+  });
+  await expect(page.getByText("You joined")).toBeVisible();
+  await expect(page.getByLabel("R O S E").first()).toBeAttached();
+  // A guest sees the settings but cannot change them, and cannot start.
+  await openSection(page, "settings");
+  await expect(page.getByRole("switch")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start" })).toHaveCount(0);
+  await expect(page.getByText("Ansel starts the game.").first()).toBeVisible();
+  // You arrive last, once the camera has landed.
+  await expect(stage).toHaveAttribute("data-seated", "7", { timeout: 60_000 });
   expect(errors).toEqual([]);
 });
 

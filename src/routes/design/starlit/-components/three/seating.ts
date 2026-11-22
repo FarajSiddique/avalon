@@ -18,7 +18,7 @@ import type { TablePlayer } from "./types";
 /** Where a figure stands: between its seat stone and the table. */
 export const STAND = 5.2;
 /** How much bigger than the 1.5 unit model each figure is drawn. */
-export const SCALE = 2.05;
+const SCALE = 2.05;
 /** Height of the name tag's anchor over a standing figure's feet. */
 export const HEAD = 2.15 * SCALE;
 /** Seconds for a figure to rise into place, or sink away. */
@@ -54,13 +54,13 @@ export interface Standing {
 }
 
 /** How a seat's ring is lit during the game. */
-export interface RingLook {
+interface RingLook {
   /** 0 to 1. */
   level: number;
   scale: number;
 }
 
-export interface SeatState {
+interface SeatState {
   present: boolean;
   ready: boolean;
   away: boolean;

@@ -5,6 +5,8 @@ import {
   normalizeRoomCode,
 } from "@/shared/constants";
 import { LobbyScreen } from "./-components/lobby/lobby-screen";
+import { NoWebGLNotice } from "./-components/no-webgl-notice";
+import { useStage } from "./-components/stage/stage-context";
 
 /**
  * How you got here, from the landing: "create" (you host a new room) or
@@ -34,5 +36,7 @@ export const Route = createFileRoute("/design/starlit/lobby")({
 
 function LobbyPage() {
   const search = Route.useSearch();
-  return <LobbyScreen {...search} />;
+  const { status } = useStage();
+  // Without WebGL (a failed stage stays failed) the game cannot be shown.
+  return status === "failed" ? <NoWebGLNotice /> : <LobbyScreen {...search} />;
 }

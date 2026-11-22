@@ -19,7 +19,7 @@ function StarlitLandingPage() {
         </p>
       </header>
 
-      {/* One drawing: a band between the title and the form on a phone, the whole backdrop on a wide screen. */}
+      {/* The stage's place: a band between the title and the form on a phone, the whole backdrop on a wide screen. */}
       <LandingArt className="-mt-6 block h-[19rem] w-full flex-none lg:absolute lg:inset-0 lg:mt-0 lg:h-full" />
 
       <div className="relative z-10 flex-1 bg-[var(--art-ground-dark)] px-4 pb-8 lg:flex-none lg:bg-transparent lg:px-[max(4rem,7vw)] lg:pb-0">

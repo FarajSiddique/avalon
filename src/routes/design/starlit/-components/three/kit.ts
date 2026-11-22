@@ -64,7 +64,7 @@ export function fbm2(x: number, y: number, octaves = 4): number {
 }
 
 /** The same noise in GLSL, for shaders. */
-export const GLSL_NOISE = /* glsl */ `
+const GLSL_NOISE = /* glsl */ `
 float hash21(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -225,7 +225,7 @@ export function skyDome(
   return mesh;
 }
 
-export interface Twinkling {
+interface Twinkling {
   object: Points;
   update(time: number): void;
 }
@@ -330,75 +330,6 @@ export function starField(
       material.uniforms.uTime!.value = time;
     },
   };
-}
-
-/** A moon disc with soft maria and a wide halo, drawn as one sprite. */
-export function moonSprite(
-  bin: Bin,
-  p: Palette,
-  options: { size: number; crescent?: number },
-): Sprite {
-  const size = 512;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const c = size / 2;
-  const discR = size * 0.16;
-  const moon = `#${p.moon.getHexString(SRGBColorSpace)}`;
-  const steel = `#${p.steel.getHexString(SRGBColorSpace)}`;
-  const halo = ctx.createRadialGradient(c, c, discR * 0.8, c, c, c);
-  halo.addColorStop(0, `${moon}66`);
-  halo.addColorStop(0.25, `${moon}22`);
-  halo.addColorStop(1, `${moon}00`);
-  ctx.fillStyle = halo;
-  ctx.fillRect(0, 0, size, size);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(c, c, discR, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.fillStyle = moon;
-  ctx.fillRect(0, 0, size, size);
-  ctx.globalAlpha = 0.35;
-  ctx.fillStyle = steel;
-  for (const [x, y, r] of [
-    [-0.35, -0.2, 0.22],
-    [0.25, 0.3, 0.16],
-    [0.1, -0.45, 0.1],
-    [-0.1, 0.15, 0.08],
-    [0.42, -0.1, 0.12],
-  ] as const) {
-    ctx.beginPath();
-    ctx.arc(c + x * discR, c + y * discR, r * discR, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  if (options.crescent) {
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(
-      c + discR * options.crescent,
-      c - discR * 0.25,
-      discR * 0.95,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
-  }
-  ctx.restore();
-  const texture = bin.add(new CanvasTexture(canvas));
-  texture.colorSpace = SRGBColorSpace;
-  const material = bin.add(
-    new SpriteMaterial({
-      map: texture,
-      transparent: true,
-      depthWrite: false,
-      fog: false,
-    }),
-  );
-  const sprite = new Sprite(material);
-  sprite.scale.setScalar(options.size);
-  sprite.renderOrder = -8;
-  return sprite;
 }
 
 /* ---------- fire ---------- */
@@ -630,9 +561,4 @@ export function frameCamera(
     ? -options.shift * 2 * camera.filmGauge * Math.tan(half) * layout.aspect
     : 0;
   camera.updateProjectionMatrix();
-}
-
-/** Linear interpolation of two palette colours, as a new colour. */
-export function mixColor(a: Color, b: Color, t: number): Color {
-  return a.clone().lerp(b, t);
 }

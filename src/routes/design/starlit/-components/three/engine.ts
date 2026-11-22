@@ -9,7 +9,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { readPalette, readPaletteSource } from "./palette";
+import { readPalette } from "./palette";
 import type {
   ConceptScene,
   CreateConcept,
@@ -23,28 +23,13 @@ import type {
   TableShot,
 } from "./types";
 
-export type ConceptName = "isle" | "lake" | "table";
-
-const LOADERS: Record<ConceptName, () => Promise<CreateConcept>> = {
-  isle: () => import("./scenes/ember-isle").then((m) => m.createEmberIsle),
-  lake: () => import("./scenes/lantern-lake").then((m) => m.createLanternLake),
-  table: () => import("./scenes/star-table").then((m) => m.createStarTable),
-};
-
-export interface MountOptions {
+interface MountOptions {
   /** Follow the mouse (or drift by itself on touch screens). */
   interactive: boolean;
   /** Treat a landscape canvas as a backdrop with content on its left. */
   backdrop: boolean;
-  /**
-   * Draw one still frame, keep it as an image and free the GPU at once. For
-   * thumbnails, so a page of them holds no WebGL contexts.
-   */
-  snapshot?: boolean;
-  /** The GPU dropped the context: the caller should show the drawing. */
+  /** The GPU dropped the context: the caller should show a notice. */
   onLost?: () => void;
-  /** "lobby" frames the whole table and seats `players` at it. */
-  variant?: "hero" | "lobby";
   /** Lobby: who is at the table when it opens. */
   players?: readonly TablePlayer[];
   /**
@@ -130,12 +115,11 @@ const FLIGHT_SECONDS: Record<FlightPath, number> = {
 };
 
 /**
- * Put a 3D concept into `host`. Returns its controls, or null when the
- * browser has no WebGL (the caller shows the drawing).
+ * Put the Star Table into `host`. Returns its controls, or null when the
+ * browser has no WebGL (the caller shows a notice).
  */
-export async function mountConcept(
+export async function mountStarTable(
   host: HTMLElement,
-  name: ConceptName,
   options: MountOptions,
 ): Promise<Mounted | null> {
   // One mount at a time owns the host's data attributes: one cancelled
@@ -158,7 +142,9 @@ export async function mountConcept(
       for (const [k, v] of marks) write(k, v);
     } else write(key, value);
   };
-  const create = await LOADERS[name]();
+  const create: CreateConcept = await import("./scenes/star-table").then(
+    (m) => m.createStarTable,
+  );
 
   // Ask quietly first: three.js logs an error when it cannot get a context.
   if (!document.createElement("canvas").getContext("webgl2")) return null;
@@ -190,21 +176,18 @@ export async function mountConcept(
     return Number.isFinite(value) && value > 0 ? value : 1;
   };
 
-  const variant = options.variant ?? "hero";
   const displayFont =
     getComputedStyle(themeEl).getPropertyValue("--display-font").trim() ||
     undefined;
   let players: readonly TablePlayer[] | null = options.players ?? null;
   let play: TablePlay | null = null;
-  let concept: ConceptScene = create({
+  const concept: ConceptScene = create({
     renderer,
     palette: readPalette(themeEl),
     lite,
-    variant,
     displayFont,
   });
   if (players) concept.setPlayers?.(players);
-  let paletteSource = readPaletteSource(themeEl);
 
   const composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(concept.scene, concept.camera);
@@ -620,56 +603,6 @@ export async function mountConcept(
     if (motion.matches) still();
   };
 
-  const rebuild = () => {
-    const source = readPaletteSource(themeEl);
-    if (source === paletteSource) return;
-    paletteSource = source;
-    concept.dispose();
-    concept = create({
-      renderer,
-      palette: readPalette(themeEl),
-      lite,
-      variant,
-      displayFont,
-    });
-    // Same people, already standing, the same play: a colour change is not
-    // an arrival, nor a new step.
-    if (players) concept.setPlayers?.(players);
-    concept.setPlay?.(play);
-    if (players || play) concept.settle?.();
-    renderPass.scene = concept.scene;
-    renderPass.camera = concept.camera;
-    applyBloom();
-    concept.resize(layout);
-    applyStage(0, true);
-    if (!running) still();
-  };
-
-  if (options.snapshot) {
-    resize();
-    still();
-    const image = document.createElement("img");
-    image.alt = "";
-    image.src = canvas.toDataURL("image/jpeg", 0.88);
-    image.style.cssText =
-      "display:block;width:100%;height:100%;object-fit:cover";
-    host.appendChild(image);
-    window.removeEventListener("pointermove", onPointer);
-    concept.dispose();
-    composer.dispose();
-    renderer.dispose();
-    renderer.forceContextLoss();
-    canvas.remove();
-    return {
-      stop: () => image.remove(),
-      setPlayers: () => undefined,
-      setTarget: () => undefined,
-      setPlay: () => undefined,
-      pickAt: () => null,
-      setTagLayer: () => undefined,
-    };
-  }
-
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(host);
   const intersection = new IntersectionObserver((entries) => {
@@ -677,21 +610,6 @@ export async function mountConcept(
     sync();
   });
   intersection.observe(host);
-  // A tweak dial rewrites a <style> inside the theme (and stylesheets can
-  // change in the head): when the art tokens change, rebuild with them. The
-  // check is a cheap string compare, so other DOM changes cost little.
-  let rebuildTimer = 0;
-  const styles = new MutationObserver(() => {
-    window.clearTimeout(rebuildTimer);
-    rebuildTimer = window.setTimeout(rebuild, 150);
-  });
-  for (const root of [document.head, themeEl]) {
-    styles.observe(root, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-  }
   document.addEventListener("visibilitychange", sync);
   motion.addEventListener("change", sync);
   const onLost = (event: Event) => {
@@ -760,11 +678,9 @@ export async function mountConcept(
     if (OWNERS.get(host) === owner) OWNERS.delete(host);
     running = false;
     cancelAnimationFrame(frameId);
-    window.clearTimeout(rebuildTimer);
     resizeObserver.disconnect();
     layerObserver.disconnect();
     intersection.disconnect();
-    styles.disconnect();
     document.removeEventListener("visibilitychange", sync);
     motion.removeEventListener("change", sync);
     window.removeEventListener("pointermove", onPointer);

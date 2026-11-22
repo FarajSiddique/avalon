@@ -60,7 +60,7 @@ export interface TablePlay {
   cardsShown: number;
 }
 
-export interface Frame {
+interface Frame {
   /** Seconds since the scene started (scaled by the ambient tempo). */
   time: number;
   /** Seconds since the last frame, clamped. */
@@ -68,7 +68,7 @@ export interface Frame {
   pointer: Pointer;
   /**
    * The stage only: 0 is the landing framing, 1 the lobby framing, and
-   * anything between is mid-flight. Unset, the variant decides.
+   * anything between is mid-flight. Unset, the landing.
    */
   blend?: number;
   /** The stage only: the flight under way, if any. */
@@ -99,13 +99,11 @@ export interface Layout {
   wide: boolean;
 }
 
-export interface SceneContext {
+interface SceneContext {
   renderer: WebGLRenderer;
   palette: Palette;
   /** Fewer particles and cheaper effects on small screens. */
   lite: boolean;
-  /** "lobby": framed on the whole table, seats show the players given. */
-  variant: "hero" | "lobby";
   /** The theme's display font (a CSS font-family), for words drawn in 3D. */
   displayFont?: string;
 }

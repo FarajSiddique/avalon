@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { isTableStep } from "@/design/directions";
+import { NoWebGLNotice } from "./-components/no-webgl-notice";
 import { useStage } from "./-components/stage/stage-context";
-import { TableScreen } from "./-components/table/table-screen";
 import { TableStageScreen } from "./-components/table/table-stage-screen";
 
 export const Route = createFileRoute("/design/starlit/table/$step")({
@@ -17,9 +17,9 @@ function TablePage() {
   const { status } = useStage();
   if (!isTableStep(step)) return null;
   // Each step starts fresh: remount so local state does not carry over.
-  // Without WebGL (a failed stage stays failed) the flat table is the screen.
+  // Without WebGL (a failed stage stays failed) the game cannot be shown.
   return status === "failed" ? (
-    <TableScreen key={step} step={step} />
+    <NoWebGLNotice />
   ) : (
     <TableStageScreen key={step} step={step} />
   );

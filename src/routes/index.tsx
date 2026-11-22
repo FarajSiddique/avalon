@@ -23,10 +23,10 @@ function HomePage() {
       <p className="border-line text-ink-muted border-t pt-5 text-sm">
         This screen is a working placeholder.{" "}
         <Link
-          to="/design"
+          to="/design/starlit"
           className="text-accent-strong underline underline-offset-4"
         >
-          Compare the three design directions
+          See the Starlit Vale design
         </Link>
         .
       </p>

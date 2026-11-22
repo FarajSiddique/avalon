@@ -10,14 +10,15 @@ paths:
 # Design System
 
 **Status: Starlit Vale is the chosen direction** (picked by the owner on 16
-November 2026), with its motion and sound. Its spec is `docs/design/starlit.md` and
-its prototype is under `/design/starlit`. The real screens are not built from it
-yet: Phase 0 in `docs/architecture.md` moves its tokens to `:root`, deletes the
-other two directions and rewrites this file from the spec. Until then, new UI work
+November 2026), with its motion and sound and the 3D Star Table. Its spec is
+`docs/design/starlit.md` and its prototype is under `/design/starlit`. The other
+two directions are deleted. The real screens are not built from it yet: Phase 0 in
+`docs/architecture.md` moves its tokens to `:root` and rewrites this file from the
+spec. Until then, new UI work
 follows the Starlit spec. The old navy and gold, Inter and shadcn/ui system is
 gone; do not bring it back.
 
-Large drawings (night sky, camp scene, seat ring) render in the browser only, not
+Large drawings (the night sky, the 3D stage) render in the browser only, not
 on the Worker: server-rendering them costs about twice the free plan's CPU limit
 (measured, see Deployment in `docs/architecture.md`).
 
@@ -62,9 +63,10 @@ component tokens. A theme sets the semantic layer.
   inline SVG, or open-licensed with the licence noted in the spec. No emoji as icons.
 - The one exception: the landing hero, and the stage the landing shares with the lobby,
   the role card and the table (one scene, see "The game at the table" in
-  `docs/design/starlit.md`), may be a WebGL scene built with three.js (the 3D concepts in
+  `docs/design/starlit.md`), may be a WebGL scene built with three.js (the Star Table in
   `src/routes/design/starlit/-components/three`, the stage in `-components/stage`). It is
   loaded lazily in the browser only, colours come from the `--art-*` tokens at runtime, it
   holds still (and cuts instead of flying) under reduced motion, it is decorative (what it
-  shows is also said in text), and without WebGL it falls back to the drawn scene.
+  shows is also said in text), and without WebGL the game screens show a short notice
+  instead (the landing keeps its form).
 - No UI kit. Components are hand-built on the tokens with native elements.

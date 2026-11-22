@@ -51,13 +51,13 @@ typechecks. Never edit it by hand: after adding, moving or removing a route, run
 ```
 wrangler.jsonc     The Worker and its ROOM Durable Object binding
 src/server.ts      Worker entry: /api/socket/CODE goes to the room object, the rest to TanStack Start
-src/routes/        File-based routes. / (landing), /room/$code (lobby and game), /api/health, /design (prototypes)
+src/routes/        File-based routes. / (landing), /room/$code (lobby and game), /api/health, /design/starlit (prototype)
 src/components/    Screens and components of the real app
 src/functions/     Server functions (createRoom)
 src/shared/        Types, constants, protocol, validators. Imported by both sides
 src/server/        Room object, room rules, view projection, game engine. Worker only
 src/client/        Browser helpers: connection, seat token, room store hook, hold-to-reveal, sound
-src/design/        Prototype-only mock data and helpers (removed in Phase 0; Starlit Vale is the pick)
+src/design/        Prototype-only mock data and helpers for Starlit Vale, the chosen design
 e2e/               Playwright: *.e2e.ts behaviour, *.shots.ts screenshots
 scripts/           contrast.mjs, restart-check.mjs
 bruno/             Bruno collection

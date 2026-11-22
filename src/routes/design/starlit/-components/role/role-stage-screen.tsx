@@ -18,7 +18,7 @@ import type { TablePlay } from "../three/types";
 import { RoleFace } from "./role-face";
 import { SkyCard } from "./sky-card";
 
-const paths = designPaths("starlit");
+const paths = designPaths();
 
 /** The longest the overlays wait for the camera to settle on your seat. */
 const MAX_WAIT_MS = 2200;
@@ -55,7 +55,7 @@ function useArrived(): boolean {
 /**
  * The role reveal at the Star Table: the camera sits low behind your seat
  * and the face-down sky card lies over the scene. Press and hold to read it
- * (the same card and hold as the flat screen). The scene never changes
+ * (the sky card and its hold). The scene never changes
  * while the card is held: what you know stays on the card.
  */
 export function RoleStageScreen({ variant }: { variant: RoleVariant }) {

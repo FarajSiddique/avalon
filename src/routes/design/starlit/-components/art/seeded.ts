@@ -18,7 +18,7 @@ export function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export type StarTone = "cream" | "blue" | "pink" | "amber";
+type StarTone = "cream" | "blue" | "pink" | "amber";
 
 export const STAR_FILL: Record<StarTone, string> = {
   cream: "var(--art-star)",

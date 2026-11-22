@@ -1,7 +1,7 @@
 import { Color } from "three";
 
 /** The art tokens a 3D scene draws with. Same palette as the SVG artwork. */
-export const ART_TOKENS = [
+const ART_TOKENS = [
   "sky-top",
   "sky-mid",
   "sky-low",
@@ -52,14 +52,6 @@ export const ART_TOKENS = [
 
 export type ArtToken = (typeof ART_TOKENS)[number];
 export type Palette = Record<ArtToken, Color>;
-
-/** The token values as written, to tell when a dial has changed them. */
-export function readPaletteSource(el: Element): string {
-  const style = getComputedStyle(el);
-  return ART_TOKENS.map((t) =>
-    style.getPropertyValue(`--art-${t}`).trim(),
-  ).join("|");
-}
 
 /** Resolve every art token on `el` into a colour (linear, as three wants). */
 export function readPalette(el: Element): Palette {

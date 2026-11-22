@@ -72,12 +72,8 @@ const SEATS = 10;
 export const createStarTable: CreateConcept = ({
   palette: p,
   lite,
-  variant,
   displayFont,
 }) => {
-  // The lobby framing as a fixed scene (thumbnails, the old lobby panel).
-  // The stage passes a blend instead, and flies between the two.
-  const lobby = variant === "lobby";
   const bin = new Bin();
   const scene = new Scene();
   scene.fog = new FogExp2(p["sky-low"], 0.012);
@@ -106,7 +102,7 @@ export const createStarTable: CreateConcept = ({
   moonLight.position.set(-10, 40, -6);
   scene.add(moonLight);
   // A soft light from the viewer's side in the lobby, so the figures read.
-  const front = new DirectionalLight(p.moon, lobby ? 1.3 : 0);
+  const front = new DirectionalLight(p.moon, 0);
   front.position.set(0, 14, 18);
   scene.add(front);
 
@@ -332,7 +328,7 @@ export const createStarTable: CreateConcept = ({
   const moveFrom = makePose();
   let moveId = -1;
   let shotNow: ShotMove = { to: null, progress: 1, id: 0 };
-  let blendNow = lobby ? 1 : 0;
+  let blendNow = 0;
   const corners: Vector3[] = [];
   const others = new Map<string, Vector3>();
 
@@ -383,7 +379,7 @@ export const createStarTable: CreateConcept = ({
       frame(blendNow);
     },
     update({ time, dt, pointer, blend, flight, shot }) {
-      const b = blend ?? (lobby ? 1 : 0);
+      const b = blend ?? 0;
       blendNow = b;
       if (shot) shotNow = shot;
       seating.update(dt, time);

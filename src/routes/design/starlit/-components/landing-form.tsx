@@ -11,7 +11,7 @@ import { IconArrowRight, IconStar } from "./icons";
 import { useStage } from "./stage/stage-context";
 import type { FlightPath } from "./three/types";
 
-const paths = designPaths("starlit");
+const paths = designPaths();
 
 /** How long the landing takes to step aside before the lobby replaces it. */
 const LEAVE_MS = 420;
@@ -26,7 +26,7 @@ export function LandingForm() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const navigate = useNavigate();
-  const { depart } = useStage();
+  const { depart, status } = useStage();
   const timer = useRef(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -34,8 +34,11 @@ export function LandingForm() {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
       return;
     event.preventDefault();
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    depart(via);
+    // Without WebGL there is no camera to fly: go straight there.
+    const still =
+      status === "failed" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (status !== "failed") depart(via);
     window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
     const search: Record<string, string> = { via };
     if (name.trim()) search.name = name.trim();

@@ -19,7 +19,7 @@ import type { FlightPath, TablePlay, TablePlayer } from "../three/types";
  * from one to the other is a camera flight, not a page change. A screen
  * claims it with a slot; the lobby also says who is at the table.
  */
-export interface StageSlot {
+interface StageSlot {
   mode: StageMode;
   /** The open space the table is framed in. */
   focus: RefObject<HTMLElement | null>;
@@ -29,7 +29,7 @@ export interface StageSlot {
   fade: number;
 }
 
-export type StageStatus = "idle" | "loading" | "running" | "failed";
+type StageStatus = "idle" | "loading" | "running" | "failed";
 
 interface StageValue {
   slot: StageSlot | null;

@@ -1,6 +1,64 @@
+import type { TableStep } from "@/design/directions";
+import { playerName, playerNames, questReveal } from "@/design/mock";
 import { MAX_REJECTIONS } from "@/shared/constants";
 import type { GameView, ProposalRecord } from "@/shared/views";
+import { joinNames, numberWord } from "../names";
 import { tallyOf } from "./vote-history";
+
+/** The step's heading: which quest, what is happening, and one line more. */
+export interface Heading {
+  quest: number;
+  title: string;
+  line: string;
+}
+
+export function headingFor(step: TableStep, view: GameView): Heading {
+  const quest = view.questIndex + 1;
+  const { phase } = view;
+  const leader = playerName(view, view.leaderId);
+  const youLead = view.leaderId === view.you.id;
+
+  switch (step) {
+    case "propose": {
+      const size = phase.name === "team_building" ? phase.teamSize : 0;
+      return {
+        quest,
+        title: youLead ? "Choose your team" : `${leader} is choosing a team`,
+        line: `${youLead ? "You lead" : `${leader} leads`} quest ${quest}. It needs ${numberWord(size)} players.`,
+      };
+    }
+    case "vote": {
+      const team = phase.name === "team_vote" ? phase.teamIds : [];
+      return {
+        quest,
+        title: "Vote on the team",
+        line: `${youLead ? "You propose" : `${leader} proposes`} ${joinNames(playerNames(view, team))} for quest ${quest}.`,
+      };
+    }
+    case "reveal":
+      return {
+        quest,
+        title: "The votes are in",
+        line: "Every vote is shown at the same moment.",
+      };
+    case "quest": {
+      const onTeam = phase.name === "quest" && phase.onTeam;
+      return {
+        quest,
+        title: "The quest is under way",
+        line: onTeam
+          ? "You are on the team. Play one card."
+          : "Wait while the team plays its cards.",
+      };
+    }
+    case "result":
+      return {
+        quest: questReveal.questIndex + 1,
+        title: `Quest ${questReveal.questIndex + 1} is over`,
+        line: "The cards were shuffled, then turned over one at a time.",
+      };
+  }
+}
 
 /*
  * Each table section, closed, says its state in a few words, so the news

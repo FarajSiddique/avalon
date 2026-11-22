@@ -210,6 +210,10 @@ test("the leader picks the team by tag and by the Team list", async ({
 }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
+  // This checks picking, not motion. CI draws WebGL in software at about
+  // one frame a second, so the camera's move in (and the tags riding it)
+  // never holds still long enough to click. Reduced motion cuts to the shot.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/design/starlit/lobby");
   await page.evaluate(() => sessionStorage.clear());
   await openOnStage(page, "/design/starlit/table/propose", "table");

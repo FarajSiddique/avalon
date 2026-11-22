@@ -735,21 +735,43 @@ newer client against an older room fails politely.
 ## Deployment
 
 First deployed on 16 November 2026, with the owner's approval, to the owner's
-Cloudflare account: <https://avalon.hong-ladder.workers.dev>. Every later
-deploy still needs the owner's go-ahead.
+Cloudflare account: <https://avalon.hong-ladder.workers.dev>.
 
-| Step    | What                                                                                                                                      |
-| ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Account | The owner's Cloudflare account, signed in with `wrangler login`.                                                                          |
-| Deploy  | `pnpm run deploy` (builds, then `wrangler deploy`). The first deploy created the Worker and the `RoomObject` class from `wrangler.jsonc`. |
-| Address | `avalon.hong-ladder.workers.dev`. A custom domain is optional.                                                                            |
-| Secrets | None. There are no environment variables.                                                                                                 |
-| Check   | `E2E_BASE_URL=https://avalon.hong-ladder.workers.dev pnpm test:e2e` runs the browser tests against the live site.                         |
+Since Part B of `docs/plans/01-standards-and-ci-cd.md`, deploys and previews
+run only in GitHub Actions. Nobody runs `pnpm run deploy`, `wrangler deploy` or
+`wrangler preview` by hand.
+
+- **A merge to `main` deploys.** The owner merging is the approval. The
+  `deploy` job in `.github/workflows/ci.yml` runs after `check` passes, then
+  runs the browser tests and the CPU check (`pnpm test:cpu`) against the live
+  site. A failure turns the run red; it does not roll back. Deploys queue, so a
+  second merge waits for the running deploy to finish.
+- **Every pull request from a branch in this repo gets a preview.**
+  `.github/workflows/preview.yml` uploads a preview named `pr-<number>`,
+  comments its address on the pull request, and runs the browser tests against
+  it. Closing the pull request deletes the preview. Pull requests from forks and
+  from Dependabot have no secrets, so they get no preview.
+- **The token** is a Cloudflare API token from the "Edit Cloudflare Workers"
+  template, limited to the one account, stored as the repository secrets
+  `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+- **Rolling back** is by hand: `pnpm exec wrangler rollback`, then revert the
+  commit on `main` so the next deploy does not bring it back.
+- Dependabot opens grouped update pull requests weekly, and `audit.yml` runs
+  `pnpm audit` weekly.
+
+| Step    | What                                                                                                                                                      |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account | The owner's Cloudflare account, signed in with `wrangler login`.                                                                                          |
+| Deploy  | The `deploy` job on a merge to `main` (`pnpm run deploy`: build, then `wrangler deploy`). The first deploy created the Worker and the `RoomObject` class. |
+| Address | `avalon.hong-ladder.workers.dev`. A custom domain is optional.                                                                                            |
+| Secrets | None in the Worker. GitHub holds `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for the workflows.                                                    |
+| Check   | `E2E_BASE_URL=https://avalon.hong-ladder.workers.dev pnpm test:e2e` runs the browser tests against the live site.                                         |
 
 ### Measured CPU time on the live Worker
 
 Measured on 16 November 2026 with `wrangler tail avalon --format json` while
-requesting each address 30 times (the tail samples, so counts are a little
+requesting each address 30 times. `pnpm test:cpu` (`scripts/cpu-check.mjs`)
+repeats this measurement and runs after every deploy (the tail samples, so counts are a little
 under 30). The free plan allows 10 ms of CPU per request. Cloudflare's limits
 page says there is some flexibility for a Worker that runs over infrequently,
 and that one that runs over consistently is stopped with error 1102.

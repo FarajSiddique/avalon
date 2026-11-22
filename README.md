@@ -29,6 +29,9 @@ pnpm check
 `pnpm install` also turns on a pre-commit hook (`.githooks/pre-commit`) that
 checks format and lint on staged files.
 
+Every pull request gets a preview deploy with its address in a comment, and a
+merge to `main` deploys to <https://avalon.hong-ladder.workers.dev>.
+
 ## Where things are
 
 - [`docs/architecture.md`](docs/architecture.md): how it is built, why, and the

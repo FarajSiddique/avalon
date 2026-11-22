@@ -25,7 +25,7 @@ import {
 import { StageTags, type SeatMark } from "../stage/stage-tags";
 import type { TablePlay, TablePlayer } from "../three/types";
 import { QuestTrack } from "./quest-track";
-import { cssVars } from "./css-vars";
+import { cssVars } from "@/design/css-vars";
 import { Scoreboard } from "./scoreboard";
 import { headingFor, historySummary, questsSummary } from "./table-summaries";
 import { useSheet, type SheetHandle } from "./use-sheet";

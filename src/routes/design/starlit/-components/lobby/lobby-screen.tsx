@@ -5,15 +5,15 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play } from "@/client/sound";
 import { avatarFor, lookSummary } from "@/design/avatar";
 import { designPaths } from "@/design/directions";
 import { useAvatar } from "@/design/use-avatar";
-import { setYourName } from "@/design/your-name";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import type { LobbySearch } from "../../lobby";
-import { cssVars } from "../art/css-vars";
+import { cssVars } from "@/design/css-vars";
 import { IconArrowRight, IconCheck, IconRing } from "../icons";
 import { SoundLink } from "../sound-link";
 import {
@@ -56,52 +56,6 @@ function useWide(): boolean {
 }
 
 /**
- * The moment the last blocker clears, the table plays one chord. Only on the
- * change: opening a lobby that can already start stays quiet.
- */
-function useEveryoneReadyChord(canStart: boolean): void {
-  const was = useRef(canStart);
-  // One subscription while the lobby can start and another while it cannot;
-  // React swaps them after the commit that changes `canStart`, as an effect
-  // on `[canStart]` would. Both are idempotent, so StrictMode's extra
-  // subscribe on mount stays quiet.
-  const whileReady = useCallback(() => {
-    if (!was.current) {
-      was.current = true;
-      play("all-ready");
-    }
-
-    return noop;
-  }, []);
-  const whileBlocked = useCallback(() => {
-    was.current = false;
-
-    return noop;
-  }, []);
-
-  useSyncExternalStore(
-    canStart ? whileReady : whileBlocked,
-    noSnapshot,
-    noSnapshot,
-  );
-}
-
-/**
- * The game seats you under the name you typed (or as Wren, with none, so the
- * lobby and the table always agree). Written to the session store after the
- * commit, and again whenever the name in the address changes.
- */
-function useSeatName(name: string | undefined): void {
-  const write = useCallback(() => {
-    setYourName(name ?? null);
-
-    return noop;
-  }, [name]);
-
-  useSyncExternalStore(write, noSnapshot, noSnapshot);
-}
-
-/**
  * While `filling`, the next friend arrives after a pause. Each arrival
  * changes `count`, which gives a new subscription and so the next timer.
  */
@@ -122,16 +76,6 @@ function useArrivals(
   useSyncExternalStore(filling ? wait : noSubscription, noSnapshot, noSnapshot);
 }
 
-function noSubscription(): () => void {
-  return noop;
-}
-
-function noop(): void {}
-
-function noSnapshot(): null {
-  return null;
-}
-
 /**
  * The lobby: the Star Table fills the screen, everyone who has joined stands
  * at it, and the room's information and settings sit over it in sections
@@ -144,9 +88,6 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
   const reasons = startBlockerMessages(view);
   const isHost = view.you.isHost;
   const hostName = view.players.find((p) => p.isHost)?.name ?? "The host";
-
-  useEveryoneReadyChord(canStart);
-  useSeatName(name);
 
   // The table's open space, claimed from the shared stage.
   const stage = useStage();

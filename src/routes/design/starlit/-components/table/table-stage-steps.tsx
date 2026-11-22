@@ -33,7 +33,7 @@ import {
   useOpeningCues,
   useTimeline,
 } from "./step-parts";
-import { cssVars } from "./css-vars";
+import { cssVars } from "@/design/css-vars";
 import { TableShell } from "./table-stage-shell";
 import { tallyOf } from "./vote-history";
 

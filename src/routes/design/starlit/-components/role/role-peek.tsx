@@ -4,7 +4,7 @@ import { useHoldToReveal } from "@/client/use-hold-to-reveal";
 import type { GameView } from "@/shared/views";
 import { IconHold } from "../icons";
 import { RoleFace } from "./role-face";
-import { useCardSound } from "./sky-card";
+import { closeClouds, openClouds, useCardStars } from "./sky-card";
 
 /**
  * "Your role" on every table step: a small button you press and hold to see
@@ -14,10 +14,13 @@ import { useCardSound } from "./sky-card";
  * the button is held, and the button carries no role or alignment.
  */
 export function RolePeek({ view }: { view: GameView }) {
-  const hold = useHoldToReveal();
+  const hold = useHoldToReveal({
+    onReveal: openClouds,
+    onHide: closeClouds,
+  });
   const { revealed } = hold;
 
-  useCardSound(revealed);
+  useCardStars(revealed);
   const id = useId();
   // The card opens over the whole scene, inside the theme (for its tokens)
   // but outside any header or panel that could clip or move it.

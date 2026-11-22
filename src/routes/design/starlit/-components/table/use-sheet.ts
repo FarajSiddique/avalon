@@ -5,7 +5,7 @@ import {
   type CSSProperties,
   type RefObject,
 } from "react";
-import { cssVars } from "./css-vars";
+import { cssVars } from "@/design/css-vars";
 
 /**
  * The phone's bottom sheet at the table: open (the whole round) or

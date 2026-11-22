@@ -1,5 +1,5 @@
 import type { LobbyView, SeatView } from "@/shared/views";
-import { cssVars } from "../art/css-vars";
+import { cssVars } from "@/design/css-vars";
 import { IconCheck, IconCrown, IconMoon, IconRing } from "../icons";
 import { initialOf } from "../names";
 

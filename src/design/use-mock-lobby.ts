@@ -1,4 +1,6 @@
-import { useCallback, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { createStore, type StoreApi } from "zustand/vanilla";
+import { play } from "@/client/sound";
 import {
   MAX_PLAYERS,
   MIN_PLAYERS,
@@ -142,107 +144,155 @@ function withPlayers(
   return withBlockers({ ...current, players });
 }
 
-export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
-  const [view, setView] = useState<LobbyView>(() => openingView(options));
-  const arriveNext = useCallback(
-    () =>
-      setView((current) => {
-        const next = missing(current)[0];
+/** Nothing stands in the way of Start. */
+function canStartIn(view: LobbyView): boolean {
+  return view.startBlockers.length === 0;
+}
 
-        if (!next || current.players.length >= MAX_PLAYERS) {
-          return current;
-        }
+type MockLobbyActions = Omit<MockLobby, "view" | "toArrive" | "canStart">;
 
-        return withBlockers({
-          ...current,
-          players: [...current.players, next],
-        });
-      }),
-    [],
-  );
+/** One mounted lobby: its state and the actions that change it. */
+interface MockLobbyInstance {
+  store: StoreApi<LobbyView>;
+  actions: MockLobbyActions;
+}
+
+/**
+ * One lobby's state, in a store of its own. The moment the last blocker
+ * clears, the table plays one chord: the store hears every change, so the
+ * chord comes from the change itself. A lobby that opens able to start has
+ * not changed, so it stays quiet.
+ */
+function createMockLobby(options: MockLobbyOptions): MockLobbyInstance {
+  const store = createStore<LobbyView>()(() => openingView(options));
+
+  store.subscribe((next, prev) => {
+    if (canStartIn(next) && !canStartIn(prev)) {
+      play("all-ready");
+    }
+  });
+
+  const update = (change: (current: LobbyView) => LobbyView) =>
+    store.setState(change, true);
 
   return {
-    view,
-    toArrive: missing(view).length,
-    canStart: view.startBlockers.length === 0,
-    arriveNext,
-    toggleReady: () =>
-      setView((current) =>
-        withPlayers(
-          current,
-          current.players.map((p) =>
-            p.id === current.you.id ? { ...p, ready: !p.ready } : p,
+    store,
+    actions: {
+      arriveNext: () =>
+        update((current) => {
+          const next = missing(current)[0];
+
+          if (!next || current.players.length >= MAX_PLAYERS) {
+            return current;
+          }
+
+          return withBlockers({
+            ...current,
+            players: [...current.players, next],
+          });
+        }),
+      toggleReady: () =>
+        update((current) =>
+          withPlayers(
+            current,
+            current.players.map((p) =>
+              p.id === current.you.id ? { ...p, ready: !p.ready } : p,
+            ),
           ),
         ),
-      ),
-    toggleRole: (role) =>
-      setView((current) => {
-        const on = current.settings.optionalRoles.includes(role);
+      toggleRole: (role) =>
+        update((current) => {
+          const on = current.settings.optionalRoles.includes(role);
 
-        return withBlockers({
+          return withBlockers({
+            ...current,
+            settings: {
+              ...current.settings,
+              optionalRoles: on
+                ? current.settings.optionalRoles.filter((r) => r !== role)
+                : [...current.settings.optionalRoles, role],
+            },
+          });
+        }),
+      toggleLady: () =>
+        update((current) => ({
           ...current,
           settings: {
             ...current.settings,
-            optionalRoles: on
-              ? current.settings.optionalRoles.filter((r) => r !== role)
-              : [...current.settings.optionalRoles, role],
+            ladyOfTheLake: !current.settings.ladyOfTheLake,
           },
-        });
-      }),
-    toggleLady: () =>
-      setView((current) => ({
-        ...current,
-        settings: {
-          ...current.settings,
-          ladyOfTheLake: !current.settings.ladyOfTheLake,
-        },
-      })),
-    simulateEveryoneReady: () =>
-      setView((current) =>
-        withPlayers(
-          current,
-          current.players.map((p) => ({ ...p, ready: true, connected: true })),
+        })),
+      simulateEveryoneReady: () =>
+        update((current) =>
+          withPlayers(
+            current,
+            current.players.map((p) => ({
+              ...p,
+              ready: true,
+              connected: true,
+            })),
+          ),
         ),
-      ),
-    addGuest: () =>
-      setView((current) => {
-        if (current.players.length >= MAX_PLAYERS) {
-          return current;
-        }
+      addGuest: () =>
+        update((current) => {
+          if (current.players.length >= MAX_PLAYERS) {
+            return current;
+          }
 
-        const name = GUESTS.find(
-          (n) => !current.players.some((p) => p.name === n),
-        );
+          const name = GUESTS.find(
+            (n) => !current.players.some((p) => p.name === n),
+          );
 
-        if (!name) {
-          return current;
-        }
+          if (!name) {
+            return current;
+          }
 
-        return withPlayers(current, [
-          ...current.players,
-          {
-            id: `p-guest-${name.toLowerCase()}`,
-            name,
-            isHost: false,
-            connected: true,
-            ready: false,
-          },
-        ]);
-      }),
-    removeGuest: () =>
-      setView((current) => {
-        const last = [...current.players]
-          .reverse()
-          .find((p) => p.id.startsWith("p-guest-"));
+          return withPlayers(current, [
+            ...current.players,
+            {
+              id: `p-guest-${name.toLowerCase()}`,
+              name,
+              isHost: false,
+              connected: true,
+              ready: false,
+            },
+          ]);
+        }),
+      removeGuest: () =>
+        update((current) => {
+          const last = [...current.players]
+            .reverse()
+            .find((p) => p.id.startsWith("p-guest-"));
 
-        if (!last) {
-          return current;
-        }
+          if (!last) {
+            return current;
+          }
 
-        return withPlayers(
-          current,
-          current.players.filter((p) => p.id !== last.id),
-        );
-      }),
+          return withPlayers(
+            current,
+            current.players.filter((p) => p.id !== last.id),
+          );
+        }),
+    },
+  };
+}
+
+/**
+ * The lobby for this screen, from how you got here. The options are read
+ * once, when the screen mounts. The actions keep their identity.
+ */
+export function useMockLobby(options: MockLobbyOptions = {}): MockLobby {
+  const [{ store, actions }] = useState(() => createMockLobby(options));
+  const view = useSyncExternalStore(
+    store.subscribe,
+    store.getState,
+    store.getInitialState,
+  );
+
+  return {
+    ...actions,
+    view,
+    toArrive: missing(view).length,
+    canStart: canStartIn(view),
   };
 }

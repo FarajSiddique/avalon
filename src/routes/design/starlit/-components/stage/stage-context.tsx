@@ -10,6 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { useStore } from "zustand";
+import { noSnapshot, noop } from "@/client/no-subscription";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { StageMode, StagePhase } from "../three/engine";
 import type { FlightPath, TablePlay, TablePlayer } from "../three/types";
@@ -38,17 +39,22 @@ export interface StageValue {
   players: ReadonlyArray<TablePlayer>;
   /** A flight asked for before the next screen has mounted. */
   pending: FlightPath | null;
+  /**
+   * The way the last flight went. Kept after the lobby takes the pending
+   * flight, since the engine may still be loading when the lobby mounts.
+   * Cleared when the landing claims the stage with no flight on its way.
+   */
+  flight: FlightPath | null;
   /** The landing is fading out on its way to the lobby. */
   leaving: boolean;
   status: StageStatus;
   /** Settled on a framing, or flying. Null until the scene runs. */
   phase: StagePhase | null;
+  /** Claiming the lobby also takes the pending flight. */
   setSlot: (update: (slot: StageSlot | null) => StageSlot | null) => void;
   setPlayers: (players: ReadonlyArray<TablePlayer>) => void;
   /** Start the flight to the lobby now; the caller navigates shortly after. */
   depart: (path: FlightPath) => void;
-  /** The stage has taken the pending flight. */
-  takePending: () => void;
   setStatus: Dispatch<SetStateAction<StageStatus>>;
   setPhase: (phase: StagePhase | null) => void;
   /** Role and table: the game's state in the scene. */
@@ -75,6 +81,7 @@ function createStageStore(): StageStore {
     slot: null,
     players: [],
     pending: null,
+    flight: null,
     leaving: false,
     status: "idle",
     phase: null,
@@ -85,18 +92,24 @@ function createStageStore(): StageStore {
       set((s) => {
         const slot = update(s.slot);
 
-        return slot === s.slot ? s : { slot };
+        if (slot === s.slot) {
+          return s;
+        }
+
+        // The lobby has the stage: the landing is gone and done leaving.
+        if (slot?.mode === "lobby" && s.pending) {
+          return { slot, pending: null, leaving: false };
+        }
+
+        if (slot?.mode === "hero" && !s.pending) {
+          return { slot, flight: null };
+        }
+
+        return { slot };
       }),
     setPlayers: (players) =>
       set((s) => (players === s.players ? s : { players })),
-    depart: (path) => set({ pending: path, leaving: true }),
-    // The lobby has the stage: the landing is gone and done leaving.
-    takePending: () =>
-      set((s) =>
-        s.pending === null && !s.leaving
-          ? s
-          : { pending: null, leaving: false },
-      ),
+    depart: (path) => set({ pending: path, flight: path, leaving: true }),
     setStatus: (next) =>
       set((s) => {
         const status = typeof next === "function" ? next(s.status) : next;
@@ -143,12 +156,6 @@ export function useStage(): StageValue {
  * screens let go before new ones claim, in the same commit, as effects did.
  */
 
-function nothing(): null {
-  return null;
-}
-
-function noop(): void {}
-
 /** Claim the stage for this screen while it is mounted. Null: don't. */
 export function useStageSlot(
   options: Omit<StageSlot, "focus"> | null,
@@ -172,7 +179,7 @@ export function useStageSlot(
     return () => setSlot((current) => (current === slot ? null : current));
   }, [mode, reveal, fade, focus, store]);
 
-  useSyncExternalStore(hold, nothing, nothing);
+  useSyncExternalStore(hold, noSnapshot, noSnapshot);
 }
 
 /**
@@ -194,7 +201,7 @@ export function useStagePlay(play: TablePlay | null): void {
     };
   }, [play, store]);
 
-  useSyncExternalStore(hold, nothing, nothing);
+  useSyncExternalStore(hold, noSnapshot, noSnapshot);
 }
 
 /** Give the stage this screen's tag layer while it is mounted. */
@@ -208,7 +215,7 @@ export function useTagLayer(layer: RefObject<HTMLElement | null>): void {
     return () => setTagLayer(null);
   }, [layer, store]);
 
-  useSyncExternalStore(hold, nothing, nothing);
+  useSyncExternalStore(hold, noSnapshot, noSnapshot);
 }
 
 /**
@@ -244,5 +251,5 @@ export function useStagePlayers(players: ReadonlyArray<TablePlayer>): void {
     };
   }, [players, store]);
 
-  useSyncExternalStore(hold, nothing, nothing);
+  useSyncExternalStore(hold, noSnapshot, noSnapshot);
 }

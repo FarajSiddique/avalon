@@ -1,9 +1,5 @@
-import {
-  useCallback,
-  useRef,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play, type CueHandle } from "@/client/sound";
 import { useHoldToReveal } from "@/client/use-hold-to-reveal";
 import { Billow, type Lobe } from "../art/cloud";
@@ -107,46 +103,36 @@ function CloudBank({ side }: { side: "left" | "right" }) {
  * Sound for the card. Opening plays the clouds and the constellation (the
  * same for every role, so a neighbour learns nothing); letting go stops the
  * constellation and plays the clouds closing.
+ *
+ * The clouds are one-shots, played from the hold's own handlers
+ * (`onReveal` and `onHide`), so each opening and closing sounds once.
  */
-export function useCardSound(open: boolean): void {
-  // Start from the first value, so mounting already open makes no sound.
-  const wasOpen = useRef(open);
-  const stars = useRef<CueHandle | null>(null);
-  // One subscription while open and another while closed: React swaps them
-  // after the commit that changes `open`, as an effect on `[open]` would.
-  // Leaving the open one (closing, or unmounting) always stops the stars;
-  // only entering the closed one plays the clouds closing, so unmounting
-  // while held stays quiet. Both are idempotent, so StrictMode's extra
-  // subscribe on mount makes no sound.
-  const whileOpen = useCallback(() => {
-    if (!wasOpen.current) {
-      wasOpen.current = true;
-      play("clouds-part");
-      stars.current = play("constellation");
-    }
-
-    return () => {
-      // Hidden or gone: never leave the stars ringing.
-      stars.current?.stop();
-      stars.current = null;
-    };
-  }, []);
-  const whileClosed = useCallback(() => {
-    if (wasOpen.current) {
-      wasOpen.current = false;
-      play("clouds-close");
-    }
-
-    return noop;
-  }, []);
-
-  useSyncExternalStore(open ? whileOpen : whileClosed, noSnapshot, noSnapshot);
+export function openClouds(): void {
+  play("clouds-part");
 }
 
-function noop(): void {}
+export function closeClouds(): void {
+  play("clouds-close");
+}
 
-function noSnapshot(): null {
-  return null;
+/**
+ * The constellation rings for as long as the card is open. Holding it is a
+ * subscription: it starts after the commit that opens the card and stops
+ * when the card closes or goes (unmounting while held stays quiet, with no
+ * clouds closing).
+ */
+export function useCardStars(open: boolean): void {
+  useSyncExternalStore(
+    open ? holdStars : noSubscription,
+    noSnapshot,
+    noSnapshot,
+  );
+}
+
+function holdStars(): () => void {
+  const stars: CueHandle = play("constellation");
+
+  return () => stars.stop();
 }
 
 /**
@@ -163,11 +149,17 @@ export function SkyCard({
   children: ReactNode;
   onHold?: () => void;
 }) {
-  // Told from the press itself, each time it opens the card.
-  const hold = useHoldToReveal({ onReveal: onHold });
+  // Told from the press itself, each time it opens or closes the card.
+  const hold = useHoldToReveal({
+    onReveal: () => {
+      openClouds();
+      onHold?.();
+    },
+    onHide: closeClouds,
+  });
   const revealed = hold.revealed;
 
-  useCardSound(revealed);
+  useCardStars(revealed);
 
   return (
     <button

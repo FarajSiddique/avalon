@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "zustand";
+import { noSnapshot, noop } from "@/client/no-subscription";
 import { TABLE_STEPS, isTableStep } from "@/design/directions";
 import type { Mounted, Rect, StageTarget } from "../three/engine";
 import type { FlightPath, TablePlayer } from "../three/types";
@@ -32,6 +33,7 @@ function LiveStage() {
   const store = useStageStore();
   const slot = useStore(store, (s) => s.slot);
   const pending = useStore(store, (s) => s.pending);
+  const flight = useStore(store, (s) => s.flight);
   const players = useStore(store, (s) => s.players);
   const tagLayer = useStore(store, (s) => s.tagLayer);
   const overlay = useRef<HTMLDivElement>(null);
@@ -54,18 +56,18 @@ function LiveStage() {
 
     return flow.current;
   }, []);
-  // The way this flight is going. Kept after the pending flight is taken,
-  // since the engine may still be loading when the lobby mounts.
-  const path = useRef<FlightPath | null>(pending);
-
   // Aim the scene at the claiming screen, as it is in this slot and flight.
   const push = useCallback(
-    (slotNow: StageSlot | null, pendingNow: FlightPath | null) => {
+    (
+      slotNow: StageSlot | null,
+      pendingNow: FlightPath | null,
+      flightNow: FlightPath | null,
+    ) => {
       const target = measure(
         canvas.current,
         slotNow,
         pendingNow,
-        path.current,
+        flightNow,
         inFlow,
       );
 
@@ -147,7 +149,7 @@ function LiveStage() {
           controls.setTagLayer(now.tagLayer);
           picker.current = (clientX, clientY) =>
             controls.pickAt(clientX, clientY);
-          push(now.slot, now.pending);
+          push(now.slot, now.pending, now.flight);
           unfollow = followScreens(store, controls, now, inFlow);
           setStatus("running");
         })
@@ -176,19 +178,10 @@ function LiveStage() {
   // Re-aim whenever the claiming screen or its layout changes. Fonts and
   // late layout move the landing band, so keep measuring for a moment.
   // This subscribes to the page's layout; a new slot or flight is a new
-  // subscribe function, so React starts it over with them.
+  // subscribe function, so React starts it over with them. (Claiming the
+  // lobby takes the pending flight in the store, in the same update.)
   const aim = useCallback(() => {
-    if (pending) {
-      path.current = pending;
-    } else if (slot?.mode === "hero") {
-      path.current = null;
-    }
-
-    if (slot?.mode === "lobby" && pending) {
-      store.getState().takePending();
-    }
-
-    const reaim = () => push(slot, pending);
+    const reaim = () => push(slot, pending, flight);
     const focusEl = slot?.focus.current;
     const observer = new ResizeObserver(reaim);
 
@@ -217,9 +210,9 @@ function LiveStage() {
       window.removeEventListener("resize", reaim);
       cancelAnimationFrame(raf);
     };
-  }, [slot, pending, push, store]);
+  }, [slot, pending, flight, push]);
 
-  useSyncExternalStore(aim, nothing, nothing);
+  useSyncExternalStore(aim, noSnapshot, noSnapshot);
 
   return (
     <div
@@ -239,12 +232,6 @@ function LiveStage() {
     </div>
   );
 }
-
-function nothing(): null {
-  return null;
-}
-
-function noop(): void {}
 
 /** Where the stage should be now, measured from the claiming screen. */
 function measure(

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 /**
  * Press and hold to show secret information; let go to hide it again.
@@ -31,19 +31,40 @@ const HOLD_KEYS = new Set([" ", "Enter"]);
 export interface HoldToRevealOptions {
   /** Runs once each time the secret is shown, from the press itself. */
   onReveal?: () => void;
+  /**
+   * Runs once each time the shown secret hides again: let go, a cancelled
+   * or lost pointer, focus gone, the tab hidden. Not on unmount. Pass a
+   * stable function: the hiding listeners re-attach when it changes.
+   */
+  onHide?: () => void;
 }
 
 export function useHoldToReveal({
   onReveal,
+  onHide,
 }: HoldToRevealOptions = {}): HoldToReveal {
   const [revealed, setRevealed] = useState(false);
-  const hide = useCallback(() => setRevealed(false), []);
-
-  const reveal = () => {
-    if (!revealed) {
-      onReveal?.();
+  // What the handlers last did. One release can fire several events before
+  // React renders (pointer up then leave, blur then window blur), so each
+  // transition is decided here, synchronously, and told exactly once.
+  const shown = useRef(false);
+  const hide = useCallback(() => {
+    if (!shown.current) {
+      return;
     }
 
+    shown.current = false;
+    onHide?.();
+    setRevealed(false);
+  }, [onHide]);
+
+  const reveal = () => {
+    if (shown.current) {
+      return;
+    }
+
+    shown.current = true;
+    onReveal?.();
     setRevealed(true);
   };
 

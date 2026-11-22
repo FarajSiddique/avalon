@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play, type CueHandle, type CueName } from "@/client/sound";
 import { designPaths, type TableStep } from "@/design/directions";
 import type { TeamDraft } from "@/design/use-team-draft";
@@ -17,7 +18,7 @@ import {
   IconSun,
 } from "../icons";
 import { SoundLink } from "../sound-link";
-import { cssVars } from "./css-vars";
+import { cssVars } from "@/design/css-vars";
 import { ms } from "./result-timeline";
 
 const paths = designPaths();
@@ -47,16 +48,6 @@ export function useOpeningCues(
 
   return handles;
 }
-
-function noSnapshot(): null {
-  return null;
-}
-
-function noSubscription(): () => void {
-  return noop;
-}
-
-function noop(): void {}
 
 /**
  * A step's clock: timers from the moment the step is shown, one per mark.

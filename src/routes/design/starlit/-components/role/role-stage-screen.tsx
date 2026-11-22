@@ -5,7 +5,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { cssVars } from "../art/css-vars";
+import { noSnapshot, noSubscription } from "@/client/no-subscription";
+import { cssVars } from "@/design/css-vars";
 import { ProtoLink as Link } from "@/design/proto-link";
 import { designPaths, type RoleVariant } from "@/design/directions";
 import { roleViews } from "@/design/mock";
@@ -33,16 +34,6 @@ function at(ms: number) {
 
 /** The longest the overlays wait for the camera to settle on your seat. */
 const MAX_WAIT_MS = 2200;
-
-function noSubscription(): () => void {
-  return noop;
-}
-
-function noop(): void {}
-
-function noSnapshot(): null {
-  return null;
-}
 
 function prefersReducedMotion(): boolean {
   return (

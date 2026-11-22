@@ -6,6 +6,7 @@ import {
   stopAmbienceLoop,
   subscribe,
 } from "./engine";
+import { noSnapshot, noSubscription } from "../no-subscription";
 
 const serverSnapshot = () => false;
 
@@ -34,8 +35,8 @@ export function useAmbience(on: boolean): void {
   // subscribe function when `on` changes makes React swap them.
   useSyncExternalStore(
     on ? holdAmbience : noSubscription,
-    ambienceSnapshot,
-    ambienceSnapshot,
+    noSnapshot,
+    noSnapshot,
   );
 }
 
@@ -43,14 +44,4 @@ function holdAmbience(): () => void {
   startAmbienceLoop();
 
   return stopAmbienceLoop;
-}
-
-function noSubscription(): () => void {
-  return noop;
-}
-
-function noop(): void {}
-
-function ambienceSnapshot(): null {
-  return null;
 }

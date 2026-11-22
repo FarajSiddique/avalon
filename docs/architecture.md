@@ -749,7 +749,9 @@ run only in GitHub Actions. Nobody runs `pnpm run deploy`, `wrangler deploy` or
 - **Every pull request from a branch in this repo gets a preview.**
   `.github/workflows/preview.yml` uploads a preview named `pr-<number>`,
   comments its address on the pull request, and runs the browser tests against
-  it. Closing the pull request deletes the preview. Pull requests from forks and
+  it. Closing the pull request deletes the preview. Previews do not inherit
+  bindings, so `wrangler.jsonc` repeats the `ROOM` binding under `previews`;
+  each preview has its own empty set of rooms. Pull requests from forks and
   from Dependabot have no secrets, so they get no preview.
 - **The token** is a Cloudflare API token from the "Edit Cloudflare Workers"
   template, limited to the one account, stored as the repository secrets

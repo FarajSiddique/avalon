@@ -3,8 +3,8 @@ import { TEAM_BALANCE, isPlayerCount } from "@/shared/constants";
 import { OPTIONAL_ROLES, ROLES, type OptionalRole } from "@/shared/roles";
 import type { LobbyView } from "@/shared/views";
 import { AlignmentTag } from "../alignment-tag";
-import { IconCheck, IconRing, IconWaves } from "../icons";
-import { Switch } from "../switch";
+import { IconCheck, IconRing, IconWaves } from "@/components/ui/icons";
+import { Switch } from "@/components/ui/switch";
 
 /** One line per optional role, written for the host choosing the mix. */
 const ROLE_LINES: Record<OptionalRole, string> = {

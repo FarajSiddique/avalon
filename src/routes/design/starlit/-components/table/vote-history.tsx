@@ -1,6 +1,6 @@
 import { playerName, playerNames } from "@/design/mock";
 import type { GameView, ProposalRecord } from "@/shared/views";
-import { IconApprove, IconReject } from "../icons";
+import { IconApprove, IconReject } from "@/components/ui/icons";
 import { initialOf, joinNames } from "../names";
 
 export interface Tally {

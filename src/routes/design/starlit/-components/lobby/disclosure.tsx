@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { IconChevronDown } from "../icons";
+import { IconChevronDown } from "@/components/ui/icons";
 
 /**
  * A collapsible lobby section. The whole summary row is the button (at

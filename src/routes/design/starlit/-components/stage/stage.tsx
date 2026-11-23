@@ -4,7 +4,12 @@ import { noSnapshot, noop } from "@/client/no-subscription";
 import { TABLE_STEPS, isTableStep } from "@/design/directions";
 import type { Mounted, Rect, StageTarget } from "../three/engine";
 import type { FlightPath, TablePlayer } from "../three/types";
-import { IconCheck, IconCrown, IconMoon, IconRing } from "../icons";
+import {
+  IconCheck,
+  IconCrown,
+  IconMoon,
+  IconRing,
+} from "@/components/ui/icons";
 import {
   useStageStore,
   type StageSlot,

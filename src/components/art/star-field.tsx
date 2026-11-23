@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { cssVars } from "@/design/css-vars";
+import { cssVars } from "@/client/css-vars";
 import { STAR_FILL, sparklePath, type Star } from "./seeded";
 
 function twinkleStyle(star: Star): CSSProperties | undefined {

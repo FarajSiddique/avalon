@@ -7,7 +7,7 @@ import {
   IconReject,
   IconRing,
   IconStar,
-} from "../icons";
+} from "@/components/ui/icons";
 import type { TablePlayer } from "../three/types";
 import "../table/table-stage.css";
 import { useTagLayer } from "./stage-context";

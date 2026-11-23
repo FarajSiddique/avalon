@@ -23,8 +23,8 @@ import {
   type Avatar,
   type Body,
   type Emblem,
-} from "@/design/avatar";
-import { sparklePath } from "../art/seeded";
+} from "@/client/avatar";
+import { sparklePath } from "@/components/art/seeded";
 import { context2d, fillPath, isColorMaterial, isMesh } from "./guards";
 import { Bin } from "./kit";
 import { isArtToken, type ArtToken, type Palette } from "./palette";

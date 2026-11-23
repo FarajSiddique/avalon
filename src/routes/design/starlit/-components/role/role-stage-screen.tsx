@@ -6,12 +6,17 @@ import {
   useSyncExternalStore,
 } from "react";
 import { noSnapshot, noSubscription } from "@/client/no-subscription";
-import { cssVars } from "@/design/css-vars";
+import { cssVars } from "@/client/css-vars";
 import { ProtoLink as Link } from "@/design/proto-link";
 import { designPaths, type RoleVariant } from "@/design/directions";
 import { roleViews } from "@/design/mock";
 import { ROLES } from "@/shared/roles";
-import { IconArrowRight, IconCheck, IconEyeOff, IconHold } from "../icons";
+import {
+  IconArrowRight,
+  IconCheck,
+  IconEyeOff,
+  IconHold,
+} from "@/components/ui/icons";
 import { SoundLink } from "../sound-link";
 import { useGamePlayers, useGameView } from "../stage/game-players";
 import {

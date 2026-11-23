@@ -1,6 +1,11 @@
 import type { LobbyView, SeatView } from "@/shared/views";
-import { cssVars } from "@/design/css-vars";
-import { IconCheck, IconCrown, IconMoon, IconRing } from "../icons";
+import { cssVars } from "@/client/css-vars";
+import {
+  IconCheck,
+  IconCrown,
+  IconMoon,
+  IconRing,
+} from "@/components/ui/icons";
 import { initialOf } from "../names";
 
 /** Keyed by state where it is used, so a change pops in instead of snapping. */

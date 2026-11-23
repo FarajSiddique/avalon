@@ -8,7 +8,7 @@ import {
   normalizeRoomCode,
 } from "@/shared/constants";
 import type { LobbySearch } from "../lobby";
-import { IconArrowRight, IconStar } from "./icons";
+import { IconArrowRight, IconStar } from "@/components/ui/icons";
 import { useStage } from "./stage/stage-context";
 
 const paths = designPaths();

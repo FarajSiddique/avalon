@@ -1,7 +1,7 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { DesignNav } from "@/design/design-nav";
-import { NightSky } from "./-components/art/night-sky";
-import { SoundToggle } from "./-components/sound-toggle";
+import { NightSky } from "@/components/art/night-sky";
+import { SoundToggle } from "@/components/ui/sound-toggle";
 import { Stage } from "./-components/stage/stage";
 import { StageProvider } from "./-components/stage/stage-context";
 

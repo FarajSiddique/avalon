@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LandingArt } from "./-components/landing-art";
 import { LandingForm } from "./-components/landing-form";
 import { useStage } from "./-components/stage/stage-context";
-import { TitleMark } from "./-components/title-mark";
+import { TitleMark } from "@/components/ui/title-mark";
 
 function StarlitLandingPage() {
   const { leaving } = useStage();

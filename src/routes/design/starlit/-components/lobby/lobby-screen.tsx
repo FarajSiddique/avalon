@@ -7,14 +7,14 @@ import {
 } from "react";
 import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play } from "@/client/sound";
-import { avatarFor, lookSummary } from "@/design/avatar";
+import { avatarFor, lookSummary } from "@/client/avatar";
 import { designPaths } from "@/design/directions";
-import { useAvatar } from "@/design/use-avatar";
+import { useAvatar } from "@/client/use-avatar";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import type { LobbySearch } from "../../lobby";
-import { cssVars } from "@/design/css-vars";
-import { IconArrowRight, IconCheck, IconRing } from "../icons";
+import { cssVars } from "@/client/css-vars";
+import { IconArrowRight, IconCheck, IconRing } from "@/components/ui/icons";
 import { SoundLink } from "../sound-link";
 import {
   useStage,

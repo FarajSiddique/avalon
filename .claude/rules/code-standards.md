@@ -13,11 +13,14 @@ Rules marked (oxlint) fail `pnpm lint`. The rest are checked in review.
   screen component from `src/components`. The Starlit prototype under
   `src/routes/design` is the one exception until Phase 4 deletes it.
   `src/components/<area>/` is `ui` (primitives), `art` (large drawings,
-  browser-only), then one folder per screen area (`landing`, `room`, and later
-  `lobby`, `role`, `table`). `src/client` is browser-only code that draws
+  browser-only), `three` (the three.js Star Table scene, loaded on demand in
+  the browser only), `stage` (the shared stage that hosts it), then one
+  folder per screen area (`landing`, `room`, and later `lobby`, `role`,
+  `table`). `src/client` is browser-only code that draws
   nothing. `src/server/room` and `src/server/game` run only in the Worker.
   `src/shared` is pure. `src/functions` holds server functions. `src/styles`
-  holds `app.css`, `tokens.css` and later `motion.css`.
+  holds `app.css` (the entry), `fonts.css`, `tokens.css`, `components.css`
+  and `motion.css`.
 - **A folder is created with its first file.** No empty folders and no
   placeholder files.
 - **Names.** Files are kebab-case (oxlint). Hooks are `use-*.ts`. One component

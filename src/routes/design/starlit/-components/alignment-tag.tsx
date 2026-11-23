@@ -1,5 +1,5 @@
 import type { Alignment } from "@/shared/roles";
-import { IconDagger, IconShield } from "./icons";
+import { IconDagger, IconShield } from "@/components/ui/icons";
 
 /** Good or Evil: a word, a shape (shield or dagger) and a colour. */
 export function AlignmentTag({

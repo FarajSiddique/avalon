@@ -2,7 +2,7 @@ import { useCallback, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { useHoldToReveal } from "@/client/use-hold-to-reveal";
 import type { GameView } from "@/shared/views";
-import { IconHold } from "../icons";
+import { IconHold } from "@/components/ui/icons";
 import { RoleFace } from "./role-face";
 import { closeClouds, openClouds, useCardStars } from "./sky-card";
 

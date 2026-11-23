@@ -226,3 +226,53 @@ test.describe("with reduced motion", () => {
     });
   }
 });
+
+// The sound switch draws a slim pill, but the button around it is the
+// touch target and must stay at least 44 by 44 (see CLAUDE.md). On a phone
+// it sits beside the eyebrow, so it must not cover the page's title.
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
+]) {
+  test.describe(`the sound switch at ${viewport.width}px`, () => {
+    test.use({ viewport });
+
+    for (const path of ["/", "/room/BCDF", "/design/starlit"]) {
+      test(`is a 44px touch target on ${path} clear of the title`, async ({
+        page,
+      }) => {
+        await withoutWebGL(page);
+        await page.goto(path);
+        const sound = page.getByRole("button", { name: "Sound" });
+
+        await expect(sound).toBeVisible();
+        const box = await sound.boundingBox();
+
+        expect(box?.width).toBeGreaterThanOrEqual(44);
+        expect(box?.height).toBeGreaterThanOrEqual(44);
+        // The title is a full-width block, so measure its text, not its box.
+        const heading = await page
+          .locator("h1")
+          .first()
+          .evaluate((h1) => {
+            const range = document.createRange();
+
+            range.selectNodeContents(h1);
+            const { x, y, width, height } = range.getBoundingClientRect();
+
+            return { x, y, width, height };
+          });
+
+        expect(box).not.toBeNull();
+        const overlaps =
+          box !== null &&
+          box.x < heading.x + heading.width &&
+          heading.x < box.x + box.width &&
+          box.y < heading.y + heading.height &&
+          heading.y < box.y + box.height;
+
+        expect(overlaps).toBe(false);
+      });
+    }
+  });
+}

@@ -9,6 +9,9 @@ import { IconSound, IconSoundOff } from "./icons";
  * every screen leaves room) and inside the empty right end of the bar on
  * wider screens. It comes after the page in the DOM so the page's own
  * controls come first, by keyboard and in tests.
+ *
+ * The button is a 44px tall touch target; the slimmer pill inside it is the
+ * part that is drawn.
  */
 export function SoundToggle() {
   const { enabled, toggle } = useSoundToggle();
@@ -21,10 +24,12 @@ export function SoundToggle() {
       onClick={toggle}
       className="sl-soundtoggle"
     >
-      <Icon size={17} />
-      <span>Sound</span>
-      <span className="sl-soundtoggle__state" aria-hidden="true">
-        {enabled ? "On" : "Off"}
+      <span className="sl-soundtoggle__pill">
+        <Icon size={17} />
+        <span>Sound</span>
+        <span className="sl-soundtoggle__state" aria-hidden="true">
+          {enabled ? "On" : "Off"}
+        </span>
       </span>
     </button>
   );

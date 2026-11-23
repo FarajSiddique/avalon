@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
 import { TEAM_BALANCE, isPlayerCount } from "@/shared/constants";
+import { settingsBlockerMessages, settingsHintMessages } from "@/shared/copy";
 import { OPTIONAL_ROLES, ROLES, type OptionalRole } from "@/shared/roles";
 import type { LobbyView } from "@/shared/views";
 import { AlignmentTag } from "../alignment-tag";
-import { IconCheck, IconRing, IconWaves } from "@/components/ui/icons";
+import {
+  IconCheck,
+  IconRing,
+  IconStar,
+  IconWaves,
+} from "@/components/ui/icons";
 import { Switch } from "@/components/ui/switch";
 
 /** One line per optional role, written for the host choosing the mix. */
@@ -33,6 +39,8 @@ export function HostSettings({
   readOnly?: boolean;
 }) {
   const count = view.players.length;
+  const blocked = settingsBlockerMessages(view);
+  const hints = settingsHintMessages(view);
   const balance = isPlayerCount(count) ? TEAM_BALANCE[count] : null;
   const ladyTag = (
     <span className="sl-chip text-accent-cool">
@@ -97,6 +105,32 @@ export function HostSettings({
           )}
         </li>
       </ul>
+
+      {(blocked.length > 0 || hints.length > 0) && (
+        <ul
+          className="mt-3 flex flex-col gap-1.5"
+          aria-label="About these settings"
+        >
+          {blocked.map((message) => (
+            <li
+              key={message}
+              className="text-ink flex items-start gap-2 text-base leading-snug"
+            >
+              <IconRing size={18} className="text-warning mt-0.5 flex-none" />
+              {message}
+            </li>
+          ))}
+          {hints.map((message) => (
+            <li
+              key={message}
+              className="text-ink-muted flex items-start gap-2 text-base leading-snug"
+            >
+              <IconStar size={18} className="mt-0.5 flex-none" />
+              {message}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {balance && (
         <p className="bg-well border-line mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border px-4 py-3 text-base">

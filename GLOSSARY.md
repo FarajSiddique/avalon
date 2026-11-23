@@ -29,11 +29,11 @@ A seat with no open connection right now, for example a phone that went to sleep
 _Avoid_: Disconnected, offline, gone, left
 
 **Leave**:
-A seat giving itself up in the lobby. The seat is removed, unlike Away.
+A seat giving itself up in the lobby. The seat is removed, unlike Away. A host who leaves passes host on at once. When the last seat leaves, the room ends.
 _Avoid_: Quit, disconnect
 
 **Kick**:
-The host removing another seat in the lobby.
+The host removing another seat, connected or away, in the lobby. Nothing is remembered: the same person may join again as a new seat, under any name.
 _Avoid_: Ban, remove
 
 **Start blocker**:

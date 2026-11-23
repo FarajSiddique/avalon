@@ -41,7 +41,7 @@ pnpm test:api      # bruno collection (server must be running on :3000)
 pnpm screenshots   # regenerate docs/design/screenshots (run pnpm build first)
 pnpm format        # prettier
 pnpm check         # every gate CI runs: format, lint, types, unit, build, e2e, restart
-pnpm run deploy    # build and deploy to Cloudflare. Ask the owner first
+pnpm test:cpu      # Worker CPU time per path on a live site (wrangler tail)
 ```
 
 Two files are generated. `worker-configuration.d.ts` (by `wrangler types`, which
@@ -49,6 +49,10 @@ Two files are generated. `worker-configuration.d.ts` (by `wrangler types`, which
 server or build) is committed, as TanStack recommends, so a fresh clone
 typechecks. Never edit it by hand: after adding, moving or removing a route, run
 `pnpm build` or `pnpm dev` and commit the result. CI fails if it is stale.
+
+Agents never run `pnpm run deploy`, `wrangler deploy` or `wrangler preview` by
+hand. A merge to `main` deploys, and every pull request gets a preview, through
+the GitHub workflows (see Deployment in `docs/architecture.md`).
 
 ## Layout
 

@@ -1,0 +1,86 @@
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  WRANGLER_SEND_METRICS: "false"
+  PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  preview:
+    # Forks and Dependabot get no secrets, so they get no preview.
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Deploy the preview
+        id: preview
+        # Wrangler prints notices (such as the Vite plugin's config redirect)
+        # on stdout even with --json, so the address is read from Wrangler's
+        # machine-readable output file instead.
+        env:
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+        run: |
+          pnpm exec wrangler preview --name "$PREVIEW_NAME" --json
+          url=$(jq -ser 'map(select(.type == "preview")) | last | .preview_urls[0]' "$WRANGLER_OUTPUT_FILE_PATH")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Comment the address on the pull request
+        run: |
+          gh pr comment "$PR" --edit-last --create-if-none --body "Preview: $URL"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          URL: ${{ steps.preview.outputs.url }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Browser tests against the preview
+        run: pnpm test:e2e
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: preview-test-results
+          path: test-results/
+          retention-days: 7
+
+  cleanup:
+    # The closer (github.actor) is a person even on a Dependabot pull request,
+    # so check who opened it: those never got a preview to delete.
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec wrangler preview delete --name "$PREVIEW_NAME" --skip-confirmation

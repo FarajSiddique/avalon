@@ -1,0 +1,11 @@
+#!/bin/sh
+# Format check and lint for staged files only.
+# Skip in an emergency with: git commit --no-verify
+set -e
+staged=$(git diff --cached --name-only --diff-filter=ACMR -z | tr '\0' '\n')
+[ -z "$staged" ] && exit 0
+git diff --cached --name-only --diff-filter=ACMR -z |
+  xargs -0 pnpm exec prettier --check --ignore-unknown
+git diff --cached --name-only --diff-filter=ACMR -z |
+  grep -zE '\.(ts|tsx|mts|mjs)$' |
+  xargs -0 -r pnpm exec oxlint --deny-warnings

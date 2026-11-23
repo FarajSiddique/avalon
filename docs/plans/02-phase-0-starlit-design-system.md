@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Preconditions. Stop and report if any is false:
-  - `main` contains the foundation (PR #2) and Part A of `docs/plans/01-standards-and-ci-cd.md`: `.oxlintrc.json`, `src/styles/app.css`, `src/styles/tokens.css`, `src/components/landing/start-form.tsx` and `src/components/room/room-screen.tsx` all exist.
+  - `main` contains the foundation (PR #2) and Part A of `docs/plans/01-standards-and-ci-cd.md`: `oxlint.config.ts` (it replaced the planned `.oxlintrc.json`), `src/styles/app.css`, `src/styles/tokens.css`, `src/components/landing/start-form.tsx` and `src/components/room/room-screen.tsx` all exist.
   - On a new branch off the latest `main`, `pnpm install && pnpm check` passes.
 - Decided, not to be reopened: Cloudflare Workers with one Durable Object per room, TanStack Start, the WebSocket protocol, Starlit Vale with its motion and sound.
 - Out of scope: lobby features (ready, settings, kick, host hand-over), the game engine, new routes, new protocol messages, the shared table screen, any change under `src/server` or `src/shared`.

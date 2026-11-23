@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { StartForm } from "@/components/start-form";
+import { StartForm } from "@/components/landing/start-form";
 
 export const Route = createFileRoute("/")({ component: HomePage });
 

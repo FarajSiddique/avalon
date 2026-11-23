@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { RoomScreen } from "@/components/room-screen";
+import { RoomScreen } from "@/components/room/room-screen";
 import { ROOM_CODE_PATTERN, normalizeRoomCode } from "@/shared/constants";
 
 /**

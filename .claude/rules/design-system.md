@@ -4,7 +4,7 @@ paths:
   - "src/components/**/*"
   - "src/design/**/*"
   - "src/client/**/*"
-  - "src/styles.css"
+  - "src/styles/**/*"
 ---
 
 # Design System
@@ -27,7 +27,7 @@ on the Worker: server-rendering them costs about twice the free plan's CPU limit
 ### Tokens
 
 Components never use raw colour values. They use the Tailwind utilities generated
-from the semantic tokens in `src/styles.css`, or `var(--token)`.
+from the semantic tokens in `src/styles/tokens.css`, or `var(--token)`.
 
 | Token                                        | Utility examples                         | Use                                    |
 | -------------------------------------------- | ---------------------------------------- | -------------------------------------- |

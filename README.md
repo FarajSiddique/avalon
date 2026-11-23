@@ -22,10 +22,12 @@ pnpm dev          # http://localhost:3000, app and rooms in Cloudflare's local r
 To check everything the way CI does:
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm exec playwright install chromium   # first time only
-pnpm test:e2e && pnpm test:restart
+pnpm check
 ```
+
+`pnpm install` also turns on a pre-commit hook (`.githooks/pre-commit`) that
+checks format and lint on staged files.
 
 ## Where things are
 

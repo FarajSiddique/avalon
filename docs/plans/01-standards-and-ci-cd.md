@@ -5,6 +5,11 @@
 > config is `oxlint.config.ts`, not `.oxlintrc.json`, and Part C is no longer
 > needed for type-aware linting. Effects are banned and Zustand is in. See
 > `docs/architecture.md`. Tasks A2 to A5 and Part B are unchanged.
+>
+> **Update, 21 November 2026:** Tasks A2 to A4 are done on `chore/code-standards`.
+> The two rules A1's probe table expects but the migration left out,
+> `import/no-default-export` and `unicorn/filename-case`, were added there too.
+> Part B is next.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

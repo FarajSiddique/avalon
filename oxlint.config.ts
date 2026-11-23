@@ -96,6 +96,11 @@ export default defineConfig({
     "no-restricted-imports": ["error", { paths: noEffects }],
     "no-restricted-properties": ["error", ...noEffectProperties],
 
+    // Named exports only, and kebab-case file names. See
+    // .claude/rules/code-standards.md.
+    "import/no-default-export": "error",
+    "unicorn/filename-case": ["error", { case: "kebabCase" }],
+
     // Prettier keeps blank lines but never adds them. These do.
     "@stylistic/padding-line-between-statements": [
       "error",
@@ -169,6 +174,11 @@ export default defineConfig({
       // The preset relaxes `any` in tests. This repo bans it everywhere.
       files: ["**/*.{test,spec,e2e,shots}.{ts,tsx}", "e2e/**"],
       rules: { "typescript/no-explicit-any": "error" },
+    },
+    {
+      // Tools that load these files expect a default export.
+      files: ["*.config.ts", "*.config.mts", "src/server.ts"],
+      rules: { "import/no-default-export": "off" },
     },
     {
       // Scripts and browser tests report progress on the console.

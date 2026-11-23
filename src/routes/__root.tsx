@@ -5,7 +5,7 @@ import {
   createRootRoute,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import appCss from "../styles.css?url";
+import appCss from "../styles/app.css?url";
 
 const description =
   "Play The Resistance: Avalon together, each on your own phone. 5 to 10 players.";

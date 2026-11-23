@@ -1,8 +1,8 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play } from "@/client/sound";
-import { cssVars } from "@/design/css-vars";
-import { IconCheck, IconCopy } from "../icons";
+import { cssVars } from "@/client/css-vars";
+import { IconCheck, IconCopy } from "@/components/ui/icons";
 
 /**
  * The room code with a copy button: a small badge for the lobby's header,

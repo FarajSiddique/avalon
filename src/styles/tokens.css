@@ -1,54 +1,285 @@
 /*
- * Token contract.
+ * Starlit Vale: the app's tokens, a painted storybook night.
+ *
+ * Three token layers, all on :root:
+ *   1. primitives  --starlit-<hue>-<step>   raw values, never used by components
+ *   2. semantic    --canvas, --ink, ...     the contract read by @theme in app.css
+ *   3. component   --panel-*, --seat-*, --art-*, ...
  *
  * Components use the Tailwind utilities generated in app.css (bg-canvas,
- * text-ink, border-line, font-display, ...). A theme is a set of values for
- * the plain custom properties (--canvas, --ink, ...). The neutral values here
- * are a placeholder shell; each design direction overrides them inside its own
- * `.theme-*` wrapper. The winning direction's values move to :root later.
- *
- * Layers (see docs/design/README.md):
- *   primitive  --<theme>-<hue>-<step>   raw values, defined per theme
- *   semantic   --canvas, --ink, ...     the contract below
- *   component  --seat-size, ...         defined per theme where needed
+ * text-ink, border-line, font-display, ...) or var(--token). See
+ * docs/design-system.md.
  */
+
 :root {
-  color-scheme: dark;
+  /* ------------------------------------------------------- 1. primitives */
 
-  /* Surfaces */
-  --canvas: #15131d;
-  --surface: #201d2b;
-  --well: #100e17;
+  /* Night: the sky from zenith to horizon */
+  --starlit-night-950: #060a1c;
+  --starlit-night-900: #0a1030;
+  --starlit-night-700: #14215a;
+  --starlit-night-600: #1b2d6e;
 
-  /* Text */
-  --ink: #f1ecdf;
-  --ink-muted: #a8a2b8;
+  /* Indigo: panels and their edges */
+  --starlit-indigo-900: #070b22;
+  --starlit-indigo-800: #19235a;
+  --starlit-indigo-700: #222e70;
+  --starlit-indigo-600: #33418c;
+  --starlit-indigo-400: #7f8fdc;
+  --starlit-indigo-300: #b4bce0;
 
-  /* Lines and focus */
-  --line: #37324a;
-  --line-strong: #5a5378;
-  --focus: #ffd58a;
+  /* Starlight */
+  --starlit-cream-50: #fffaf0;
+  --starlit-cream-100: #f7f0dc;
+  --starlit-ice-200: #bcd0ff;
 
-  /* Action colour (firelight) and its cool counterpart */
-  --accent: #f0a348;
-  --accent-strong: #ffbd66;
-  --on-accent: #1b1206;
-  --accent-cool: #8fa8ff;
+  /* Campfire */
+  --starlit-amber-300: #ffd27f;
+  --starlit-amber-400: #f7b955;
+  --starlit-amber-500: #f2933a;
+  --starlit-amber-950: #2b1703;
+  --starlit-gold-300: #ffe08a;
 
-  /* Game meaning */
-  --good: #7fb2ff;
-  --evil: #f0646c;
-  --success: #6fd3a0;
-  --fail: #f0646c;
-  --warning: #f2c14e;
+  /* Cloud edges */
+  --starlit-pink-300: #f4a9c8;
+  --starlit-pink-400: #e58bb4;
+  --starlit-pink-600: #a8628f;
 
-  /* Type */
-  --display-font: ui-serif, Georgia, "Times New Roman", serif;
+  /* Meaning */
+  --starlit-teal-300: #6fdcec;
+  --starlit-coral-400: #ff8a80;
+  --starlit-green-400: #86dd8f;
+
+  /* The vale: hills from far to near, then the grass by the fire */
+  --starlit-vale-400: #344e9c;
+  --starlit-vale-500: #2c4592;
+  --starlit-vale-600: #233a80;
+  --starlit-vale-700: #1a2d68;
+  --starlit-vale-800: #13224f;
+  --starlit-vale-900: #0e2440;
+  --starlit-vale-950: #081a2c;
+  --starlit-grass-700: #1c4648;
+  --starlit-grass-500: #3d6b47;
+  --starlit-grass-300: #8aa04e;
+  --starlit-river-400: #3d5fb0;
+
+  /* Camp objects */
+  --starlit-ink-950: #050816;
+  --starlit-canvas-200: #d8d0ea;
+  --starlit-canvas-400: #8f8cc0;
+  --starlit-rose-500: #c0709b;
+  --starlit-plum-800: #2a1f3f;
+  --starlit-plum-600: #4a3a63;
+  --starlit-stone-500: #4a5590;
+  --starlit-stone-700: #2f3a72;
+  --starlit-steel-200: #cfd8f2;
+  --starlit-cloud-700: #1f2b66;
+  --starlit-cloud-600: #2a3877;
+  --starlit-cloud-500: #3b4c93;
+  --starlit-cloud-400: #5265b4;
+
+  /* Skin: everyday tones, then the fantastical (none near teal or coral) */
+  --starlit-skin-porcelain: #f6dfd0;
+  --starlit-skin-peach: #eec0a0;
+  --starlit-skin-honey: #d29a6a;
+  --starlit-skin-bronze: #a96d44;
+  --starlit-skin-umber: #7a4a2e;
+  --starlit-skin-ebony: #4a2c1e;
+  --starlit-skin-moss: #7fae5a;
+  --starlit-skin-frost: #9cc4ff;
+  --starlit-skin-lilac: #c6a6f0;
+  --starlit-skin-ghost: #e6ecff;
+  --starlit-skin-gilded: #e0b54a;
+  --starlit-skin-starborn: #5a5fae;
+
+  /* --------------------------------------------------------- 2. semantic */
+
+  --canvas: var(--starlit-night-900);
+  --surface: var(--starlit-indigo-800);
+  --well: var(--starlit-indigo-900);
+
+  --ink: var(--starlit-cream-100);
+  --ink-muted: var(--starlit-indigo-300);
+
+  --line: var(--starlit-indigo-600);
+  --line-strong: var(--starlit-indigo-400);
+  --focus: var(--starlit-cream-50);
+
+  --accent: var(--starlit-amber-400);
+  --accent-strong: var(--starlit-amber-300);
+  --on-accent: var(--starlit-amber-950);
+  --accent-cool: var(--starlit-pink-300);
+
+  --good: var(--starlit-teal-300);
+  --evil: var(--starlit-coral-400);
+  --success: var(--starlit-green-400);
+  --fail: var(--starlit-coral-400);
+  --warning: var(--starlit-gold-300);
+
+  --display-font: var(--font-fraunces), ui-serif, Georgia, serif;
   --body-font:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    var(--font-nunito-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Shape */
-  --corner-sm: 6px;
-  --corner-md: 10px;
-  --corner-lg: 16px;
+  --corner-sm: 10px;
+  --corner-md: 16px;
+  --corner-lg: 24px;
+
+  /* -------------------------------------------------------- 3. component */
+
+  /* Motion (see motion.css and the Motion section of docs/design/starlit.md) */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Even in and out: for things that travel (clouds parting, the crown). */
+  --ease-travel: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-control: 250ms;
+  --dur-part: 560ms;
+  --dur-close: 280ms;
+
+  /* Panels: indigo, a little see-through, solid enough for text */
+  --surface-raised: var(--starlit-indigo-700);
+  --panel-bg: color-mix(
+    in srgb,
+    var(--surface) var(--panel-opacity),
+    transparent
+  );
+  --panel-border: var(--line);
+  --panel-highlight: color-mix(
+    in srgb,
+    var(--ink) var(--panel-highlight-strength),
+    transparent
+  );
+  --panel-shadow: 0 18px 44px -24px var(--starlit-night-950);
+
+  /* Light sources are the only things that glow */
+  --glow-fire: 0 0 var(--glow-fire-size)
+    color-mix(in srgb, var(--accent) var(--glow-fire-strength), transparent);
+  --glow-star:
+    0 0 0 var(--glow-star-ring)
+      color-mix(
+        in srgb,
+        var(--accent) var(--glow-star-ring-strength),
+        transparent
+      ),
+    0 0 var(--glow-star-size)
+      color-mix(in srgb, var(--accent) var(--glow-star-strength), transparent);
+
+  /* Controls */
+  --button-height: 52px;
+  --button-radius: 999px;
+  --input-height: 54px;
+
+  /* Seats */
+  --seat-size: 52px;
+
+  /* The role card */
+  --skycard-height: 432px;
+
+  /* Quest moons */
+  --moon-size: 46px;
+
+  /* Tuning values. Each one reproduces the original look at its default. */
+  /* Type */
+  --display-soft: 100;
+  --display-wonk: 0;
+  --display-weight: 500;
+  --wordmark-tracking: -0.02em;
+  --code-tracking: 0.18em;
+  --eyebrow-weight: 800;
+  --eyebrow-tracking: 0.14em;
+  --button-weight: 800;
+  --label-weight: 700;
+  /* Panels and glow */
+  --panel-opacity: 92%;
+  --panel-highlight-strength: 7%;
+  --panel-border-width: 1px;
+  --glow-fire-size: 28px;
+  --glow-fire-strength: 45%;
+  --glow-star-ring: 4px;
+  --glow-star-ring-strength: 22%;
+  --glow-star-size: 22px;
+  --glow-star-strength: 55%;
+  /* The sky */
+  --sky-mid-stop: 42%;
+  --sky-horizon-glow-width: 120%;
+  --sky-horizon-glow-height: 55%;
+  --sky-stars-opacity: 1;
+  --sky-clouds-opacity: 0.9;
+  --horizon-height: clamp(150px, 24vh, 240px);
+  /* Ambient motion. Tempo multiplies every duration below and the twinkle */
+  --ambient-tempo: 1;
+  --shoot-every: 19s;
+  --drift-dur: 110s;
+  --drift-slow-dur: 160s;
+
+  /* Artwork */
+  --art-sky-top: var(--starlit-night-950);
+  --art-sky-mid: var(--starlit-night-900);
+  --art-sky-low: var(--starlit-night-700);
+  --art-sky-horizon: var(--starlit-night-600);
+  --art-star: var(--starlit-cream-100);
+  --art-star-blue: var(--starlit-ice-200);
+  --art-star-pink: var(--starlit-pink-300);
+  --art-star-amber: var(--starlit-amber-300);
+  --art-moon: var(--starlit-cream-100);
+  --art-cloud: var(--starlit-cloud-600);
+  --art-cloud-light: var(--starlit-cloud-500);
+  --art-cloud-deep: var(--starlit-cloud-700);
+  --art-cloud-bright: var(--starlit-cloud-400);
+  --art-cloud-edge: var(--starlit-pink-400);
+  --art-cloud-edge-dim: var(--starlit-pink-600);
+  --art-hill-0: var(--starlit-vale-400);
+  --art-hill-1: var(--starlit-vale-500);
+  --art-hill-2: var(--starlit-vale-600);
+  --art-hill-3: var(--starlit-vale-700);
+  --art-hill-4: var(--starlit-vale-800);
+  --art-ground: var(--starlit-vale-900);
+  --art-ground-dark: var(--starlit-vale-950);
+  --art-ground-lit-1: var(--starlit-grass-700);
+  --art-ground-lit-2: var(--starlit-grass-500);
+  --art-ground-lit-3: var(--starlit-grass-300);
+  --art-river: var(--starlit-river-400);
+  --art-outline: var(--starlit-ink-950);
+  --art-tree: var(--starlit-vale-950);
+  --art-tree-light: var(--starlit-grass-700);
+  --art-trunk: var(--starlit-plum-800);
+  --art-tent: var(--starlit-canvas-200);
+  --art-tent-shade: var(--starlit-canvas-400);
+  --art-tent-stripe: var(--starlit-rose-500);
+  --art-tent-dark: var(--starlit-plum-800);
+  --art-log: var(--starlit-plum-800);
+  --art-log-end: var(--starlit-plum-600);
+  --art-stone: var(--starlit-stone-500);
+  --art-stone-shade: var(--starlit-stone-700);
+  --art-steel: var(--starlit-steel-200);
+  --art-gold: var(--starlit-amber-400);
+  --art-banner: var(--starlit-indigo-600);
+  --art-fire-outer: var(--starlit-amber-500);
+  --art-fire-mid: var(--starlit-amber-300);
+  --art-fire-core: var(--starlit-cream-50);
+  --art-fire-glow: var(--starlit-amber-400);
+  --art-window: var(--starlit-amber-300);
+  --art-skin-porcelain: var(--starlit-skin-porcelain);
+  --art-skin-peach: var(--starlit-skin-peach);
+  --art-skin-honey: var(--starlit-skin-honey);
+  --art-skin-bronze: var(--starlit-skin-bronze);
+  --art-skin-umber: var(--starlit-skin-umber);
+  --art-skin-ebony: var(--starlit-skin-ebony);
+  --art-skin-moss: var(--starlit-skin-moss);
+  --art-skin-frost: var(--starlit-skin-frost);
+  --art-skin-lilac: var(--starlit-skin-lilac);
+  --art-skin-ghost: var(--starlit-skin-ghost);
+  --art-skin-gilded: var(--starlit-skin-gilded);
+  --art-skin-starborn: var(--starlit-skin-starborn);
+
+  color-scheme: dark;
+}
+
+/* Wide screens: the table is a shared screen, so seats and the card grow. */
+@media (min-width: 1024px) {
+  :root {
+    --seat-size: 68px;
+    --moon-size: 44px;
+    --skycard-height: 560px;
+  }
 }

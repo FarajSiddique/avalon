@@ -4,9 +4,11 @@ import { ROOM_CODE_PATTERN, normalizeRoomCode } from "@/shared/constants";
 
 /**
  * The room route. It only checks the code's shape. Whether the room exists
- * is answered over the socket by the room itself.
+ * is answered over the socket by the room itself. It renders in the
+ * browser only (`ssr: false`), so `beforeLoad` runs there too.
  */
-export const Route = createFileRoute("/room/$code")({
+export const Route = createFileRoute("/_app/room/$code")({
+  ssr: false,
   beforeLoad: ({ params }) => {
     if (!ROOM_CODE_PATTERN.test(normalizeRoomCode(params.code))) {
       throw notFound();

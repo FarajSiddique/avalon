@@ -7,10 +7,10 @@ import {
   IconReject,
   IconRing,
   IconStar,
-} from "../icons";
-import type { TablePlayer } from "../three/types";
+} from "@/components/ui/icons";
+import type { TablePlayer } from "@/components/three/types";
 import "../table/table-stage.css";
-import { useTagLayer } from "./stage-context";
+import { useTagLayer } from "@/components/stage/stage-context";
 
 type SeatStatus =
   | "chosen"

@@ -2,7 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { isRoleVariant } from "@/design/directions";
 import { NoWebGLNotice } from "./-components/no-webgl-notice";
 import { RoleStageScreen } from "./-components/role/role-stage-screen";
-import { useStage } from "./-components/stage/stage-context";
+import { useStage } from "@/components/stage/stage-context";
 
 export const Route = createFileRoute("/design/starlit/role/$role")({
   beforeLoad: ({ params }) => {

@@ -13,7 +13,7 @@ import {
 import { flushSync } from "react-dom";
 import { TABLE_STEP_LABELS, type TableStep } from "@/design/directions";
 import type { GameView, ProposalRecord } from "@/shared/views";
-import { IconChevronDown } from "../icons";
+import { IconChevronDown } from "@/components/ui/icons";
 import { Disclosure } from "../lobby/disclosure";
 import { RolePeek } from "../role/role-peek";
 import {
@@ -21,11 +21,11 @@ import {
   useStage,
   useStagePlay,
   useStageSlot,
-} from "../stage/stage-context";
+} from "@/components/stage/stage-context";
 import { StageTags, type SeatMark } from "../stage/stage-tags";
-import type { TablePlay, TablePlayer } from "../three/types";
+import type { TablePlay, TablePlayer } from "@/components/three/types";
 import { QuestTrack } from "./quest-track";
-import { cssVars } from "@/design/css-vars";
+import { cssVars } from "@/client/css-vars";
 import { Scoreboard } from "./scoreboard";
 import { headingFor, historySummary, questsSummary } from "./table-summaries";
 import { useSheet, type SheetHandle } from "./use-sheet";

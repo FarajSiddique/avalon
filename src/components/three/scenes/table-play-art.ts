@@ -10,7 +10,7 @@ import {
   type Vector3,
 } from "three";
 import type { QuestCard } from "@/shared/views";
-import { sparklePath } from "../../art/seeded";
+import { sparklePath } from "@/components/art/seeded";
 import { type Bin, glowSprite, glowTexture } from "../kit";
 import { context2d, fillPath } from "../guards";
 import type { Palette } from "../palette";

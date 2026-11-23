@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { avatarFor } from "@/design/avatar";
+import { avatarFor } from "@/client/avatar";
 import { PLAYER_IDS } from "@/design/mock";
-import { useAvatar } from "@/design/use-avatar";
+import { useAvatar } from "@/client/use-avatar";
 import { useYourName } from "@/design/your-name";
 import type { GameView } from "@/shared/views";
-import type { TablePlayer } from "../three/types";
+import type { TablePlayer } from "@/components/three/types";
 
 /**
  * The prototype's game is always the fixed seven. You take Wren's seat

@@ -190,7 +190,7 @@ export async function mountStarTable(
   // oxlint-disable-next-line unicorn/prefer-dom-node-append -- the Workers types merge a different `Element#append` (HTMLRewriter) over the DOM one, so `append(canvas)` does not typecheck
   host.appendChild(canvas);
 
-  const themeEl = host.closest(".theme-starlit") ?? document.documentElement;
+  const themeEl = document.documentElement;
   const lite = Math.min(window.innerWidth, window.innerHeight) < 600;
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
 

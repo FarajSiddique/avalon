@@ -2,10 +2,10 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play, type CueHandle } from "@/client/sound";
 import { useHoldToReveal } from "@/client/use-hold-to-reveal";
-import { Billow, type Lobe } from "../art/cloud";
-import { makeStars, round, seededRandom } from "../art/seeded";
-import { StarField } from "../art/star-field";
-import { IconHold } from "../icons";
+import { Billow, type Lobe } from "@/components/art/cloud";
+import { makeStars, round, seededRandom } from "@/components/art/seeded";
+import { StarField } from "@/components/art/star-field";
+import { IconHold } from "@/components/ui/icons";
 
 const STARS = makeStars({
   count: 110,

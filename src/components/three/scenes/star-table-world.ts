@@ -18,7 +18,7 @@ import {
   SRGBColorSpace,
   Vector3,
 } from "three";
-import { sparklePath } from "../../art/seeded";
+import { sparklePath } from "@/components/art/seeded";
 import { at, bufferAttribute, context2d, fillPath } from "../guards";
 import { type Bin, fbm2, seededRandom } from "../kit";
 import type { Palette } from "../palette";

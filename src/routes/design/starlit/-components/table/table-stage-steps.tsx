@@ -16,12 +16,12 @@ import {
   IconReject,
   IconStar,
   IconSun,
-} from "../icons";
+} from "@/components/ui/icons";
 import { useReducedMotion } from "../use-reduced-motion";
-import { seededRandom } from "../art/seeded";
+import { seededRandom } from "@/components/art/seeded";
 import { joinNames, numberWord } from "../names";
 import type { SeatMark } from "../stage/stage-tags";
-import type { TablePlay, TablePlayer } from "../three/types";
+import type { TablePlay, TablePlayer } from "@/components/three/types";
 import { REVEAL_TIMELINE, RESULT_TIMELINE, ms } from "./result-timeline";
 import {
   CARD,
@@ -33,7 +33,7 @@ import {
   useOpeningCues,
   useTimeline,
 } from "./step-parts";
-import { cssVars } from "@/design/css-vars";
+import { cssVars } from "@/client/css-vars";
 import { TableShell } from "./table-stage-shell";
 import { tallyOf } from "./vote-history";
 

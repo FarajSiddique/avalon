@@ -4,9 +4,10 @@ The Resistance: Avalon for 5 to 10 players, played together in one room with
 everyone on their own phone. One TanStack Start app on a Cloudflare Worker, with
 one Durable Object per game room.
 
-Status: foundation. Rooms, joining, presence and reconnecting work. The game
-itself is next. Three design directions were compared at `/design`, and Starlit
-Vale was chosen.
+Status: Phase 0 done. Rooms, joining, presence and reconnecting work, and the
+landing and room screens use Starlit Vale, the design system, with the 3D Star
+Table on the landing. The lobby and the game itself are next. Screens not built
+yet can be clicked through at `/design/starlit`.
 
 Live: <https://avalon.hong-ladder.workers.dev>
 
@@ -36,7 +37,7 @@ merge to `main` deploys to <https://avalon.hong-ladder.workers.dev>.
 
 - [`docs/architecture.md`](docs/architecture.md): how it is built, why, and the
   plan for the rest of the game.
-- [`docs/design/`](docs/design/README.md): the three design directions, their
-  specs and screenshots.
+- [`docs/design-system.md`](docs/design-system.md): Starlit Vale, the design
+  system: tokens, components, motion, sound and the 3D stage.
 - `CLAUDE.md` and `.claude/rules/`: working rules for the codebase and the
   game rules.

@@ -1,6 +1,6 @@
 import { MAX_REJECTIONS, QUESTS_TO_WIN } from "@/shared/constants";
 import type { GameView } from "@/shared/views";
-import { IconDagger, IconShield } from "../icons";
+import { IconDagger, IconShield } from "@/components/ui/icons";
 
 /**
  * A score that has just gone up: the old number rolls up and away and the

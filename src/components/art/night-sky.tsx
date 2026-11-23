@@ -37,7 +37,7 @@ export function NightSky() {
   const lights = useMemo(() => makeValleyLights(HAMLETS, 52), []);
 
   return (
-    <div className="sl-sky" aria-hidden="true">
+    <div className="sl-sky" data-art="night-sky" aria-hidden="true">
       <svg
         className="sl-sky__stars"
         viewBox="0 0 1000 1000"

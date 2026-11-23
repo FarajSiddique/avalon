@@ -9,20 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteRouteImport } from './routes/_app/route'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as DesignIndexRouteImport } from './routes/design/index'
 import { Route as DesignStarlitRouteRouteImport } from './routes/design/starlit/route'
-import { Route as RoomCodeRouteImport } from './routes/room.$code'
+import { Route as AppRoomCodeRouteImport } from './routes/_app/room.$code'
 import { Route as DesignStarlitIndexRouteImport } from './routes/design/starlit/index'
 import { Route as DesignStarlitLobbyRouteImport } from './routes/design/starlit/lobby'
 import { Route as DesignStarlitRoleRoleRouteImport } from './routes/design/starlit/role.$role'
 import { Route as DesignStarlitTableStepRouteImport } from './routes/design/starlit/table.$step'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRouteRoute = AppRouteRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -39,10 +44,10 @@ const DesignStarlitRouteRoute = DesignStarlitRouteRouteImport.update({
   path: '/design/starlit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RoomCodeRoute = RoomCodeRouteImport.update({
+const AppRoomCodeRoute = AppRoomCodeRouteImport.update({
   id: '/room/$code',
   path: '/room/$code',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const DesignStarlitIndexRoute = DesignStarlitIndexRouteImport.update({
   id: '/',
@@ -66,21 +71,21 @@ const DesignStarlitTableStepRoute = DesignStarlitTableStepRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
   '/design/starlit': typeof DesignStarlitRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
-  '/room/$code': typeof RoomCodeRoute
   '/design/': typeof DesignIndexRoute
+  '/room/$code': typeof AppRoomCodeRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
   '/design/starlit/': typeof DesignStarlitIndexRoute
   '/design/starlit/role/$role': typeof DesignStarlitRoleRoleRoute
   '/design/starlit/table/$step': typeof DesignStarlitTableStepRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/room/$code': typeof RoomCodeRoute
+  '/': typeof AppIndexRoute
   '/design': typeof DesignIndexRoute
+  '/room/$code': typeof AppRoomCodeRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
   '/design/starlit': typeof DesignStarlitIndexRoute
   '/design/starlit/role/$role': typeof DesignStarlitRoleRoleRoute
@@ -88,11 +93,12 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteRouteWithChildren
   '/design/starlit': typeof DesignStarlitRouteRouteWithChildren
   '/api/health': typeof ApiHealthRoute
-  '/room/$code': typeof RoomCodeRoute
+  '/_app/': typeof AppIndexRoute
   '/design/': typeof DesignIndexRoute
+  '/_app/room/$code': typeof AppRoomCodeRoute
   '/design/starlit/lobby': typeof DesignStarlitLobbyRoute
   '/design/starlit/': typeof DesignStarlitIndexRoute
   '/design/starlit/role/$role': typeof DesignStarlitRoleRoleRoute
@@ -104,29 +110,30 @@ export interface FileRouteTypes {
     | '/'
     | '/design/starlit'
     | '/api/health'
-    | '/room/$code'
     | '/design/'
+    | '/room/$code'
     | '/design/starlit/lobby'
     | '/design/starlit/'
     | '/design/starlit/role/$role'
     | '/design/starlit/table/$step'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/api/health'
-    | '/room/$code'
+    | '/'
     | '/design'
+    | '/room/$code'
     | '/design/starlit/lobby'
     | '/design/starlit'
     | '/design/starlit/role/$role'
     | '/design/starlit/table/$step'
   id:
     | '__root__'
-    | '/'
+    | '/_app'
     | '/design/starlit'
     | '/api/health'
-    | '/room/$code'
+    | '/_app/'
     | '/design/'
+    | '/_app/room/$code'
     | '/design/starlit/lobby'
     | '/design/starlit/'
     | '/design/starlit/role/$role'
@@ -134,21 +141,27 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRouteRoute: typeof AppRouteRouteWithChildren
   DesignStarlitRouteRoute: typeof DesignStarlitRouteRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
-  RoomCodeRoute: typeof RoomCodeRoute
   DesignIndexRoute: typeof DesignIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/api/health': {
       id: '/api/health'
@@ -171,12 +184,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DesignStarlitRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/room/$code': {
-      id: '/room/$code'
+    '/_app/room/$code': {
+      id: '/_app/room/$code'
       path: '/room/$code'
       fullPath: '/room/$code'
-      preLoaderRoute: typeof RoomCodeRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppRoomCodeRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/design/starlit/': {
       id: '/design/starlit/'
@@ -209,6 +222,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppRouteRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+  AppRoomCodeRoute: typeof AppRoomCodeRoute
+}
+
+const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+  AppRoomCodeRoute: AppRoomCodeRoute,
+}
+
+const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
+  AppRouteRouteChildren,
+)
+
 interface DesignStarlitRouteRouteChildren {
   DesignStarlitLobbyRoute: typeof DesignStarlitLobbyRoute
   DesignStarlitIndexRoute: typeof DesignStarlitIndexRoute
@@ -227,10 +254,9 @@ const DesignStarlitRouteRouteWithChildren =
   DesignStarlitRouteRoute._addFileChildren(DesignStarlitRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRouteRoute: AppRouteRouteWithChildren,
   DesignStarlitRouteRoute: DesignStarlitRouteRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
-  RoomCodeRoute: RoomCodeRoute,
   DesignIndexRoute: DesignIndexRoute,
 }
 export const routeTree = rootRouteImport

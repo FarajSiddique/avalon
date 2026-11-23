@@ -1,6 +1,6 @@
 import { playerNames } from "@/design/mock";
 import type { GameView, QuestView } from "@/shared/views";
-import { IconCheck, IconCross } from "../icons";
+import { IconCheck, IconCross } from "@/components/ui/icons";
 import { joinNames } from "../names";
 
 const STATUS_LABEL: Record<QuestView["status"], string> = {

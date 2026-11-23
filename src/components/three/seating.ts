@@ -10,7 +10,7 @@ import {
   ShaderMaterial,
   Vector3,
 } from "three";
-import { avatarKey } from "@/design/avatar";
+import { avatarKey } from "@/client/avatar";
 import { EmblemTextures, figure, type Figure } from "./avatar";
 import { at as nth } from "./guards";
 import type { Bin } from "./kit";

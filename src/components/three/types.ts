@@ -1,5 +1,5 @@
 import type { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
-import type { Avatar } from "@/design/avatar";
+import type { Avatar } from "@/client/avatar";
 import type { QuestCard } from "@/shared/views";
 import type { Palette } from "./palette";
 

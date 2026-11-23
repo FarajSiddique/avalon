@@ -16,9 +16,9 @@ import {
   IconLock,
   IconStar,
   IconSun,
-} from "../icons";
+} from "@/components/ui/icons";
 import { SoundLink } from "../sound-link";
-import { cssVars } from "@/design/css-vars";
+import { cssVars } from "@/client/css-vars";
 import { ms } from "./result-timeline";
 
 const paths = designPaths();

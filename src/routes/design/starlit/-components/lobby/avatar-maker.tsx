@@ -16,10 +16,10 @@ import {
   type Avatar,
   type Emblem,
   type Skin,
-} from "@/design/avatar";
-import { setAvatar, useAvatar } from "@/design/use-avatar";
-import { sparklePath } from "../art/seeded";
-import { IconCheck, IconMoon, IconSun } from "../icons";
+} from "@/client/avatar";
+import { setAvatar, useAvatar } from "@/client/use-avatar";
+import { sparklePath } from "@/components/art/seeded";
+import { IconCheck, IconMoon, IconSun } from "@/components/ui/icons";
 
 /**
  * "Your look": pick a body, a skin, a cloak, headwear and an emblem. Your figure at the

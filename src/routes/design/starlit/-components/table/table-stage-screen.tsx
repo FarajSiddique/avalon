@@ -1,7 +1,7 @@
 import type { TableStep } from "@/design/directions";
 import { tableViews } from "@/design/mock";
 import { useGamePlayers, useGameView } from "../stage/game-players";
-import { useStagePlayers } from "../stage/stage-context";
+import { useStagePlayers } from "@/components/stage/stage-context";
 import { TableStageStep } from "./table-stage-steps";
 
 /**

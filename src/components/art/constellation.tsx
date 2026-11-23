@@ -1,6 +1,6 @@
 import { useId, type CSSProperties } from "react";
 import type { Alignment, Role } from "@/shared/roles";
-import { cssVars } from "@/design/css-vars";
+import { cssVars } from "@/client/css-vars";
 import { sparklePath } from "./seeded";
 
 type Point = readonly [x: number, y: number];

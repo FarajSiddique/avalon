@@ -22,7 +22,7 @@ import {
   type Texture,
   Vector3,
 } from "three";
-import { seededRandom } from "../art/seeded";
+import { seededRandom } from "@/components/art/seeded";
 import { at, context2d } from "./guards";
 import type { Palette } from "./palette";
 import type { Layout } from "./types";

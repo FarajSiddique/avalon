@@ -145,7 +145,7 @@ export class RoomClient {
     const token = loadToken(this.code);
 
     if (!token) {
-      this.set({ status: "needs_name" });
+      this.set({ status: "needs_name", closedReason: null });
 
       return;
     }
@@ -157,7 +157,12 @@ export class RoomClient {
 
       clearToken(this.code);
       // For example a seat removed while its phone slept.
-      this.set({ status: "needs_name", view: null, error: result.error });
+      this.set({
+        status: "needs_name",
+        view: null,
+        error: result.error,
+        closedReason: null,
+      });
     });
   };
 }

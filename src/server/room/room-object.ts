@@ -394,6 +394,8 @@ export class RoomObject extends DurableObject<Env> {
       const playerId = seatOf(socket);
 
       socket.serializeAttachment({ playerId: null } satisfies SocketAttachment);
+      // Sockets still on the join form had no seat: to them the room has
+      // simply ended, which is what "not_found" tells the browser.
       this.closeSocket(socket, playerId === lastId ? "left" : "not_found");
     }
 

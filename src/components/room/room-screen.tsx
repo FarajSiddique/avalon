@@ -196,7 +196,8 @@ export function RoomScreen({ code }: { code: RoomCode }) {
                       <IconCross size={18} />
                     </button>
                   )}
-                {removing === player.id && (
+                {/* Gated on host too: host can pass on while this is open. */}
+                {room.view?.you.isHost && removing === player.id && (
                   <div
                     role="group"
                     aria-label={`Remove ${player.name}?`}

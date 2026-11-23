@@ -1,12 +1,12 @@
 /*
- * Fonts for Starlit Vale, self-hosted from Fontsource (SIL Open Font License).
+ * Fonts for the app (Starlit Vale), self-hosted from Fontsource (SIL Open Font License).
  * Display: Fraunces with every axis (weight, optical size, SOFT and WONK),
  * because the theme sets SOFT and WONK. Body: Nunito Sans, weights 200 to 1000.
  */
 @import "@fontsource-variable/fraunces/full.css";
 @import "@fontsource-variable/nunito-sans/wght.css";
 
-.theme-starlit {
+:root {
   --font-fraunces: "Fraunces Variable";
   --font-nunito-sans: "Nunito Sans Variable";
 }

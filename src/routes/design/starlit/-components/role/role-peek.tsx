@@ -22,7 +22,7 @@ export function RolePeek({ view }: { view: GameView }) {
 
   useCardStars(revealed);
   const id = useId();
-  // The card opens over the whole scene, inside the theme (for its tokens)
+  // The card opens over the whole scene, inside the app shell
   // but outside any header or panel that could clip or move it.
   const [host, setHost] = useState<HTMLElement | null>(null);
   // Find that host once the button is in the page, and wire the hold's own
@@ -35,7 +35,7 @@ export function RolePeek({ view }: { view: GameView }) {
         return undefined;
       }
 
-      setHost(node.closest<HTMLElement>(".theme-starlit"));
+      setHost(node.closest<HTMLElement>("[data-app-shell]"));
 
       return holdRef(node);
     },

@@ -20,7 +20,7 @@ export const Route = createRootRoute({
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { name: "theme-color", content: "#15131d" },
+      { name: "theme-color", content: "#0a1030" },
       { name: "description", content: description },
       { title: "Avalon" },
     ],

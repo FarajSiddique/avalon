@@ -130,3 +130,19 @@ test("without WebGL the landing still creates a room", async ({ page }) => {
   await page.getByRole("button", { name: "Create a room" }).click();
   await expect(page.getByTestId("room-code")).toBeVisible();
 });
+
+// BCDF is a well-formed code (ABCD is not: A is not in the alphabet).
+test("the room page is rendered in the browser only", async ({
+  request,
+  page,
+}) => {
+  const html = await (await request.get("/room/BCDF")).text();
+
+  expect(html).not.toContain('data-testid="connection"');
+  expect(html).not.toContain("data-art=");
+  expect(html.length).toBeLessThan(30_000);
+  await page.goto("/room/BCDF");
+  await expect(page.locator('[data-art="night-sky"]')).toBeAttached();
+  await expect(page.getByTestId("connection")).toBeAttached();
+  await expect(page.locator("[data-stage-host]")).toHaveCount(0);
+});

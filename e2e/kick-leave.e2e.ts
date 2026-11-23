@@ -1,39 +1,20 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import {
+  createRoom,
+  field,
+  joinRoom,
+  newPlayer,
+  players,
+} from "./room-helpers";
 
 /**
  * Kick, leave and rejoin in the lobby (issue 17), through the real Worker and
  * room object. Each player is a separate browser context, like a phone.
  */
 
-const players = (page: Page) => page.getByTestId("player");
-
-const field = (page: Page, name: string) => page.getByRole("textbox", { name });
-
-async function newPlayer(browser: Browser) {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
-  return { context, page };
-}
-
-async function createRoom(page: Page, name: string): Promise<string> {
-  await page.goto("/");
-  await field(page, "Your name").fill(name);
-  await page.getByRole("button", { name: "Create a room" }).click();
-  await expect(page.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
-  await expect(players(page)).toHaveCount(1);
-
-  return page.getByTestId("room-code").innerText();
-}
-
-async function joinRoom(page: Page, code: string, name: string) {
-  await page.goto(`/room/${code}`);
-  await field(page, "Your name").fill(name);
-  await page.getByRole("button", { name: "Join room" }).click();
-  await expect(players(page).filter({ hasText: `${name} (you)` })).toHaveCount(
-    1,
-  );
-}
+// Several browsers each load the landing and its scene, so allow longer than
+// the default 30 seconds.
+test.describe.configure({ timeout: 90_000 });
 
 async function kick(host: Page, name: string) {
   await host.getByRole("button", { name: `Remove ${name}` }).click();
@@ -51,11 +32,14 @@ async function leave(page: Page) {
     .click();
 }
 
-/** The landing page, where Create and Join are. */
+/**
+ * The landing page, where Create and Join are. Its form waits for the stage,
+ * which can take a while when several browsers load the scene at once.
+ */
 async function expectHome(page: Page) {
-  await expect(
-    page.getByRole("button", { name: "Create a room" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create a room" })).toBeVisible(
+    { timeout: 30_000 },
+  );
 }
 
 test("the host kicks a connected player, who can join again under the same name", async ({

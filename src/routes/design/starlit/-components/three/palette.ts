@@ -48,6 +48,18 @@ const ART_TOKENS = [
   "fire-core",
   "fire-glow",
   "window",
+  "skin-porcelain",
+  "skin-peach",
+  "skin-honey",
+  "skin-bronze",
+  "skin-umber",
+  "skin-ebony",
+  "skin-moss",
+  "skin-frost",
+  "skin-lilac",
+  "skin-ghost",
+  "skin-gilded",
+  "skin-starborn",
 ] as const;
 
 export type ArtToken = (typeof ART_TOKENS)[number];

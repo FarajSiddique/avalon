@@ -77,6 +77,20 @@
   --starlit-cloud-500: #3b4c93;
   --starlit-cloud-400: #5265b4;
 
+  /* Skin: everyday tones, then the fantastical (none near teal or coral) */
+  --starlit-skin-porcelain: #f6dfd0;
+  --starlit-skin-peach: #eec0a0;
+  --starlit-skin-honey: #d29a6a;
+  --starlit-skin-bronze: #a96d44;
+  --starlit-skin-umber: #7a4a2e;
+  --starlit-skin-ebony: #4a2c1e;
+  --starlit-skin-moss: #7fae5a;
+  --starlit-skin-frost: #9cc4ff;
+  --starlit-skin-lilac: #c6a6f0;
+  --starlit-skin-ghost: #e6ecff;
+  --starlit-skin-gilded: #e0b54a;
+  --starlit-skin-starborn: #5a5fae;
+
   /* --------------------------------------------------------- 2. semantic */
 
   --canvas: var(--starlit-night-900);
@@ -244,6 +258,18 @@
   --art-fire-core: var(--starlit-cream-50);
   --art-fire-glow: var(--starlit-amber-400);
   --art-window: var(--starlit-amber-300);
+  --art-skin-porcelain: var(--starlit-skin-porcelain);
+  --art-skin-peach: var(--starlit-skin-peach);
+  --art-skin-honey: var(--starlit-skin-honey);
+  --art-skin-bronze: var(--starlit-skin-bronze);
+  --art-skin-umber: var(--starlit-skin-umber);
+  --art-skin-ebony: var(--starlit-skin-ebony);
+  --art-skin-moss: var(--starlit-skin-moss);
+  --art-skin-frost: var(--starlit-skin-frost);
+  --art-skin-lilac: var(--starlit-skin-lilac);
+  --art-skin-ghost: var(--starlit-skin-ghost);
+  --art-skin-gilded: var(--starlit-skin-gilded);
+  --art-skin-starborn: var(--starlit-skin-starborn);
 
   color-scheme: dark;
 }

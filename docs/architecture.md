@@ -930,7 +930,9 @@ The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
   Without WebGL the lobby shows the notice
   (`-components/no-webgl-notice.tsx`, moved with it).
 - Avatars (owner's decision, 22 November 2026): each player picks a look in
-  the lobby and the room stores it per seat. `Avatar` and `sanitizeAvatar`
+  the lobby and the room stores it per seat. A look is a body (male or
+  female), a skin colour (six everyday tones and six fantastical ones), a
+  cloak, headwear and an emblem, all from fixed lists. `Avatar` and `sanitizeAvatar`
   move from `src/client/avatar.ts` to `src/shared`, with a zod schema. The
   join request carries an optional look (the browser prefills the player's
   last pick from `localStorage`); a missing or invalid one becomes

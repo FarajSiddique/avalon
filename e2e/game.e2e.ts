@@ -607,7 +607,7 @@ test("lobby sections open and close, and say their state when closed", async ({
 
   // On a phone every section starts closed, so the table shows.
   await expect(summary).toHaveAttribute("aria-expanded", "false");
-  await expect(summary).toContainText("7 of 10, 5 ready, 1 away");
+  await expect(summary).toContainText("7 of 10, 4 ready, 1 away");
   await expect(
     players.getByRole("button", { name: "Prototype: someone joins" }),
   ).toBeHidden();
@@ -622,7 +622,9 @@ test("lobby sections open and close, and say their state when closed", async ({
   await expect(
     page.locator('section[aria-label="Room code"]:visible'),
   ).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "I'm ready" })).toBeVisible();
+  // You host here: the host has no ready, so Start is the only action.
+  await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "I'm ready" })).toHaveCount(0);
 });
 
 test("creating a room flies the camera from the landing into a new lobby", async ({

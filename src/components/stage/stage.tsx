@@ -339,9 +339,10 @@ function followScreens(
  * state is an icon, never colour alone; the player list says it in words.
  */
 function NameTag({ player }: { player: TablePlayer }) {
+  // The host has no ready, so the crown alone marks the host's seat.
   const icon = !player.connected ? (
     <IconMoon size={13} className="text-ink-muted shrink-0" />
-  ) : player.ready ? (
+  ) : player.isHost ? null : player.ready ? (
     <IconCheck size={13} className="text-success shrink-0" />
   ) : (
     <IconRing size={13} className="text-warning shrink-0" />

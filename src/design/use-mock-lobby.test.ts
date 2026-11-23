@@ -31,4 +31,17 @@ describe("the prototype lobby, by how you got there", () => {
     expect(you).toMatchObject({ name: "Faraj", isHost: false, ready: false });
     expect(view.players.filter((p) => p.isHost)).toHaveLength(1);
   });
+
+  it("never waits on the host to ready up", () => {
+    for (const via of [undefined, "join"] as const) {
+      const view = openingView({ via, name: "Faraj" });
+      const host = view.players.find((p) => p.isHost);
+      const waiting = view.startBlockers.flatMap((b) =>
+        b.kind === "not_ready" ? b.playerIds : [],
+      );
+
+      expect(host?.ready).toBe(false);
+      expect(waiting).not.toContain(host?.id);
+    }
+  });
 });

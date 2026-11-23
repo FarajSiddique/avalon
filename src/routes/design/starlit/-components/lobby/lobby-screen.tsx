@@ -111,7 +111,9 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
           isHost: p.isHost,
           isYou: p.id === view.you.id,
           connected: p.connected,
-          ready: p.ready,
+          // The host has no ready, so the table lights the host's seat as
+          // set: nobody waits on the host to ready up.
+          ready: p.isHost || p.ready,
         })),
     [view.players, view.you.id, yours, landed],
   );
@@ -274,22 +276,25 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
             )}
           </div>
           <div className="flex gap-2.5">
-            <button
-              type="button"
-              aria-pressed={youReady}
-              onClick={() => {
-                play(youReady ? "unready" : "ready");
-                lobby.toggleReady();
-              }}
-              className="sl-btn sl-btn--ghost flex-1"
-            >
-              {youReady ? (
-                <IconCheck size={18} className="sl-pop sl-seq" />
-              ) : (
-                <IconRing size={18} />
-              )}
-              I&apos;m ready
-            </button>
+            {/* The host has no ready: pressing Start is the host's ready. */}
+            {isHost ? null : (
+              <button
+                type="button"
+                aria-pressed={youReady}
+                onClick={() => {
+                  play(youReady ? "unready" : "ready");
+                  lobby.toggleReady();
+                }}
+                className="sl-btn sl-btn--ghost flex-1"
+              >
+                {youReady ? (
+                  <IconCheck size={18} className="sl-pop sl-seq" />
+                ) : (
+                  <IconRing size={18} />
+                )}
+                I&apos;m ready
+              </button>
+            )}
             {isHost ? (
               canStart ? (
                 <SoundLink

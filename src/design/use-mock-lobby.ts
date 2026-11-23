@@ -18,7 +18,7 @@ import { lobbyView } from "./mock";
  */
 interface MockLobby {
   view: LobbyView;
-  /** Toggle your own ready state. */
+  /** Toggle your own ready state. Does nothing for the host, who has none. */
   toggleReady: () => void;
   /** Host: switch an optional role on or off. */
   toggleRole: (role: OptionalRole) => void;
@@ -58,7 +58,10 @@ function blockersFor(view: LobbyView): Array<StartBlocker> {
   }
 
   const away = view.players.filter((p) => !p.connected).map((p) => p.id);
-  const waiting = view.players.filter((p) => !p.ready).map((p) => p.id);
+  // The host has no ready: pressing Start is the host's ready.
+  const waiting = view.players
+    .filter((p) => !p.isHost && !p.ready)
+    .map((p) => p.id);
 
   if (away.length > 0) {
     blockers.push({ kind: "disconnected", playerIds: away });
@@ -120,7 +123,9 @@ export function openingView({ via, name, code }: MockLobbyOptions): LobbyView {
     // Someone else's room: the first of them hosts, and you arrive last.
     const others = named
       .filter((p) => p.id !== youId)
-      .map((p, index) => ({ ...p, isHost: index === 0 }));
+      .map((p, index) =>
+        index === 0 ? { ...p, isHost: true, ready: false } : p,
+      );
     const you = named.find((p) => p.id === youId);
 
     if (!you) {
@@ -196,12 +201,14 @@ function createMockLobby(options: MockLobbyOptions): MockLobbyInstance {
         }),
       toggleReady: () =>
         update((current) =>
-          withPlayers(
-            current,
-            current.players.map((p) =>
-              p.id === current.you.id ? { ...p, ready: !p.ready } : p,
-            ),
-          ),
+          current.you.isHost
+            ? current
+            : withPlayers(
+                current,
+                current.players.map((p) =>
+                  p.id === current.you.id ? { ...p, ready: !p.ready } : p,
+                ),
+              ),
         ),
       toggleRole: (role) =>
         update((current) => {
@@ -231,7 +238,7 @@ function createMockLobby(options: MockLobbyOptions): MockLobbyInstance {
             current,
             current.players.map((p) => ({
               ...p,
-              ready: true,
+              ready: !p.isHost,
               connected: true,
             })),
           ),

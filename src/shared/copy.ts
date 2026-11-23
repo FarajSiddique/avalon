@@ -3,6 +3,7 @@
  * words the same situation the same way.
  */
 
+import type { RoomClosedReason } from "./protocol";
 import type { LobbyView, PlayerId, StartBlocker } from "./views";
 
 export function listNames(names: Array<string>): string {
@@ -50,4 +51,18 @@ export function startBlockerMessages(view: LobbyView): Array<string> {
     view.players.find((p) => p.id === id)?.name ?? "A player";
 
   return view.startBlockers.map((blocker) => describeBlocker(blocker, nameOf));
+}
+
+/** What a browser shows when the room closes for it. */
+export function closedMessage(reason: RoomClosedReason | null): string {
+  switch (reason) {
+    case "kicked":
+      return "The host removed you from this room. You can join again.";
+    case "left":
+      return "You left the room.";
+    case "expired":
+    case "not_found":
+    case null:
+      return "This room does not exist or has ended.";
+  }
 }

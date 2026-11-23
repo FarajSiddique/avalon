@@ -1,9 +1,10 @@
-import { Link } from "@tanstack/react-router";
-import { useId } from "react";
+import { Link, Navigate } from "@tanstack/react-router";
+import { useId, useState } from "react";
 import { useRoom } from "@/client/use-room";
 import {
   IconArrowRight,
   IconCheck,
+  IconCross,
   IconCrown,
   IconMoon,
   IconRing,
@@ -15,17 +16,25 @@ import {
   NAME_MAX_LENGTH,
   normalizeName,
 } from "@/shared/constants";
+import { closedMessage } from "@/shared/copy";
 import type { RoomCode } from "@/shared/views";
 
 /**
  * The room, flat for now: the code, who is here, and the connection. It
- * proves the real-time round trip (join, presence, reconnect). The 3D lobby,
- * ready, settings and the start button are Phase 1. It renders in the
- * browser only and does not claim the stage.
+ * proves the real-time round trip (join, presence, reconnect, kick, leave).
+ * The 3D lobby, ready, settings and the start button are Phase 1. It renders
+ * in the browser only and does not claim the stage.
  */
 export function RoomScreen({ code }: { code: RoomCode }) {
   const room = useRoom(code);
   const nameId = useId();
+  /** The seat the host is about to remove, waiting for the confirm. */
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  if (room.status === "closed" && room.closedReason === "left") {
+    return <Navigate to="/" />;
+  }
 
   return (
     <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-7 pb-8 lg:pt-16">
@@ -54,8 +63,25 @@ export function RoomScreen({ code }: { code: RoomCode }) {
           className="sl-panel sl-rise sl-seq flex flex-col gap-4 p-5"
           role="alert"
         >
-          <p className="text-lg">This room does not exist or has ended.</p>
-          <Link to="/" className="sl-btn sl-btn--primary w-full">
+          <p className="text-lg">{closedMessage(room.closedReason)}</p>
+          {room.closedReason === "kicked" && (
+            <button
+              type="button"
+              className="sl-btn sl-btn--primary w-full"
+              onClick={room.rejoin}
+            >
+              Join again
+              <IconArrowRight size={18} />
+            </button>
+          )}
+          <Link
+            to="/"
+            className={`sl-btn w-full ${
+              room.closedReason === "kicked"
+                ? "sl-btn--ghost"
+                : "sl-btn--primary"
+            }`}
+          >
             <IconStar size={18} />
             Start a new room
           </Link>
@@ -118,7 +144,7 @@ export function RoomScreen({ code }: { code: RoomCode }) {
                 key={player.id}
                 data-testid="player"
                 data-connected={player.connected}
-                className="border-line flex min-h-[3.75rem] items-center gap-3 border-t border-dashed py-2 first:border-t-0"
+                className="border-line flex min-h-[3.75rem] flex-wrap items-center gap-3 border-t border-dashed py-2 first:border-t-0"
               >
                 <span
                   aria-hidden="true"
@@ -158,9 +184,81 @@ export function RoomScreen({ code }: { code: RoomCode }) {
                     Away
                   </span>
                 )}
+                {room.view?.you.isHost &&
+                  player.id !== room.view.you.id &&
+                  removing !== player.id && (
+                    <button
+                      type="button"
+                      className="sl-btn sl-btn--ghost flex-none px-3"
+                      aria-label={`Remove ${player.name}`}
+                      onClick={() => setRemoving(player.id)}
+                    >
+                      <IconCross size={18} />
+                    </button>
+                  )}
+                {removing === player.id && (
+                  <div
+                    role="group"
+                    aria-label={`Remove ${player.name}?`}
+                    className="flex w-full items-center gap-2"
+                  >
+                    <p className="flex-1 font-bold">Remove {player.name}?</p>
+                    <button
+                      type="button"
+                      className="sl-btn sl-btn--primary px-4"
+                      onClick={() => {
+                        setRemoving(null);
+                        room.kick(player.id);
+                      }}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      className="sl-btn sl-btn--ghost px-4"
+                      onClick={() => setRemoving(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
+          <p role="alert" className="text-fail min-h-5 text-sm">
+            {room.error?.message}
+          </p>
+          {leaving ? (
+            <div
+              role="group"
+              aria-label="Leave the room?"
+              className="mt-2 flex items-center gap-2"
+            >
+              <p className="flex-1 font-bold">Leave the room?</p>
+              <button
+                type="button"
+                className="sl-btn sl-btn--primary px-4"
+                onClick={room.leave}
+              >
+                Leave
+              </button>
+              <button
+                type="button"
+                className="sl-btn sl-btn--ghost px-4"
+                onClick={() => setLeaving(false)}
+              >
+                Stay
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="sl-btn sl-btn--ghost mt-2 w-full"
+              onClick={() => setLeaving(true)}
+            >
+              Leave room
+            </button>
+          )}
         </section>
       )}
 

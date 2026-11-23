@@ -41,7 +41,7 @@
     "@cloudflare/vite-plugin": "^1.26.0",
     "@playwright/test": "^1.65.1",
     "@stylistic/eslint-plugin": "6.0.1",
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@types/three": "0.187.0",

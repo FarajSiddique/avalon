@@ -11,7 +11,7 @@ The full design is in `docs/architecture.md`. Read it before changing structure.
 | Layer      | Technology                                                                 |
 | ---------- | -------------------------------------------------------------------------- |
 | App        | One TanStack Start app: React 19, TypeScript strict, Vite                  |
-| Styling    | Tailwind CSS v4, themed with CSS custom properties (`src/styles/`)         |
+| Styling    | Tailwind CSS v4 and Starlit Vale's tokens on `:root` (`src/styles/`)       |
 | Hosting    | One Cloudflare Worker (`src/server.ts`, `wrangler.jsonc`)                  |
 | Real-time  | Plain WebSockets to one Durable Object per room (`src/server/room`)        |
 | Game logic | A plain typed reducer in `src/server/game` (no XState)                     |
@@ -59,18 +59,18 @@ the GitHub workflows (see Deployment in `docs/architecture.md`).
 ```
 wrangler.jsonc     The Worker and its ROOM Durable Object binding
 src/server.ts      Worker entry: /api/socket/CODE goes to the room object, the rest to TanStack Start
-src/routes/        File-based routes. / (landing), /room/$code (lobby and game), /api/health, /design/starlit (prototype)
-src/components/    Screens and components of the real app, one folder per area (landing, room, ...)
-src/styles/        app.css (Tailwind and base styles) and tokens.css (the :root tokens)
+src/routes/        File-based routes. _app/ (layout for / and /room/$code), /api/health, /design/starlit (prototype)
+src/components/    ui, art, three, stage (browser-only scene), then one folder per screen area (landing, room, ...)
+src/styles/        app.css (entry), tokens.css, fonts.css, components.css (sl-*), motion.css
 src/functions/     Server functions (createRoom)
 src/shared/        Types, constants, protocol, validators. Imported by both sides
 src/server/        Room object, room rules, view projection, game engine. Worker only
 src/client/        Browser helpers: connection, seat token, room store hook, hold-to-reveal, sound
-src/design/        Prototype-only mock data and helpers for Starlit Vale, the chosen design
+src/design/        Prototype-only mock data and helpers for the /design/starlit reference
 e2e/               Playwright: *.e2e.ts behaviour, *.shots.ts screenshots
 scripts/           contrast.mjs, restart-check.mjs
 bruno/             Bruno collection
-docs/              architecture.md, design specs and screenshots
+docs/              architecture.md, design-system.md, plans
 ```
 
 In `src/routes`, files and folders that start with `-` are not routes (components,

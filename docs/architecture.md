@@ -287,14 +287,19 @@ avalon/
 │   ├── router.tsx               Router setup
 │   ├── routes/                  File-based routes
 │   │   ├── __root.tsx           Document shell, global styles, not-found page
-│   │   ├── index.tsx            Landing: create or join a room
-│   │   ├── room.$code.tsx       The room: lobby and game, one screen driven by RoomView
+│   │   ├── _app/route.tsx       Pathless layout for the real app: AppShell, which owns the stage
+│   │   ├── _app/index.tsx       Landing (/): create or join a room, on the 3D Star Table
+│   │   ├── _app/room.$code.tsx  The room (/room/$code): lobby and game, one screen driven by RoomView. Browser only
 │   │   ├── api/health.ts        Liveness check (a server route)
-│   │   └── design/              The design prototypes (removed after the pick)
+│   │   └── design/starlit/      The Starlit reference prototype, until Phase 4 ends
 │   ├── components/              Screens and components of the real app, one folder per area
-│   │   ├── landing/start-form.tsx  Create or join a room
-│   │   └── room/room-screen.tsx    The room screen
-│   ├── styles/                  app.css (Tailwind, base styles), tokens.css (the :root tokens)
+│   │   ├── ui/                  Primitives (icons, switch, sound toggle, title mark) and AppShell
+│   │   ├── art/                 The night sky and other large drawings. Browser only
+│   │   ├── three/               The Star Table scene (three.js). Loaded on demand, browser only
+│   │   ├── stage/               The shared stage that hosts the scene, and its store
+│   │   ├── landing/             LandingScreen, LandingArt, StartForm
+│   │   └── room/room-screen.tsx The room screen (flat until Phase 1)
+│   ├── styles/                  app.css (entry), tokens.css, fonts.css, components.css, motion.css
 │   ├── functions/rooms.ts       Server functions. `createRoom` is the only one
 │   ├── shared/                  Used by both sides. Plain TypeScript, plus zod in schemas.ts only
 │   │   ├── constants.ts         Game tables: team balance, quest sizes, fail rule, limits
@@ -316,8 +321,9 @@ avalon/
 │   │   ├── use-room.ts          React hook over room-client
 │   │   ├── use-hydrated.ts      True once React has taken over the page
 │   │   ├── use-hold-to-reveal.ts  Press-and-hold privacy behaviour
+│   │   ├── avatar.ts, use-avatar.ts  A player's look and the saved choice
 │   │   └── sound/               Synthesised sound cues and ambience
-│   └── design/                  Prototype-only: mock data, direction list, prototype bar
+│   └── design/                  Prototype-only: mock data, screen list, flow rule, prototype bar
 ├── e2e/                         Playwright: *.e2e.ts (behaviour), *.shots.ts (screenshots)
 ├── scripts/                     contrast.mjs (WCAG checker), restart-check.mjs (rooms survive a restart)
 ├── bruno/                       Bruno collection for HTTP endpoints
@@ -326,13 +332,13 @@ avalon/
 
 ### Routes
 
-| Route                  | Kind         | Purpose                                                                                                             |
-| ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `/`                    | Page         | Enter a name and create a room, or enter a code to join.                                                            |
-| `/room/$code`          | Page         | Everything from lobby to game over. The screen is chosen from `view.stage` and `view.phase.name`, not from the URL. |
-| `/api/health`          | Server route | Returns `{ "status": "ok" }`.                                                                                       |
-| `/api/socket/CODE`     | Not a route  | WebSocket upgrade, sent by `src/server.ts` straight to room CODE's Durable Object.                                  |
-| `/design`, `/design/*` | Pages        | Design prototypes with mock data.                                                                                   |
+| Route                  | Kind         | Purpose                                                                                                                                                          |
+| ---------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                    | Page         | Enter a name and create a room, or enter a code to join. On the 3D Star Table; the scene renders in the browser.                                                 |
+| `/room/$code`          | Page         | Everything from lobby to game over. The screen is chosen from `view.stage` and `view.phase.name`, not from the URL. Rendered in the browser only (`ssr: false`). |
+| `/api/health`          | Server route | Returns `{ "status": "ok" }`.                                                                                                                                    |
+| `/api/socket/CODE`     | Not a route  | WebSocket upgrade, sent by `src/server.ts` straight to room CODE's Durable Object.                                                                               |
+| `/design`, `/design/*` | Pages        | The Starlit reference prototype with mock data (`/design` redirects to `/design/starlit`). Deleted when Phase 4 ends.                                            |
 
 The game is one route on purpose. Phase changes arrive over the socket, and a
 URL per phase would let the address bar disagree with the room.
@@ -874,38 +880,40 @@ saved; nothing is kept only in a field; anything timed is an alarm.
 
 ### Phase 0: adopt the chosen design direction
 
-The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
+**Built on 22 November 2026** (plan: `docs/plans/02-phase-0-starlit-design-system.md`).
+What is left is the live CPU check, which runs after the merge (below).
 
-- Starlit Vale's tokens, component classes, motion and fonts move from
-  `src/routes/design/starlit` to `src/styles`, on `:root`.
-- Its primitives and drawings move to `src/components/ui` and
-  `src/components/art`; the shared stage and the three.js Star Table move
-  to `src/components/stage` and `src/components/three`; the avatar helpers
-  move to `src/client`. Nothing moved may import `src/design`. Its lobby,
-  role and table components stay in the prototype until the phase that
-  builds each screen moves them.
-- **`/` uses the 3D Star Table hero** (owner's decision, 22 November 2026),
-  as the prototype landing does. The real `/` and `/room/$code` share one
-  pathless layout (`src/routes/_app/route.tsx`) that owns the stage, so the
-  lobby can join it in Phase 1. `/room/$code` stays a flat panel and the
-  real form does not fly the camera yet.
-- Ember & Rune and Lavender Vigil are already deleted, with their specs and
-  fonts, and so are the tweak studio, the motion gallery, the drawn camp and
-  the flat 2D game screens (21 November 2026).
-- **The Starlit prototype stays** at `/design/starlit`
-  as the reference for screens that are not built yet (owner's decision, 16
-  November 2026). They import the moved code, so there is one copy of
-  everything. They are deleted when Phase 4 ends.
-- `/` and the `/room/$code` placeholder are restyled with the real components.
+- Starlit Vale's tokens, component classes, motion and fonts are in
+  `src/styles` (`tokens.css`, `components.css`, `motion.css`, `fonts.css`), on
+  `:root`, with no wrapper class. The spec is `docs/design-system.md`.
+- Its primitives and drawings are in `src/components/ui` and
+  `src/components/art`; the shared stage and the three.js Star Table in
+  `src/components/stage` and `src/components/three`; the avatar helpers in
+  `src/client`. Nothing there imports `src/design`. The prototype's camera
+  rule ("is this the game's next step?") is injected through
+  `StageProvider` from `src/design/flow.ts`; the app's default cuts. The
+  lobby, role and table components stay in the prototype until the phase
+  that builds each screen moves them.
+- **`/` is on the 3D Star Table hero**, one `LandingScreen` shared with the
+  prototype landing. The real `/` and `/room/$code` share one pathless
+  layout (`src/routes/_app/route.tsx`, `AppShell`) that owns the stage, so
+  the lobby can join it in Phase 1. `/room/$code` is a flat Starlit panel,
+  and the real form does not fly the camera yet.
+- **The Starlit prototype stays** at `/design/starlit` as the reference for
+  screens that are not built yet (owner's decision, 16 November 2026). It
+  imports the moved code, so there is one copy of everything. It is deleted
+  when Phase 4 ends.
 - The sky and the stage render in the browser only, three.js stays out of
   the Worker bundle, and `/room/$code` renders in the browser only, as
   settled under
   [Measured CPU time on the live Worker](#measured-cpu-time-on-the-live-worker).
-- Done when: `/` matches the prototype landing on the 3D hero and
-  `/room/$code` looks like Starlit Vale, at 390px and 1440px (screenshots);
-  the landing still creates and joins rooms without WebGL; the existing e2e
-  tests still pass; and on the live Worker the 90th percentile CPU time for
-  both is under 10 ms.
+  `e2e/shell.e2e.ts` pins what the Worker sends and what appears after.
+- Done when (all met but the last): `/` matches the prototype landing on
+  the 3D hero and `/room/$code` looks like Starlit Vale, at 390px and
+  1440px (`e2e/app.shots.ts`); the landing still creates and joins rooms
+  without WebGL; the existing e2e tests still pass; and on the live Worker
+  the 90th percentile CPU time for both is under 10 ms (measured by the
+  `deploy` job's `pnpm test:cpu` after the merge).
 
 ### Phase 1: the lobby
 

@@ -1,18 +1,74 @@
-# Starlit Vale
+# Design system: Starlit Vale
 
 A painted storybook night: a camp on a hill above a sleeping valley, a deep blue sky full of stars, and one small warm fire where the secrets are told.
 
-Prototype: `/design/starlit`. Code: `src/routes/design/starlit/`.
+Starlit Vale is the app's design system (chosen by the owner on 16 November 2026, made the real one in Phase 0 on 22 November 2026). Every page gets its tokens, classes, motion and fonts with no wrapper class. The real screens built so far are the landing (`/`, on the 3D Star Table) and the room (`/room/$code`, flat until Phase 1). Screens that are not built for real yet are shown with mock data in the reference prototype at `/design/starlit` (`/design` redirects there); it imports the same code and is deleted when Phase 4 ends.
+
+## Where it lives
+
+| What                                                                              | Where                                           |
+| --------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Styles entry: Tailwind, then the four files below, then `@theme`                  | `src/styles/app.css`                            |
+| Tokens, on `:root` (primitive, semantic, component)                               | `src/styles/tokens.css`                         |
+| Fonts (Fontsource imports and the two font variables)                             | `src/styles/fonts.css`                          |
+| Component classes (`sl-*`, in the `components` cascade layer)                     | `src/styles/components.css`                     |
+| Motion classes and keyframes                                                      | `src/styles/motion.css`                         |
+| Primitives: icons, switch, sound toggle, title mark, the app shell                | `src/components/ui`                             |
+| Large drawings: the night sky, star fields, clouds, constellations (browser only) | `src/components/art`                            |
+| The Star Table scene, three.js (loaded on demand, browser only)                   | `src/components/three`                          |
+| The shared stage that hosts the scene, and its store                              | `src/components/stage`                          |
+| Real screens                                                                      | `src/components/landing`, `src/components/room` |
+| Prototype screens and mock data, until the phase that builds each one             | `src/routes/design/starlit`, `src/design`       |
+| Sound                                                                             | `src/client/sound`                              |
+
+Components use the Tailwind utilities generated from the semantic tokens (`bg-canvas`, `text-ink`, `border-line`, `font-display`) or `var(--token)`. No raw colour values in components.
+
+## Rendering
+
+The Worker sends a light page, and the large drawings render in the browser only:
+
+- **The night sky** (`NightSky`, about 430 SVG circles) sits inside `ClientOnly` in `AppShell`. It is a fixed backdrop and reserves no space.
+- **The stage and three.js.** `Stage` renders nothing until a screen claims it, and the scene is mounted in a ref callback after an `import.meta.env.SSR` guard, through a dynamic `import()` of `three/engine`. three.js is never in the Worker bundle (`rg -l WebGLRenderer dist/server` prints nothing). The landing band's size is in the server's HTML, so the form does not move when the scene appears.
+- **The room route** (`/room/$code`) has `ssr: false`: the Worker sends only the shell, and the room screen (and its malformed-code check in `beforeLoad`) runs in the browser.
+
+Why: server-rendering the drawings cost about 37 ms of Worker CPU per page against the free plan's 10 ms limit. See "Measured CPU time on the live Worker" in `docs/architecture.md`. The page the Worker sends is still readable without scripts: the title, the lead and the form on the canvas colour.
+
+## Screens
+
+The real screens:
+
+| Screen  | URL           | What it shows                                                                                       |
+| ------- | ------------- | --------------------------------------------------------------------------------------------------- |
+| Landing | `/`           | Title, the 3D Star Table hero, name, create a room, join with a 4-letter code.                      |
+| Room    | `/room/$code` | The room code, who is here (host, you, online or away), the connection. The lobby comes in Phase 1. |
+
+The reference prototype, driven by one mock game (`src/design/mock.ts`: seven players, seen by Wren, who is Merlin and the host):
+
+| Screen                | URL                             | What it shows                                                                                |
+| --------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- |
+| Landing               | `/design/starlit`               | The same landing, with a form that flies the camera into the mock lobby.                     |
+| Lobby                 | `/design/starlit/lobby`         | Room code, player list, ready and away states, host settings, why the game cannot start yet. |
+| Private role reveal   | `/design/starlit/role/merlin`   | A Good role. Hidden until the player presses and holds.                                      |
+|                       | `/design/starlit/role/assassin` | An Evil role, same treatment.                                                                |
+| Table: team proposal  | `/design/starlit/table/propose` | Quest track, score, rejected-vote track, seats. The leader picks the team.                   |
+| Table: team vote      | `/design/starlit/table/vote`    | The proposed team, who has voted so far (not how), Approve and Reject.                       |
+| Table: votes revealed | `/design/starlit/table/reveal`  | Every vote shown at the same moment, and the tally.                                          |
+| Table: quest cards    | `/design/starlit/table/quest`   | A team member plays Success or Fail in private.                                              |
+| Table: quest result   | `/design/starlit/table/result`  | The shuffled cards, the outcome, the updated quest track.                                    |
+
+The primary button on each prototype screen leads to the next one, so it can be clicked through from landing to quest result. Without WebGL the lobby, role and table screens show a short notice instead; the landing form still works.
+
+Screenshots at 390px and 1440px are written by `pnpm build && pnpm screenshots` (software WebGL in headless Chromium) to `docs/design/screenshots/app/` (the real screens) and `docs/design/screenshots/starlit/` (the prototype). They are not committed.
 
 ## Mood
 
 Calm, wide and quiet. Most of every screen is open sky in deep blue. The only warm things are the campfire and whatever the player can act on, so amber always means "this is yours to press" or "this star is lit". Shapes are soft and round. The game's structure is drawn as constellations: seats are stars joined by fine dotted lines, the team is a brighter constellation inside the ring, and the five quests are five moons on a line.
 
-It is the open-air direction of the three. No wood, no parchment, no pixels, no square frames.
+Open air: no wood, no parchment, no pixels, no square frames.
 
 ## Palette
 
-Blue dominant. All values live in `-theme.css` under `.theme-starlit`.
+Blue dominant. All values live in `src/styles/tokens.css` on `:root`.
 
 ### Primitives
 
@@ -63,7 +119,7 @@ Blue dominant. All values live in `-theme.css` under `.theme-starlit`.
 | `--body-font`           | Nunito Sans            | `var(--font-nunito-sans), ui-sans-serif, system-ui, sans-serif` |
 | `--corner-sm / md / lg` |                        | `10px` `16px` `24px`                                            |
 
-`--accent-cool` is the pink of the cloud edges. In this direction the "cool counterpart" to the fire is a soft pink, not a blue, because blue is already the whole page. It is used for eyebrows, the "You" marker and the Lady of the Lake tag.
+`--accent-cool` is the pink of the cloud edges. Here the "cool counterpart" to the fire is a soft pink, not a blue, because blue is already the whole page. It is used for eyebrows, the "You" marker and the Lady of the Lake tag.
 
 ### Component tokens
 
@@ -154,7 +210,7 @@ Colour is never the only signal:
 | Display | Fraunces    | 500, 600 (variable)           | Wordmark, headings, the room code, numbers in stars and moons, vote and card labels |
 | Body    | Nunito Sans | 400, 600, 700, 800 (variable) | Everything else                                                                     |
 
-Both are under the SIL Open Font License 1.1. They are variable fonts, self-hosted from Fontsource packages (`@fontsource-variable/fraunces`, the `full.css` cut with the weight, optical size, `SOFT` and `WONK` axes; `@fontsource-variable/nunito-sans`, the weight axis). `-fonts.css` imports them and names them `--font-fraunces` and `--font-nunito-sans` on the wrapper. `-theme.css` wires those to `--display-font` and `--body-font`. Fraunces is set with `"SOFT" 100, "WONK" 0`: the fully soft cut, without the leaning "wonky" letters, with optical sizing on. Both families were legible in every screenshot at both widths, so the pairing from the brief was kept.
+Both are under the SIL Open Font License 1.1. They are variable fonts, self-hosted from Fontsource packages (`@fontsource-variable/fraunces`, the `full.css` cut with the weight, optical size, `SOFT` and `WONK` axes; `@fontsource-variable/nunito-sans`, the weight axis). `src/styles/fonts.css` imports them and names them `--font-fraunces` and `--font-nunito-sans` on `:root`. `tokens.css` wires those to `--display-font` and `--body-font`. Fraunces is set with `"SOFT" 100, "WONK" 0`: the fully soft cut, without the leaning "wonky" letters, with optical sizing on. Both families were legible in every screenshot at both widths, so the pairing from the brief was kept.
 
 Sizes: wordmark `clamp(68px, 19vw, 152px)`; room code `clamp(52px, 15vw, 76px)`; page titles 30 to 32px (phone) and 40 to 48px (wide); panel titles 22 to 24px; body 16 to 17px with line height 1.4 to 1.6; buttons 17px. The only text under 16px is short labels at 13px, always at weight 700 or 800: eyebrows, chips, the tags and status under a seat, the captions under a quest moon on a phone, and the On / Off word under a switch.
 
@@ -190,7 +246,7 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Tokens and curves
 
-`-theme.css` holds the motion tokens; `-motion.css` holds the classes and keyframes.
+`src/styles/tokens.css` holds the motion tokens; `src/styles/motion.css` holds the classes and keyframes.
 
 | Token           | Value                               | Used for                                             |
 | --------------- | ----------------------------------- | ---------------------------------------------------- |
@@ -205,7 +261,7 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Moments
 
-"Wired" says whether the moment plays in the click-through or only in the gallery. Every row has a static end state under reduced motion: `src/styles/app.css` cuts durations to almost nothing, and `-theme.css` also zeroes every delay inside `.theme-starlit`, so a timed sequence lands on its end at once (sound may still play).
+"Wired" says whether the moment plays in the click-through or only in the gallery. Every row has a static end state under reduced motion: `src/styles/app.css` cuts durations to almost nothing, and `components.css` also zeroes every delay, so a timed sequence lands on its end at once (sound may still play).
 
 | Stage        | Moment                     | What moves                                                                                                                    | Duration                                                             | Easing              | Cue                                                     | Wired                                 | Reduced motion                              |
 | ------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------------------------------------- | ------------------------------------- | ------------------------------------------- |
@@ -255,7 +311,7 @@ Motion in the vale has one job: say what just happened, whose turn it is, or tha
 
 ### Reduced motion
 
-`src/styles/app.css` cuts every animation and transition to almost nothing. `-theme.css` adds two things inside `.theme-starlit`: every animation and transition delay is set to zero (the sequences are timed with delays, which `src/styles/app.css` leaves alone), and the decorative loops are switched off or removed. Because every element's normal style is its end state, each screen and each gallery scene shows its final state at once. The gallery's timed scenes (counts, players joining) also jump to their last step under reduced motion. Sound still plays if it is switched on. This was checked: with reduced motion emulated, no finite animation is still running 400ms after any Starlit screen opens, and every gallery scene matches its resting end state 200ms after Play.
+`src/styles/app.css` cuts every animation and transition to almost nothing. `components.css` adds two things: every animation and transition delay is set to zero (the sequences are timed with delays, which `src/styles/app.css` leaves alone), and the decorative loops are switched off or removed. Because every element's normal style is its end state, each screen and each gallery scene shows its final state at once. The gallery's timed scenes (counts, players joining) also jump to their last step under reduced motion. Sound still plays if it is switched on. This was checked: with reduced motion emulated, no finite animation is still running 400ms after any Starlit screen opens, and every gallery scene matches its resting end state 200ms after Play.
 
 ## Sound
 
@@ -377,7 +433,7 @@ Searches were run with the skill's `scripts/search.py`, and its `quick-reference
 
 Used:
 
-- **Product match "Card & Board Game"**: recommends "3D & Hyperrealism + Flat Design" with Dark Mode (OLED) as a secondary style. The Flat Design half was taken (flat fills, simple shapes, clean lines). Its palette advice (felt green and dark wood) was not: wood belongs to another direction.
+- **Product match "Card & Board Game"**: recommends "3D & Hyperrealism + Flat Design" with Dark Mode (OLED) as a secondary style. The Flat Design half was taken (flat fills, simple shapes, clean lines). Its palette advice (felt green and dark wood) was not: wood does not fit the open-air night.
 - **Style "Dark Mode (OLED)"** (returned for the night-sky query): midnight blue base, glow used sparingly, text contrast of 7:1 or more where possible. Followed: every ink pair is above 10:1 and most coloured text is above 7:1.
 - **Style "Aurora UI"** (night-sky gradients): depth by layering colour, and slow ambient loops. Used loosely for the sky gradient and the slow loops; its mesh gradients and saturation were not used.
 - **Font pairing "Soft Rounded"** (Varela Round + Nunito Sans, "soft, friendly, warm"): supports Nunito Sans as the body face. The `google-fonts` data confirmed Fraunces has the `SOFT`, `WONK` and `opsz` axes.
@@ -411,13 +467,13 @@ For the motion and sound pass, the skill's `quick-reference.md` animation rules 
 
 Not taken: **`spring-physics`** (real springs need a library or WAAPI maths; a single overshoot curve, `--ease-spring`, is used for small pops instead). **`excessive-motion`** ("1 or 2 key elements per view") is followed on each functional moment, but the ending vignettes and the result sequence move several things in a planned order, because the sequence is the point.
 
-One place the skill's advice was not followed in the original direction: "animate one or two key elements per view". The sky has many small ambient animations. They are slow, low-contrast, opacity or transform only, and off under reduced motion; the functional motion on each screen is still one thing at a time.
+One place the skill's advice was not followed: "animate one or two key elements per view". The sky has many small ambient animations. They are slow, low-contrast, opacity or transform only, and off under reduced motion; the functional motion on each screen is still one thing at a time.
 
 ## The 3D stage
 
 The landing hero and every game screen are one WebGL scene, The Star Table: a
 round stone table for ten in a clearing, seat runes, a moonbeam and a turning
-dome of constellations, built with three.js. Code is in `-components/three`:
+dome of constellations, built with three.js. Code is in `src/components/three`:
 `engine.ts` (renderer, bloom, pointer parallax, pausing off-screen, a still
 frame under reduced motion), `kit.ts` and `props.ts` (sky, stars, flame,
 embers, pine, castle, campfire) and `scenes/`. Every colour is read from the
@@ -427,7 +483,7 @@ offset slides the subject right of the title. Not yet checked on a real phone
 or Safari: frame rate and battery there are the open question.
 
 Without WebGL (or when the GPU drops the context) the lobby, role and table
-screens show one short notice instead (`-components/no-webgl-notice.tsx`):
+screens show one short notice instead (`src/routes/design/starlit/-components/no-webgl-notice.tsx`, moving with the game screens):
 "This game needs 3D graphics. Try another browser, or turn on hardware
 acceleration in this one." The landing keeps its form; the hero band stays
 empty.
@@ -451,14 +507,14 @@ empty.
   placed every frame above each head (nearer figures first, a tag that would
   overlap moves up), and say the state with an icon as well as the list
   does. "Your look" picks your figure and is saved in the browser
-  (`src/design/use-avatar.ts`). The model is `src/design/avatar.ts`, shaped
+  (`src/client/use-avatar.ts`). The model is `src/client/avatar.ts`, shaped
   to become `avatar` on `SeatView` and the join input; mock players get a
-  stable look from their id. Code: `-components/three/avatar.ts` (the
+  stable look from their id. Code: `src/components/three/avatar.ts` (the
   figure), `seating.ts` (seats, arrivals, tags) and `scenes/star-table.ts`. Player changes go to the running scene, so it is
   never rebuilt.
 - **Landing to lobby: one stage, one flight.** The landing and the lobby
   share one live scene, mounted in
-  the Starlit layout (`-components/stage/`), so going from one to the other
+  the layout by `AppShell` (`src/components/stage/`), so going from one to the other
   is a camera flight rather than a page change. The canvas is always the
   size of the screen. The scene frames itself for a "focus" box (the landing
   band, or the open space beside the lobby's panels), and the camera's view
@@ -514,7 +570,7 @@ empty.
     the role card), swinging round the table. Any other jump, a direct load
     and reduced motion cut.
 - **Tuning values.** Values that were hardcoded are tokens at their old
-  values, in the "Tuning values" block of `-theme.css`: Fraunces SOFT and
+  values, in the "Tuning values" block of `src/styles/tokens.css`: Fraunces SOFT and
   WONK, display, eyebrow, button and label weights and tracking, panel
   opacity, highlight and border, fire and star glow, sky gradient stops,
   star and cloud visibility, horizon height, and every ambient animation
@@ -522,6 +578,8 @@ empty.
 
 ## Known gaps
 
+- The not-found page (an unknown address, or a malformed room code) is drawn by the root route, outside `AppShell`: it has Starlit's colours and fonts but no sky.
+- The real room is flat. The 3D lobby on the shared stage, and the camera flight from the landing into it, are Phase 1.
 - Built and looked at with the 7-player mock only. The table seats 5 to 10, but other counts have not been viewed in the game screens.
 - Screens not designed yet: Lady of the Lake, assassination, game over, the table as seen by someone who is not the leader or not on the team, a rejected vote, and error or reconnecting states.
 - The disabled Fail card with "Good players can only play Success" (required by the brief) tells anyone looking over a shoulder that the player is Good. The real game should think about this, for example by keeping both cards behind a hold.

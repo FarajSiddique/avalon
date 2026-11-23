@@ -146,3 +146,63 @@ test("the room page is rendered in the browser only", async ({
   await expect(page.getByTestId("connection")).toBeAttached();
   await expect(page.locator("[data-stage-host]")).toHaveCount(0);
 });
+
+// getAnimations() sees CSS animations only, not the scene's render loop, so
+// the scene is checked by what the engine writes on its host (`data-stage`,
+// which reads "flying" during a camera move): it must settle on the hero
+// without ever flying.
+test.describe("with reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  for (const path of ["/", "/room/BCDF"]) {
+    test(`nothing is still animating on ${path}`, async ({ page }) => {
+      // Every phase the stage host passes through, kept on <html>.
+      await page.addInitScript(() => {
+        new MutationObserver(() => {
+          const root = document.documentElement;
+          const phase = document
+            .querySelector("[data-stage-host]")
+            ?.getAttribute("data-stage");
+
+          if (phase) {
+            root.dataset.phases = `${root.dataset.phases ?? ""} ${phase}`;
+          }
+        }).observe(document, {
+          attributes: true,
+          attributeFilter: ["data-stage"],
+          subtree: true,
+        });
+      });
+      await page.goto(path);
+      await expect(page.locator('[data-art="night-sky"]')).toBeAttached();
+
+      if (path === "/") {
+        const stage = page.locator("[data-stage-host]");
+
+        await expect(stage).toHaveAttribute("data-stage", "hero", {
+          timeout: 60_000,
+        });
+        await page.waitForTimeout(400);
+        await expect(stage).toHaveAttribute("data-stage", "hero");
+        await expect(page.locator("html")).toHaveAttribute(
+          "data-phases",
+          /hero/,
+        );
+        await expect(page.locator("html")).not.toHaveAttribute(
+          "data-phases",
+          /flying/,
+        );
+      }
+
+      await page.waitForTimeout(400);
+      const running = await page.evaluate(
+        () =>
+          document
+            .getAnimations()
+            .filter((animation) => animation.playState === "running").length,
+      );
+
+      expect(running).toBe(0);
+    });
+  }
+});

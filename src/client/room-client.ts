@@ -105,7 +105,8 @@ export class RoomClient {
   readonly kick = (playerId: string): void => {
     this.set({ error: null });
     void this.connection.request("lobby:kick", { playerId }).then((result) => {
-      if (!result.ok) {
+      // Offline: the reconnect brings a fresh view either way.
+      if (!result.ok && result.error.code !== "OFFLINE") {
         this.set({ error: result.error });
       }
     });
@@ -126,8 +127,10 @@ export class RoomClient {
 
   /** After being removed: open a fresh socket and show the name form. */
   readonly rejoin = (): void => {
-    this.store.setState(initial);
+    // Stop first, so the old socket is gone before the fresh state. Pending
+    // requests settle as OFFLINE, which kick and leave ignore.
     this.connection.stop();
+    this.store.setState(initial);
     this.connection.start();
   };
 

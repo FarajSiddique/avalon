@@ -244,8 +244,8 @@ export function pickNextHost(
     throw new RoomError("NOT_IN_ROOM", "That player is not in the room.");
   }
 
-  const after = [...players.slice(from + 1), ...players.slice(0, from + 1)];
-  const others = after.filter((p) => p.id !== fromId);
+  // Everyone but the old host, in seat order starting after them.
+  const others = [...players.slice(from + 1), ...players.slice(0, from)];
 
   return (others.find((p) => connected.has(p.id)) ?? others[0])?.id ?? null;
 }

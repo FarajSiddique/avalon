@@ -113,7 +113,7 @@ export function HostSettings({
         >
           {blocked.map((message) => (
             <li
-              key={message}
+              key={`blocked:${message}`}
               className="text-ink flex items-start gap-2 text-base leading-snug"
             >
               <IconRing size={18} className="text-warning mt-0.5 flex-none" />
@@ -122,7 +122,7 @@ export function HostSettings({
           ))}
           {hints.map((message) => (
             <li
-              key={message}
+              key={`hint:${message}`}
               className="text-ink-muted flex items-start gap-2 text-base leading-snug"
             >
               <IconStar size={18} className="mt-0.5 flex-none" />

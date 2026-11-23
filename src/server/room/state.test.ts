@@ -255,6 +255,22 @@ describe("settings (issue 18)", () => {
     ).toBe(on);
   });
 
+  it("never stores a role twice", () => {
+    const { state, host } = table();
+    const next = setSettings(state, host.player.id, {
+      optionalRoles: ["oberon", "oberon"],
+      ladyOfTheLake: false,
+    });
+
+    expect(next.settings.optionalRoles).toEqual(["oberon"]);
+    expect(
+      setSettings(next, host.player.id, {
+        optionalRoles: ["oberon"],
+        ladyOfTheLake: false,
+      }),
+    ).toBe(next);
+  });
+
   it("keeps everyone's ready", () => {
     const { state, host, ansel } = table();
     const on = setReady(state, ansel.player.id, true);

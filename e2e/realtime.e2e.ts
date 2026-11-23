@@ -197,7 +197,7 @@ async function sendRequest(
       const frames: Array<{
         type: string;
         id?: number;
-        result?: { ok: boolean; error?: { code: string } };
+        result?: { ok: boolean; data?: unknown; error?: { code: string } };
         view?: SentView;
       }> = [];
 
@@ -336,6 +336,7 @@ test("the host saves any role mix, and too many Evil roles block Start", async (
   });
 
   expect(tooMany.result).toEqual({ ok: true, data: null });
+  expect(tooMany.view, "a state frame after the change").not.toBeNull();
   expect(tooMany.view?.settings).toEqual({
     optionalRoles: ["morgana", "mordred"],
     ladyOfTheLake: true,
@@ -366,6 +367,7 @@ test("the host saves any role mix, and too many Evil roles block Start", async (
     ladyOfTheLake: true,
   });
 
+  expect(fits.view, "a state frame after the change").not.toBeNull();
   expect(fits.view?.startBlockers).toEqual([]);
   expect(fits.view?.players.slice(1).every((p) => p.ready)).toBe(true);
 

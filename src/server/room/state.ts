@@ -194,12 +194,13 @@ export function setSettings(
     throw new RoomError("NOT_HOST", "Only the host changes the settings.");
   }
 
+  // Compared as sets, so role order and any repeats never matter.
+  const before = new Set(state.settings.optionalRoles);
+  const after = new Set(settings.optionalRoles);
   const same =
     state.settings.ladyOfTheLake === settings.ladyOfTheLake &&
-    state.settings.optionalRoles.length === settings.optionalRoles.length &&
-    settings.optionalRoles.every((role) =>
-      state.settings.optionalRoles.includes(role),
-    );
+    before.size === after.size &&
+    [...after].every((role) => before.has(role));
 
   if (same) {
     return state;
@@ -208,7 +209,7 @@ export function setSettings(
   return {
     ...state,
     settings: {
-      optionalRoles: [...settings.optionalRoles],
+      optionalRoles: [...after],
       ladyOfTheLake: settings.ladyOfTheLake,
     },
   };

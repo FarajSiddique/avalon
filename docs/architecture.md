@@ -658,6 +658,34 @@ Host hand-over (decided in issue 19):
   server restart drops every socket, so the host's clock starts and is
   cancelled when the host reconnects a few seconds later.
 
+Message budget (decided in issue 20):
+
+- Each socket has a token bucket: up to `MESSAGE_BURST` (20) messages at
+  once, refilling `MESSAGE_REFILL_PER_S` (5) a second, so about 300 a minute.
+  Fast tapping (role toggles, later `draft_team`) never reaches it. Pings
+  are answered without waking the room, so they cost nothing.
+- One bucket for every event. The cap is on the room's work, which is the
+  same whatever the event.
+- Every message that reaches `webSocketMessage` costs one token before any
+  parsing, so oversized, unparsable and invalid messages are capped too.
+  They are still dropped without an ack.
+- A valid request with no token left gets its ack with `RATE_LIMITED` and
+  does nothing else. The socket stays open and the bucket refills. Closing
+  it would only hand the phone a fresh bucket when it reconnects.
+- The first refusal in a run is logged once with `console.warn` (room code,
+  seat id, event). Nothing more is logged until the socket is back under
+  budget.
+- The bucket lives in the socket's attachment
+  (`{ playerId, tokens, refilledAt, limited }`), written after each message.
+  The arithmetic is a pure function beside `state.ts`, tested with an
+  injected clock.
+- The client treats `RATE_LIMITED` like any other refusal: its message
+  shows the way a refused kick does, and the next view puts the screen
+  right. The client does not throttle itself.
+- A new socket starts with a full bucket. Opening many sockets to dodge the
+  cap is left to the Phase 7 hardening (with the `Origin` check and limits
+  on room creation per address).
+
 Settings and start blockers (decided in issue 18):
 
 - `lobby:settings` is host only (`NOT_HOST` otherwise) and lobby only
@@ -1029,7 +1057,7 @@ What is left is the live CPU check, which runs after the merge (below).
   kicked player's sockets get `closed` with reason `kicked`.
   `settingsBlockers` in `src/server/game/setup.ts`, added to `startBlockers`
   in `projectView`. A per-socket message budget kept in the socket's
-  attachment.
+  attachment (see "Message budget" above).
 - Client: the real lobby screen on the 3D Star Table, driven by
   `LobbyView`. Move the prototype's lobby components from
   `src/routes/design/starlit/-components/lobby` to `src/components/lobby`

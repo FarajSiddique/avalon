@@ -40,6 +40,10 @@ _Avoid_: Quit, disconnect
 The host removing another seat, connected or away, in the lobby. Nothing is remembered: the same person may join again as a new seat, under any name.
 _Avoid_: Ban, remove
 
+**Message budget**:
+How many messages one connection may send: a burst of 20, then 5 a second. A request over it is refused with "too fast"; the connection stays open.
+_Avoid_: Rate limit (for the rule; `RATE_LIMITED` is only its error code), throttle
+
 **Settings**:
 The host's choices for the next game: which optional roles are in, and whether Lady of the Lake is used. Any mix can be saved; whether it can start depends on the seats at the moment of Start.
 _Avoid_: Config, options

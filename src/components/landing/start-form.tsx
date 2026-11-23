@@ -111,7 +111,7 @@ export function StartForm() {
           <IconStar size={18} />
           {busy ? "Creating…" : "Create a room"}
         </button>
-        <p role="alert" className="text-fail -mt-2 min-h-5 text-sm">
+        <p role="alert" className="text-fail -mt-2 text-sm empty:-mt-4">
           {createError}
         </p>
       </form>
@@ -156,7 +156,7 @@ export function StartForm() {
         <p id={hintId} className="text-ink-muted mt-2 text-base leading-snug">
           Four letters, shown on the host&apos;s screen.
         </p>
-        <p role="alert" className="text-fail mt-2 min-h-5 text-sm">
+        <p role="alert" className="text-fail mt-2 text-sm empty:mt-0">
           {joinError}
         </p>
       </form>

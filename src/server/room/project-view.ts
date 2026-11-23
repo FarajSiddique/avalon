@@ -15,6 +15,7 @@ import type {
   SeatView,
   StartBlocker,
 } from "@/shared/views";
+import { settingsBlockers } from "../game/setup";
 import type { RoomState } from "./state";
 
 function seatViews(
@@ -57,6 +58,9 @@ function startBlockers(
   if (notReady.length > 0) {
     blockers.push({ kind: "not_ready", playerIds: notReady.map((p) => p.id) });
   }
+
+  // Checked against the seats now, not when the settings were saved.
+  blockers.push(...settingsBlockers(state.players.length, state.settings));
 
   return blockers;
 }

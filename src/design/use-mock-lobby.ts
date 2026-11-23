@@ -2,13 +2,9 @@ import { useState, useSyncExternalStore } from "react";
 import type { StoreApi } from "zustand/vanilla";
 import { createDevStore } from "@/client/dev-store";
 import { play } from "@/client/sound";
-import {
-  MAX_PLAYERS,
-  MIN_PLAYERS,
-  TEAM_BALANCE,
-  isPlayerCount,
-} from "@/shared/constants";
-import { ROLES, type OptionalRole } from "@/shared/roles";
+import { MAX_PLAYERS, MIN_PLAYERS } from "@/shared/constants";
+import type { OptionalRole } from "@/shared/roles";
+import { tooManyEvilRoles } from "@/shared/settings";
 import type { LobbyView, StartBlocker } from "@/shared/views";
 import { lobbyView } from "./mock";
 
@@ -71,20 +67,11 @@ function blockersFor(view: LobbyView): Array<StartBlocker> {
     blockers.push({ kind: "not_ready", playerIds: waiting });
   }
 
-  const count = view.players.length;
+  // The same rule the room runs, against the seats there are now.
+  const evil = tooManyEvilRoles(view.players.length, view.settings);
 
-  if (isPlayerCount(count)) {
-    // The Assassin is always in, plus every Evil optional role switched on.
-    const evilRoles =
-      1 +
-      view.settings.optionalRoles.filter(
-        (role) => ROLES[role].alignment === "evil",
-      ).length;
-    const allowed = TEAM_BALANCE[count].evil;
-
-    if (evilRoles > allowed) {
-      blockers.push({ kind: "too_many_evil_roles", allowed });
-    }
+  if (evil) {
+    blockers.push(evil);
   }
 
   return blockers;

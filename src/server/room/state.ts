@@ -176,6 +176,45 @@ export function setReady(
   };
 }
 
+/**
+ * The host replaces the settings. Any mix the schema allows is saved: whether
+ * it can start depends on the seats at the time (see `settingsBlockers`).
+ * Nobody's ready changes.
+ */
+export function setSettings(
+  state: RoomState,
+  playerId: PlayerId,
+  settings: GameSettings,
+): RoomState {
+  if (state.game !== null) {
+    throw new RoomError("ROOM_IN_PROGRESS", "The game has already started.");
+  }
+
+  if (playerId !== state.hostId) {
+    throw new RoomError("NOT_HOST", "Only the host changes the settings.");
+  }
+
+  // Compared as sets, so role order and any repeats never matter.
+  const before = new Set(state.settings.optionalRoles);
+  const after = new Set(settings.optionalRoles);
+  const same =
+    state.settings.ladyOfTheLake === settings.ladyOfTheLake &&
+    before.size === after.size &&
+    [...after].every((role) => before.has(role));
+
+  if (same) {
+    return state;
+  }
+
+  return {
+    ...state,
+    settings: {
+      optionalRoles: [...after],
+      ladyOfTheLake: settings.ladyOfTheLake,
+    },
+  };
+}
+
 /** The seat a token belongs to. Tokens look like `CODE.secret`. */
 export function findSeat(state: RoomState, token: string): PlayerRecord {
   const dot = token.indexOf(".");

@@ -78,3 +78,10 @@ with an icon or shape and a text label, never colour alone.
   Evil count for the player count. If they do, the host cannot start
   (`too_many_evil_roles`). Remaining Evil seats are Minions.
 - Good seats: Merlin, Percival if chosen, the rest Loyal Servants.
+- The host may save any mix. The check runs against the seats at the time, on
+  every view and again at Start, so a seat leaving can turn a valid mix into a
+  blocker. With fewer than 5 seats there is no Evil count and no settings
+  blocker (`too_few_players` covers it). The rule is `evilRoleCount` and
+  `tooManyEvilRoles` in `src/shared/settings.ts`.
+- Percival without Morgana (he sees only Merlin) and Morgana without Percival
+  are allowed. The host settings show a settings hint, never a blocker.

@@ -434,9 +434,16 @@ empty.
 
 - **Lobby table and avatars.** The prototype lobby opens on The Star Table
   framed from above, with every player standing at a seat as a small
-  low-poly figure in their own look: a cloak colour (art tokens only, never
-  the Good or Evil colours), headwear (bare, hood, helm, circlet, feathered
-  cap) and a chest emblem (star, moon, sun, leaf, key). Nothing in a look may
+  low-poly figure in their own look: a body (male or female), a skin, a
+  cloak colour (art tokens only, never the Good or Evil colours), headwear
+  (bare, hood, helm, circlet, feathered cap) and a chest emblem (star, moon,
+  sun, leaf, key). Skins come in two labelled rows in the picker: six
+  everyday tones (porcelain, peach, honey, bronze, umber, ebony) and six
+  fantastical ones, picked on purpose for fun (bog troll, frost giant, fae
+  lilac, ghostly, gilded, starborn). Each is an `--art-skin-*` token, and
+  none sits near `--good` (teal) or `--evil` (coral), so a skin never hints
+  at a side. The tick on a chosen swatch sits on its own dark, ink-ringed
+  disc so it reads on the palest and the darkest skin. Nothing in a look may
   hint at a role. Players rise out of a column of light as they arrive (one
   by one when the lobby opens), sink away when they leave, and idle with a
   gentle sway; away players are greyed. A gold ring at their feet and their

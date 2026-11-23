@@ -567,12 +567,19 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
   await openSection(page, "look");
   const helm = page.locator('[data-look="headwear:helm"]');
 
+  const male = page.locator('[data-look="body:male"]');
+  const mossSkin = page.locator('[data-look="skin:moss"]');
+
+  await male.click();
+  await mossSkin.click();
   await helm.click();
   await page.locator('[data-look="cloak:moss"]').click();
   await expect(helm).toHaveAttribute("aria-pressed", "true");
+  await expect(male).toHaveAttribute("aria-pressed", "true");
+  await expect(mossSkin).toHaveAttribute("aria-pressed", "true");
   await expect(
     page.locator('[data-section="look"] button[aria-expanded]'),
-  ).toContainText("Moss cloak, helm");
+  ).toContainText("Male, bog troll skin, moss cloak, helm");
   await page.reload();
   // As on the first visit, let the reloaded page settle before using it: on
   // CI the reload alone has taken twenty seconds, and the page answered
@@ -581,6 +588,8 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
   await expect(stage).toHaveAttribute("data-stage", "lobby", STAGE_TIMEOUT);
   await openSection(page, "look");
   await expect(helm).toHaveAttribute("aria-pressed", "true");
+  await expect(male).toHaveAttribute("aria-pressed", "true");
+  await expect(mossSkin).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-look="cloak:moss"]')).toHaveAttribute(
     "aria-pressed",
     "true",

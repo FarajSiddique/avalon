@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { projectView } from "./project-view";
-import { createRoom, joinRoom, setReady, type RoomDeps } from "./state";
+import {
+  createRoom,
+  joinRoom,
+  setReady,
+  setSettings,
+  type RoomDeps,
+} from "./state";
 
 let n = 0;
 const deps: RoomDeps = {
@@ -101,5 +107,40 @@ describe("projectView (lobby)", () => {
     expect(view.stage === "lobby" && view.startBlockers).toEqual([
       { kind: "disconnected", playerIds: [host.player.id] },
     ]);
+  });
+
+  it("blocks too many Evil roles for the seats there are now", () => {
+    const host = createRoom("BCDF", "Wren", deps);
+    let state = setSettings(host.state, host.player.id, {
+      optionalRoles: ["morgana", "mordred", "oberon"],
+      ladyOfTheLake: true,
+    });
+
+    const blockers = () => {
+      const everyone = new Set(state.players.map((p) => p.id));
+      const view = projectView(state, host.player.id, everyone);
+
+      return view.stage === "lobby" ? view.startBlockers : [];
+    };
+
+    // Below 5 seats there is no Evil count yet: only the seat count blocks.
+    expect(blockers()).toEqual([{ kind: "too_few_players", needed: 4 }]);
+
+    for (const name of ["Ansel", "Mira", "Tobias", "Isolde"]) {
+      const seated = joinRoom(state, name, deps);
+
+      state = setReady(seated.state, seated.player.id, true);
+    }
+
+    // Seat blockers first, then the settings.
+    expect(blockers()).toEqual([{ kind: "too_many_evil_roles", allowed: 2 }]);
+
+    state = setSettings(state, host.player.id, {
+      optionalRoles: ["morgana"],
+      ladyOfTheLake: true,
+    });
+
+    // A lone Morgana and the Lady at 5 seats are hints, never blockers.
+    expect(blockers()).toEqual([]);
   });
 });

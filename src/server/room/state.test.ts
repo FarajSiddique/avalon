@@ -12,6 +12,7 @@ import {
   joinRoom,
   nextExpiryCheck,
   setReady,
+  setSettings,
   withPresence,
   type RoomDeps,
 } from "./state";
@@ -222,5 +223,59 @@ describe("ready (issue 16)", () => {
     expect(errorCode(() => setReady(state, "nobody", true))).toBe(
       "NOT_IN_ROOM",
     );
+  });
+});
+
+describe("settings (issue 18)", () => {
+  it("saves any mix the host picks, even one that cannot start yet", () => {
+    const { state, host } = table();
+    const next = setSettings(state, host.player.id, {
+      optionalRoles: ["morgana", "mordred", "oberon"],
+      ladyOfTheLake: true,
+    });
+
+    expect(next.settings).toEqual({
+      optionalRoles: ["morgana", "mordred", "oberon"],
+      ladyOfTheLake: true,
+    });
+  });
+
+  it("returns the same state when nothing changes, in any role order", () => {
+    const { state, host } = table();
+    const on = setSettings(state, host.player.id, {
+      optionalRoles: ["percival", "morgana"],
+      ladyOfTheLake: false,
+    });
+
+    expect(
+      setSettings(on, host.player.id, {
+        optionalRoles: ["morgana", "percival"],
+        ladyOfTheLake: false,
+      }),
+    ).toBe(on);
+  });
+
+  it("keeps everyone's ready", () => {
+    const { state, host, ansel } = table();
+    const on = setReady(state, ansel.player.id, true);
+    const next = setSettings(on, host.player.id, {
+      optionalRoles: ["oberon"],
+      ladyOfTheLake: false,
+    });
+
+    expect(readyOf(next)[ansel.player.id]).toBe(true);
+  });
+
+  it("is refused for anyone but the host", () => {
+    const { state, ansel } = table();
+
+    expect(
+      errorCode(() =>
+        setSettings(state, ansel.player.id, {
+          optionalRoles: [],
+          ladyOfTheLake: true,
+        }),
+      ),
+    ).toBe("NOT_HOST");
   });
 });

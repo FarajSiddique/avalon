@@ -264,3 +264,98 @@ export function nextExpiryCheck(
 
   return now >= at ? "expired" : at;
 }
+
+/**
+ * Who becomes host when the host goes: the first connected seat after the
+ * old host in seat order, wrapping round. If nobody else is connected, the
+ * next seat in seat order, so a room always has a host while it has seats.
+ * Null when the old host was the only seat. Throws NOT_IN_ROOM if `fromId`
+ * has no seat.
+ */
+export function pickNextHost(
+  players: ReadonlyArray<PlayerRecord>,
+  fromId: PlayerId,
+  connected: ReadonlySet<PlayerId>,
+): PlayerId | null {
+  const from = players.findIndex((p) => p.id === fromId);
+
+  if (from === -1) {
+    throw new RoomError("NOT_IN_ROOM", "That player is not in the room.");
+  }
+
+  // Everyone but the old host, in seat order starting after them.
+  const others = [...players.slice(from + 1), ...players.slice(0, from)];
+
+  return (others.find((p) => connected.has(p.id)) ?? others[0])?.id ?? null;
+}
+
+function requireLobby(state: RoomState): void {
+  if (state.game !== null) {
+    throw new RoomError("NOT_ALLOWED", "That is only possible in the lobby.");
+  }
+}
+
+function requireSeat(state: RoomState, playerId: PlayerId): PlayerRecord {
+  const player = state.players.find((p) => p.id === playerId);
+
+  if (!player) {
+    throw new RoomError("NOT_IN_ROOM", "That player is not in the room.");
+  }
+
+  return player;
+}
+
+/** The host removes another seat. Nothing about that seat is remembered. */
+export function kickSeat(
+  state: RoomState,
+  byId: PlayerId,
+  targetId: PlayerId,
+): RoomState {
+  requireLobby(state);
+  requireSeat(state, byId);
+
+  if (byId !== state.hostId) {
+    throw new RoomError("NOT_HOST", "Only the host can remove players.");
+  }
+
+  if (targetId === byId) {
+    throw new RoomError("NOT_ALLOWED", "The host cannot remove themselves.");
+  }
+
+  requireSeat(state, targetId);
+
+  return {
+    ...state,
+    players: state.players.filter((p) => p.id !== targetId),
+  };
+}
+
+/**
+ * A seat gives itself up. A leaving host hands over at once (see
+ * `pickNextHost`). Returns null when the last seat leaves: the room ends.
+ *
+ * @param connected ids of the players with at least one open socket.
+ */
+export function leaveRoom(
+  state: RoomState,
+  playerId: PlayerId,
+  connected: ReadonlySet<PlayerId>,
+): RoomState | null {
+  requireLobby(state);
+  requireSeat(state, playerId);
+
+  const hostId =
+    playerId === state.hostId
+      ? pickNextHost(state.players, playerId, connected)
+      : state.hostId;
+
+  if (hostId === null) {
+    return null;
+  }
+
+  return {
+    ...state,
+    hostId,
+    players: state.players.filter((p) => p.id !== playerId),
+  };
+}

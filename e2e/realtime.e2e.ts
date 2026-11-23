@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { z } from "zod";
+import { field, players } from "./room-helpers";
 
 /**
  * The real-time proof for this checkpoint: two separate browsers (separate
@@ -36,10 +37,6 @@ const watch = (page: Page): Array<string> => {
 
   return seen;
 };
-
-const players = (page: Page) => page.getByTestId("player");
-
-const field = (page: Page, name: string) => page.getByRole("textbox", { name });
 
 /** The page's own WebSocket to the room is open. */
 async function expectConnected(page: Page) {

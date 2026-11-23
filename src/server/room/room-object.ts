@@ -23,7 +23,9 @@ import {
 } from "@/shared/protocol";
 import {
   clientMessageSchema,
+  emptySchema,
   joinRoomSchema,
+  kickSchema,
   readySchema,
   resumeSchema,
   settingsSchema,
@@ -35,6 +37,8 @@ import {
   createRoom,
   findSeat,
   joinRoom,
+  kickSeat,
+  leaveRoom,
   nextExpiryCheck,
   setReady,
   setSettings,
@@ -240,6 +244,12 @@ export class RoomObject extends DurableObject<Env> {
           return await this.run(readySchema, payload, (input) =>
             this.ready(socket, input.ready),
           );
+        case "lobby:kick":
+          return await this.run(kickSchema, payload, (input) =>
+            this.kick(socket, input.playerId),
+          );
+        case "room:leave":
+          return await this.run(emptySchema, payload, () => this.leave(socket));
         case "lobby:settings":
           return await this.run(settingsSchema, payload, (input) =>
             this.settings(socket, input),
@@ -296,12 +306,7 @@ export class RoomObject extends DurableObject<Env> {
   }
 
   private async ready(socket: WebSocket, ready: boolean): Promise<null> {
-    const playerId = seatOf(socket);
-
-    if (!playerId) {
-      throw new RoomError("NOT_IN_ROOM", "Join the room first.");
-    }
-
+    const playerId = this.requireSeated(socket);
     const loaded = await this.requireRoom();
     const state = setReady(loaded, playerId, ready);
 
@@ -347,7 +352,96 @@ export class RoomObject extends DurableObject<Env> {
     return { code: state.code, token: seated.token };
   }
 
+  private async kick(socket: WebSocket, targetId: PlayerId): Promise<null> {
+    // Seat first: an unseated socket fails without a storage read.
+    const hostId = this.requireSeated(socket);
+    const state = kickSeat(await this.requireRoom(), hostId, targetId);
+
+    await this.removeSeat(state, targetId, "kicked");
+
+    return null;
+  }
+
+  /**
+   * The leaver's own sockets are closed here, so the ack for this request
+   * usually never arrives. The browser acts on `closed: left` instead.
+   */
+  private async leave(socket: WebSocket): Promise<null> {
+    const playerId = this.requireSeated(socket);
+    const state = leaveRoom(
+      await this.requireRoom(),
+      playerId,
+      this.connectedIds(),
+    );
+
+    if (state === null) {
+      await this.end(playerId);
+
+      return null;
+    }
+
+    await this.removeSeat(state, playerId, "left");
+
+    return null;
+  }
+
+  /** Save a room without `playerId`, close that seat's sockets, tell the rest. */
+  private async removeSeat(
+    removed: RoomState,
+    playerId: PlayerId,
+    reason: RoomClosedReason,
+  ): Promise<void> {
+    for (const socket of this.socketsOf(playerId)) {
+      // Unbind first, so presence and publish no longer count this socket.
+      socket.serializeAttachment({ playerId: null } satisfies SocketAttachment);
+      this.closeSocket(socket, reason);
+    }
+
+    const state = withPresence(
+      removed,
+      this.connectedIds().size > 0,
+      deps.now(),
+    );
+
+    await this.save(state);
+    await this.scheduleExpiryCheck(state);
+    this.publish(state);
+  }
+
+  /** The last seat left: the room ends now, like an expired room. */
+  private async end(lastId: PlayerId): Promise<void> {
+    for (const socket of this.ctx.getWebSockets()) {
+      const playerId = seatOf(socket);
+
+      socket.serializeAttachment({ playerId: null } satisfies SocketAttachment);
+      // Sockets still on the join form had no seat: to them the room has
+      // simply ended, which is what "not_found" tells the browser.
+      this.closeSocket(socket, playerId === lastId ? "left" : "not_found");
+    }
+
+    this.room = null;
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+  }
+
   /* ------------------------------------------------------------ helpers */
+
+  /** The seat this socket holds, or NOT_IN_ROOM. */
+  private requireSeated(socket: WebSocket): PlayerId {
+    const playerId = seatOf(socket);
+
+    if (!playerId) {
+      throw new RoomError("NOT_IN_ROOM", "Join the room first.");
+    }
+
+    return playerId;
+  }
+
+  private socketsOf(playerId: PlayerId): Array<WebSocket> {
+    return this.ctx
+      .getWebSockets()
+      .filter((socket) => seatOf(socket) === playerId);
+  }
 
   /** Ids of the players who have at least one open socket. */
   private connectedIds(except?: WebSocket): Set<PlayerId> {

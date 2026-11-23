@@ -723,10 +723,10 @@ Defined in `src/shared/protocol.ts`, validated by `src/shared/schemas.ts`.
 | `room:join`      | `{ name }`                         | anyone           | Implemented                   |
 | `room:resume`    | `{ token }`                        | seat holder      | Implemented                   |
 | `room:watch`     | none                               | anyone, no seat  | Next run                      |
-| `room:leave`     | none                               | seated, lobby    | Next run                      |
+| `room:leave`     | none                               | seated, lobby    | Implemented                   |
 | `lobby:ready`    | `{ ready }`                        | seated, not host | Implemented                   |
 | `lobby:settings` | `{ optionalRoles, ladyOfTheLake }` | host             | Implemented                   |
-| `lobby:kick`     | `{ playerId }`                     | host             | Next run                      |
+| `lobby:kick`     | `{ playerId }`                     | host             | Implemented                   |
 | `lobby:start`    | none                               | host             | Next run                      |
 | `game:action`    | `GameAction` (see below)           | depends          | Next run                      |
 | `room:reset`     | none                               | host             | Next run                      |

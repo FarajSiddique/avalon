@@ -61,6 +61,10 @@ export interface ResumeInput {
   token: string;
 }
 
+export interface KickInput {
+  playerId: string;
+}
+
 export interface SettingsInput {
   optionalRoles: Array<OptionalRole>;
   ladyOfTheLake: boolean;
@@ -86,14 +90,14 @@ export interface RoomRequests {
   "room:resume": { input: ResumeInput; output: SeatGrant };
   /** Next run. Watch the table without a seat (the shared screen). */
   "room:watch": { input: null; output: null };
-  /** Next run. */
+  /** Lobby only. Removes your seat; a leaving host hands over at once. */
   "room:leave": { input: null; output: null };
   /** Not the host: pressing Start is the host's ready. */
   "lobby:ready": { input: { ready: boolean }; output: null };
   /** Host only. Any mix is saved; Start is blocked if it does not fit the seats. */
   "lobby:settings": { input: SettingsInput; output: null };
-  /** Next run. Host only. */
-  "lobby:kick": { input: { playerId: string }; output: null };
+  /** Host only, lobby only. Removes another seat. */
+  "lobby:kick": { input: KickInput; output: null };
   /** Next run. Host only. */
   "lobby:start": { input: null; output: null };
   /** Next run. Every in-game move goes through this one request. */

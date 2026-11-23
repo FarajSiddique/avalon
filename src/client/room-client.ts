@@ -4,7 +4,7 @@
  */
 
 import type { StoreApi } from "zustand/vanilla";
-import type { ProtocolError } from "@/shared/protocol";
+import type { ProtocolError, RoomClosedReason } from "@/shared/protocol";
 import type { RoomCode, RoomView } from "@/shared/views";
 import { RoomConnection } from "./connection";
 import { createDevStore } from "./dev-store";
@@ -26,6 +26,8 @@ export interface RoomSnapshot {
   error: ProtocolError | null;
   /** False while the socket is reconnecting. */
   online: boolean;
+  /** Why the room closed for this browser. Set with status "closed". */
+  closedReason: RoomClosedReason | null;
 }
 
 const initial: RoomSnapshot = {
@@ -33,6 +35,7 @@ const initial: RoomSnapshot = {
   view: null,
   error: null,
   online: false,
+  closedReason: null,
 };
 
 /**
@@ -53,9 +56,14 @@ export class RoomClient {
       onOpen: this.onOpen,
       onDrop: () => this.set({ online: false }),
       onState: (view) => this.set({ status: "seated", view, error: null }),
-      onClosed: () => {
+      onClosed: (reason) => {
         clearToken(this.code);
-        this.set({ status: "closed", view: null, online: false });
+        this.set({
+          status: "closed",
+          view: null,
+          online: false,
+          closedReason: reason,
+        });
       },
     });
   }
@@ -82,13 +90,48 @@ export class RoomClient {
       if (result.ok) {
         saveToken(result.data.code, result.data.token);
       } else {
+        const gone = result.error.code === "ROOM_NOT_FOUND";
+
         this.set({
           error: result.error,
-          status:
-            result.error.code === "ROOM_NOT_FOUND" ? "closed" : "needs_name",
+          status: gone ? "closed" : "needs_name",
+          closedReason: gone ? "not_found" : null,
         });
       }
     });
+  };
+
+  /** Host only. The room answers with a new view, or the reason it refused. */
+  readonly kick = (playerId: string): void => {
+    this.set({ error: null });
+    void this.connection.request("lobby:kick", { playerId }).then((result) => {
+      // Offline: the reconnect brings a fresh view either way.
+      if (!result.ok && result.error.code !== "OFFLINE") {
+        this.set({ error: result.error });
+      }
+    });
+  };
+
+  /**
+   * Give up this seat. The room closes this browser's sockets with reason
+   * "left", which is what moves the screen on; the ack usually never comes.
+   */
+  readonly leave = (): void => {
+    this.set({ error: null });
+    void this.connection.request("room:leave", null).then((result) => {
+      if (!result.ok && result.error.code !== "OFFLINE") {
+        this.set({ error: result.error });
+      }
+    });
+  };
+
+  /** After being removed: open a fresh socket and show the name form. */
+  readonly rejoin = (): void => {
+    // Stop first, so the old socket is gone before the fresh state. Pending
+    // requests settle as OFFLINE, which kick and leave ignore.
+    this.connection.stop();
+    this.store.setState(initial);
+    this.connection.start();
   };
 
   private set(patch: Partial<RoomSnapshot>): void {
@@ -107,7 +150,7 @@ export class RoomClient {
     const token = loadToken(this.code);
 
     if (!token) {
-      this.set({ status: "needs_name" });
+      this.set({ status: "needs_name", closedReason: null });
 
       return;
     }
@@ -118,7 +161,13 @@ export class RoomClient {
       }
 
       clearToken(this.code);
-      this.set({ status: "needs_name", view: null });
+      // For example a seat removed while its phone slept.
+      this.set({
+        status: "needs_name",
+        view: null,
+        error: result.error,
+        closedReason: null,
+      });
     });
   };
 }

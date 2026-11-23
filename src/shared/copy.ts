@@ -3,6 +3,7 @@
  * words the same situation the same way.
  */
 
+import type { RoomClosedReason } from "./protocol";
 import { evilRoleCount, settingsHints, type SettingsHint } from "./settings";
 import type { LobbyView, PlayerId, StartBlocker } from "./views";
 
@@ -80,4 +81,18 @@ export function settingsBlockerMessages(view: LobbyView): Array<string> {
   return view.startBlockers
     .filter((blocker) => blocker.kind === "too_many_evil_roles")
     .map((blocker) => describeBlocker(blocker, view, () => "A player"));
+}
+
+/** What a browser shows when the room closes for it. */
+export function closedMessage(reason: RoomClosedReason | null): string {
+  switch (reason) {
+    case "kicked":
+      return "The host removed you from this room. You can join again.";
+    case "left":
+      return "You left the room.";
+    case "expired":
+    case "not_found":
+    case null:
+      return "This room does not exist or has ended.";
+  }
 }

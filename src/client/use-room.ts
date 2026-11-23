@@ -4,6 +4,9 @@ import { RoomClient, type RoomSnapshot } from "./room-client";
 
 export interface UseRoom extends RoomSnapshot {
   join: (name: string) => void;
+  kick: (playerId: string) => void;
+  leave: () => void;
+  rejoin: () => void;
 }
 
 /** The room's latest state. Subscribing opens the socket; see RoomClient. */
@@ -16,5 +19,11 @@ export function useRoom(code: RoomCode): UseRoom {
     client.getServerSnapshot,
   );
 
-  return { ...snapshot, join: client.join };
+  return {
+    ...snapshot,
+    join: client.join,
+    kick: client.kick,
+    leave: client.leave,
+    rejoin: client.rejoin,
+  };
 }

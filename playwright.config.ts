@@ -4,6 +4,11 @@ const port = Number.parseInt(process.env.PORT ?? "3100", 10);
 /** Set E2E_BASE_URL to run against a deployed site instead of a local build. */
 const remoteURL = process.env.E2E_BASE_URL;
 const baseURL = remoteURL ?? `http://localhost:${port}`;
+/**
+ * A deployed site answers over the network while several browsers load the
+ * landing scene on one CI runner, so it gets twice the time to act and assert.
+ */
+const slow = remoteURL ? 2 : 1;
 
 /**
  * Two projects:
@@ -19,7 +24,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL, trace: "retain-on-failure", actionTimeout: 10_000 },
+  timeout: 30_000 * slow,
+  expect: { timeout: 5000 * slow },
+  use: { baseURL, trace: "retain-on-failure", actionTimeout: 10_000 * slow },
   projects: [
     { name: "e2e", testMatch: /.*\.e2e\.ts/ },
     {

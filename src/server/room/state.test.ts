@@ -10,7 +10,10 @@ import {
   createRoom,
   findSeat,
   joinRoom,
+  kickSeat,
+  leaveRoom,
   nextExpiryCheck,
+  pickNextHost,
   setReady,
   setSettings,
   withPresence,
@@ -223,6 +226,125 @@ describe("ready (issue 16)", () => {
     expect(errorCode(() => setReady(state, "nobody", true))).toBe(
       "NOT_IN_ROOM",
     );
+  });
+});
+
+/** A lobby of the given names, in seat order. The first is host. */
+function lobby(names: Array<string>) {
+  const { deps } = fixedDeps();
+  const [first = "Wren", ...rest] = names;
+  const created = createRoom("BCDF", first, deps);
+  let state = created.state;
+  const tokens = [created.token];
+
+  for (const name of rest) {
+    const joined = joinRoom(state, name, deps);
+
+    state = joined.state;
+    tokens.push(joined.token);
+  }
+
+  const id = (name: string): string =>
+    state.players.find((p) => p.name === name)?.id ?? "missing";
+
+  return { state, tokens, id, deps };
+}
+
+describe("kick", () => {
+  it("removes the seat, connected or away, and keeps everyone else as is", () => {
+    const { state, id } = lobby(["Wren", "Ansel", "Mira"]);
+    const kicked = kickSeat(state, id("Wren"), id("Ansel"));
+
+    expect(kicked.players.map((p) => p.name)).toEqual(["Wren", "Mira"]);
+    expect(kicked.hostId).toBe(id("Wren"));
+    expect(kicked.players[1]).toBe(state.players[2]);
+  });
+
+  it("remembers nothing: the token dies and the name is free again", () => {
+    const { state, tokens, id, deps } = lobby(["Wren", "Ansel"]);
+    const kicked = kickSeat(state, id("Wren"), id("Ansel"));
+
+    expect(errorCode(() => findSeat(kicked, tokens[1] ?? ""))).toBe(
+      "SESSION_INVALID",
+    );
+
+    const back = joinRoom(kicked, "ansel", deps);
+
+    expect(back.player.id).not.toBe(id("Ansel"));
+    expect(back.player.ready).toBe(false);
+    expect(back.state.players.at(-1)).toBe(back.player);
+  });
+
+  it.each([
+    ["a guest kicks", "Ansel", "Mira", "NOT_HOST"],
+    ["the host kicks themselves", "Wren", "Wren", "NOT_ALLOWED"],
+    ["the target is gone", "Wren", "nobody", "NOT_IN_ROOM"],
+    ["the kicker is gone", "nobody", "Ansel", "NOT_IN_ROOM"],
+  ])("is refused when %s", (_, by, target, code) => {
+    const { state, id } = lobby(["Wren", "Ansel", "Mira"]);
+
+    expect(errorCode(() => kickSeat(state, id(by), id(target)))).toBe(code);
+  });
+});
+
+describe("leave", () => {
+  it("removes a guest and keeps the host", () => {
+    const { state, id } = lobby(["Wren", "Ansel", "Mira"]);
+    const left = leaveRoom(state, id("Ansel"), new Set());
+
+    expect(left?.players.map((p) => p.name)).toEqual(["Wren", "Mira"]);
+    expect(left?.hostId).toBe(id("Wren"));
+  });
+
+  it("hands host over at once when the host leaves", () => {
+    const { state, id } = lobby(["Wren", "Ansel", "Mira"]);
+    const left = leaveRoom(state, id("Wren"), new Set([id("Mira")]));
+
+    expect(left?.hostId).toBe(id("Mira"));
+    expect(left?.players.map((p) => p.name)).toEqual(["Ansel", "Mira"]);
+  });
+
+  it("ends the room when the last seat leaves", () => {
+    const { state, id } = lobby(["Wren"]);
+
+    expect(leaveRoom(state, id("Wren"), new Set([id("Wren")]))).toBeNull();
+  });
+
+  it("is refused for a seat that is not in the room", () => {
+    const { state } = lobby(["Wren", "Ansel"]);
+
+    expect(errorCode(() => leaveRoom(state, "nobody", new Set()))).toBe(
+      "NOT_IN_ROOM",
+    );
+  });
+});
+
+describe("next host", () => {
+  const { state, id } = lobby(["A", "B", "C", "D"]);
+
+  it.each([
+    ["the next connected seat after the host", "B", ["C", "D"], "C"],
+    ["wrapping round to the start", "C", ["A", "B"], "A"],
+    ["skipping the old host even if connected", "A", ["A", "D"], "D"],
+    ["the next seat when everyone else is away", "C", ["C"], "D"],
+  ])("is %s", (_, from, connected, expected) => {
+    expect(
+      pickNextHost(state.players, id(from), new Set(connected.map(id))),
+    ).toBe(id(expected));
+  });
+
+  it("is refused for a seat that is not in the room", () => {
+    expect(
+      errorCode(() => pickNextHost(state.players, "nobody", new Set())),
+    ).toBe("NOT_IN_ROOM");
+  });
+
+  it("is nobody when the host is the only seat", () => {
+    const solo = lobby(["A"]);
+
+    expect(
+      pickNextHost(solo.state.players, solo.id("A"), new Set()),
+    ).toBeNull();
   });
 });
 

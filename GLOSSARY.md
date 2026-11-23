@@ -13,8 +13,12 @@ A player's place in a room, held by a seat token in their browser. There are no 
 _Avoid_: User, account, connection
 
 **Host**:
-The seat that controls the lobby: settings, kicks and Start. Passes to another seat if the host is away too long.
+The seat that controls the lobby: settings, kicks and Start, and Back to lobby after a game. Passes to another seat by a hand-over.
 _Avoid_: Owner, admin, creator
+
+**Hand-over**:
+The host role passing to another seat: at once when the host leaves, or when the host has been away for 60 seconds and another seat is connected. It never passes back to the old host.
+_Avoid_: Transfer, promotion, migration
 
 **Lobby**:
 The room before a game starts (and again after play again), where seats gather, ready up and the host picks settings.

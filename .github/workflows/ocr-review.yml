@@ -121,3 +121,7 @@ jobs:
           # pull_request_target the action resolves them from the event.
           base_ref: ${{ steps.pr-context.outputs.base_ref }}
           head_sha: ${{ steps.pr-context.outputs.head_sha }}
+          # Low-severity findings go in the summary comment instead of inline
+          # threads, so inline comments are medium and above. Nothing is
+          # dropped: findings with no severity stay inline.
+          route_severity_below: low

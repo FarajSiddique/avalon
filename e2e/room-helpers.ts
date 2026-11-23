@@ -1,4 +1,9 @@
-import { expect, type Browser, type Page } from "@playwright/test";
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 
 /** Shared steps for the room's browser tests. */
 
@@ -7,8 +12,14 @@ export const players = (page: Page) => page.getByTestId("player");
 export const field = (page: Page, name: string) =>
   page.getByRole("textbox", { name });
 
+/** Contexts made by `newPlayer`, closed by `closePlayers`. */
+const opened: Array<BrowserContext> = [];
+
+/** A new player: a separate browser context (storage), like a phone. */
 export async function newPlayer(browser: Browser) {
   const context = await browser.newContext();
+
+  opened.push(context);
   const page = await context.newPage();
 
   return { context, page };
@@ -31,4 +42,9 @@ export async function joinRoom(page: Page, code: string, name: string) {
   await expect(players(page).filter({ hasText: `${name} (you)` })).toHaveCount(
     1,
   );
+}
+
+/** Close every context `newPlayer` made. Call it from `afterEach`. */
+export async function closePlayers(): Promise<void> {
+  await Promise.all(opened.splice(0).map((context) => context.close()));
 }

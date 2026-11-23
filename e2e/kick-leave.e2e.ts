@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { seatKey } from "../src/client/session";
 import {
+  closePlayers,
   createRoom,
   field,
   joinRoom,
@@ -16,10 +18,9 @@ import {
 // the default 30 seconds.
 test.describe.configure({ timeout: 90_000 });
 
-// Every player is its own context. Close them all, even when a test fails.
-test.afterEach(async ({ browser }) => {
-  await Promise.all(browser.contexts().map((context) => context.close()));
-});
+// Close the players' contexts even when a test fails. Only the ones
+// `newPlayer` made, so Playwright's own fixtures are left alone.
+test.afterEach(closePlayers);
 
 async function kick(host: Page, name: string) {
   await host.getByRole("button", { name: `Remove ${name}` }).click();
@@ -78,7 +79,7 @@ test("the host kicks a connected player, who can join again under the same name"
   expect(
     await guest.page.evaluate(
       (key) => window.localStorage.getItem(key),
-      `avalon:seat:${code}`,
+      seatKey(code),
     ),
   ).toBeNull();
 

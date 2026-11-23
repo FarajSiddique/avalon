@@ -353,11 +353,9 @@ export class RoomObject extends DurableObject<Env> {
   }
 
   private async kick(socket: WebSocket, targetId: PlayerId): Promise<null> {
-    const state = kickSeat(
-      await this.requireRoom(),
-      this.requireSeated(socket),
-      targetId,
-    );
+    // Seat first: an unseated socket fails without a storage read.
+    const hostId = this.requireSeated(socket);
+    const state = kickSeat(await this.requireRoom(), hostId, targetId);
 
     await this.removeSeat(state, targetId, "kicked");
 

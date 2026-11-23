@@ -68,7 +68,12 @@ export function RoomScreen({ code }: { code: RoomCode }) {
             <button
               type="button"
               className="sl-btn sl-btn--primary w-full"
-              onClick={room.rejoin}
+              onClick={() => {
+                // A confirm left open before the kick must not come back.
+                setLeaving(false);
+                setRemoving(null);
+                room.rejoin();
+              }}
             >
               Join again
               <IconArrowRight size={18} />

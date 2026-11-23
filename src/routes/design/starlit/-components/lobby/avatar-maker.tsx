@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import {
+  BODIES,
+  BODY_LABELS,
   CLOAKS,
   CLOAK_LABELS,
   CLOAK_TOKENS,
@@ -7,15 +9,20 @@ import {
   EMBLEM_LABELS,
   HEADWEAR,
   HEADWEAR_LABELS,
+  FIRST_FANCY_SKIN,
+  SKINS,
+  SKIN_LABELS,
+  SKIN_TOKENS,
   type Avatar,
   type Emblem,
+  type Skin,
 } from "@/design/avatar";
 import { setAvatar, useAvatar } from "@/design/use-avatar";
 import { sparklePath } from "../art/seeded";
 import { IconCheck, IconMoon, IconSun } from "../icons";
 
 /**
- * "Your look": pick a cloak, headwear and an emblem. Your figure at the
+ * "Your look": pick a body, a skin, a cloak, headwear and an emblem. Your figure at the
  * table changes as you choose. Saved in this browser.
  */
 export function AvatarMaker() {
@@ -27,6 +34,34 @@ export function AvatarMaker() {
         How you appear at the table. Nobody can tell anything about your role
         from it.
       </p>
+
+      <Picker label="Body" value={BODY_LABELS[look.body]}>
+        {BODIES.map((body) => (
+          <button
+            key={body}
+            type="button"
+            aria-pressed={look.body === body}
+            data-look={`body:${body}`}
+            onClick={() => choose({ body })}
+            className="sl-toggle"
+          >
+            {BODY_LABELS[body]}
+          </button>
+        ))}
+      </Picker>
+
+      <Picker label="Skin" value={SKIN_LABELS[look.skin]}>
+        <SkinRow
+          label="Everyday"
+          skins={SKINS.slice(0, FIRST_FANCY_SKIN)}
+          chosen={look.skin}
+        />
+        <SkinRow
+          label="Fantastical"
+          skins={SKINS.slice(FIRST_FANCY_SKIN)}
+          chosen={look.skin}
+        />
+      </Picker>
 
       <Picker label="Cloak" value={CLOAK_LABELS[look.cloak]}>
         {CLOAKS.map((cloak) => (
@@ -41,7 +76,7 @@ export function AvatarMaker() {
             className="sl-swatch"
             style={{ background: `var(${CLOAK_TOKENS[cloak]})` }}
           >
-            {look.cloak === cloak ? <IconCheck size={18} /> : null}
+            {look.cloak === cloak ? <SwatchCheck /> : null}
           </button>
         ))}
       </Picker>
@@ -82,6 +117,52 @@ export function AvatarMaker() {
 
 function choose(change: Partial<Avatar>): void {
   setAvatar(change);
+}
+
+/** One labelled row of skin swatches inside the Skin picker. */
+function SkinRow({
+  label,
+  skins,
+  chosen,
+}: {
+  label: string;
+  skins: ReadonlyArray<Skin>;
+  chosen: Skin;
+}) {
+  return (
+    <div role="group" aria-label={`${label} skins`} className="w-full">
+      <p className="text-ink-muted mb-1.5 text-sm">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {skins.map((skin) => (
+          <button
+            key={skin}
+            type="button"
+            aria-pressed={chosen === skin}
+            aria-label={SKIN_LABELS[skin]}
+            title={SKIN_LABELS[skin]}
+            data-look={`skin:${skin}`}
+            onClick={() => choose({ skin })}
+            className="sl-swatch"
+            style={{ background: `var(${SKIN_TOKENS[skin]})` }}
+          >
+            {chosen === skin ? <SwatchCheck /> : null}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The tick on a chosen swatch, on its own dark disc with a light ring so it
+ * reads on pale swatches (ghost, porcelain) and dark ones (ebony, starborn).
+ */
+function SwatchCheck() {
+  return (
+    <span className="sl-swatch__check" aria-hidden="true">
+      <IconCheck size={16} />
+    </span>
+  );
 }
 
 function Picker({

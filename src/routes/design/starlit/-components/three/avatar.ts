@@ -17,11 +17,17 @@ import {
   TorusGeometry,
   Vector2,
 } from "three";
-import { CLOAK_TOKENS, type Avatar, type Emblem } from "@/design/avatar";
+import {
+  CLOAK_TOKENS,
+  SKIN_TOKENS,
+  type Avatar,
+  type Body,
+  type Emblem,
+} from "@/design/avatar";
 import { sparklePath } from "../art/seeded";
 import { context2d, fillPath, isColorMaterial, isMesh } from "./guards";
 import { Bin } from "./kit";
-import { isArtToken, type Palette } from "./palette";
+import { isArtToken, type ArtToken, type Palette } from "./palette";
 import { standard } from "./props";
 
 /** Emblem pictures, drawn once per scene and shared by every figure. */
@@ -120,9 +126,75 @@ export interface Figure {
   dispose(): void;
 }
 
+/** The palette entry for an `--art-*` token name. */
+function artToken(token: string): ArtToken {
+  const name = token.slice(6);
+
+  if (!isArtToken(name)) {
+    throw new Error(`Unknown art token ${token}`);
+  }
+
+  return name;
+}
+
+/** How each body is cut: the cloak's profile and where things sit on it. */
+interface Build {
+  /** The cloak's lathe profile, [radius, height] from hem to neck. */
+  profile: ReadonlyArray<readonly [number, number]>;
+  /** Side-to-side stretch of the cloak (shoulder breadth). */
+  breadth: number;
+  collar: number;
+  /** How far forward the emblem and hands sit (clear of the cloak). */
+  emblemZ: number;
+  handX: number;
+  handZ: number;
+}
+
+const BUILDS: Record<Body, Build> = {
+  // Broad, square shoulders and a straight fall of cloak.
+  male: {
+    profile: [
+      [0.01, 0],
+      [0.42, 0],
+      [0.41, 0.12],
+      [0.36, 0.5],
+      [0.3, 0.8],
+      [0.3, 0.94],
+      [0.17, 1.07],
+      [0.01, 1.1],
+    ],
+    breadth: 1.14,
+    collar: 0.17,
+    emblemZ: 0.325,
+    handX: 0.19,
+    handZ: 0.36,
+  },
+  // Narrow shoulders, a cinched waist and a wide, flared hem.
+  female: {
+    profile: [
+      [0.01, 0],
+      [0.52, 0],
+      [0.5, 0.05],
+      [0.38, 0.26],
+      [0.27, 0.56],
+      [0.23, 0.72],
+      [0.26, 0.84],
+      [0.21, 0.97],
+      [0.12, 1.07],
+      [0.01, 1.1],
+    ],
+    breadth: 0.94,
+    collar: 0.145,
+    emblemZ: 0.29,
+    handX: 0.15,
+    handZ: 0.3,
+  },
+};
+
 /**
  * A little low-poly figure about 1.5 units tall, facing +z, feet at 0: a
- * bell of a cloak, a pale round face, small hands, headwear and an emblem.
+ * cloak cut for the body, a round face and hands in the chosen skin, headwear
+ * and an emblem.
  */
 export function figure(
   p: Palette,
@@ -131,45 +203,44 @@ export function figure(
 ): Figure {
   const bin = new Bin();
   const group = new Group();
-  const cloakToken = CLOAK_TOKENS[avatar.cloak].slice(6);
-
-  if (!isArtToken(cloakToken)) {
-    throw new Error(`Unknown cloak token ${cloakToken}`);
-  }
-
-  const cloakColor = p[cloakToken].clone();
+  const build = BUILDS[avatar.body];
+  const cloakColor = p[artToken(CLOAK_TOKENS[avatar.cloak])].clone();
   const cloak = standard(bin, cloakColor);
   const cloakDeep = standard(bin, cloakColor.clone().multiplyScalar(0.72));
-  const skin = standard(bin, p.tent, { flat: false, roughness: 0.8 });
+  const skinColor = p[artToken(SKIN_TOKENS[avatar.skin])].clone();
+  // Dark skins glow a touch from within so they still read against the
+  // night; light ones (luminance past 0.25, linear) get none.
+  const luminance =
+    0.2126 * skinColor.r + 0.7152 * skinColor.g + 0.0722 * skinColor.b;
+  const lift = Math.max(0, 1 - luminance / 0.25) * 1.1;
+  const skin = standard(bin, skinColor, {
+    flat: false,
+    roughness: 0.8,
+    emissive: skinColor,
+    emissiveIntensity: lift,
+  });
   const ink = standard(bin, p.outline);
 
   const body = new Mesh(
     bin.add(
       new LatheGeometry(
-        [
-          [0.01, 0],
-          [0.46, 0],
-          [0.45, 0.12],
-          [0.38, 0.5],
-          [0.3, 0.8],
-          [0.24, 0.98],
-          [0.14, 1.08],
-          [0.01, 1.1],
-        ].map(([x, y]) => new Vector2(x, y)),
+        build.profile.map(([x, y]) => new Vector2(x, y)),
         14,
       ),
     ),
     cloak,
   );
 
+  body.scale.x = build.breadth;
   group.add(body);
   const collar = new Mesh(
-    bin.add(new TorusGeometry(0.17, 0.06, 6, 14)),
+    bin.add(new TorusGeometry(build.collar, 0.06, 6, 14)),
     cloakDeep,
   );
 
   collar.rotation.x = Math.PI / 2;
   collar.position.y = 1.08;
+  collar.scale.x = build.breadth;
   group.add(collar);
 
   const head = new Mesh(bin.add(new IcosahedronGeometry(0.22, 2)), skin);
@@ -187,10 +258,10 @@ export function figure(
 
   const hand = bin.add(new SphereGeometry(0.075, 10, 8));
 
-  for (const x of [-0.17, 0.17]) {
+  for (const x of [-build.handX, build.handX]) {
     const h = new Mesh(hand, skin);
 
-    h.position.set(x, 0.66, 0.36);
+    h.position.set(x, 0.66, build.handZ);
     group.add(h);
   }
 
@@ -205,7 +276,7 @@ export function figure(
   );
   const emblem = new Mesh(bin.add(new PlaneGeometry(0.24, 0.24)), emblemMat);
 
-  emblem.position.set(0, 0.8, 0.325);
+  emblem.position.set(0, 0.8, build.emblemZ);
   emblem.rotation.x = -0.22;
   group.add(emblem);
 
@@ -288,6 +359,36 @@ function headwear(
 ): Group {
   const g = new Group();
   const y = 1.32;
+  const long = avatar.body === "female";
+
+  /** Long hair falling behind the shoulders, for the long-haired body. */
+  const fall = (mat: MeshStandardMaterial): void => {
+    if (!long) {
+      return;
+    }
+
+    mat.side = DoubleSide;
+    // The back half of a tapered tube, from the crown to below the shoulders.
+    const hair = new Mesh(
+      bin.add(
+        new CylinderGeometry(
+          0.2,
+          0.27,
+          0.56,
+          12,
+          1,
+          true,
+          Math.PI * 0.4,
+          Math.PI * 1.2,
+        ),
+      ),
+      mat,
+    );
+
+    hair.position.set(0, y - 0.19, -0.03);
+    hair.rotation.x = 0.08;
+    g.add(hair);
+  };
 
   switch (avatar.headwear) {
     case "hood": {
@@ -370,16 +471,18 @@ function headwear(
 
       gem.position.set(0, y + 0.13, 0.205);
       g.add(gem);
+      const hairMat = standard(bin, p["log-end"]);
       const hair = new Mesh(
         bin.add(
           new SphereGeometry(0.225, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.42),
         ),
-        standard(bin, p["log-end"]),
+        hairMat,
       );
 
       hair.position.y = y + 0.01;
       hair.rotation.x = -0.25;
       g.add(hair);
+      fall(hairMat);
       break;
     }
 
@@ -412,20 +515,23 @@ function headwear(
       feather.position.set(0.17, y + 0.36, -0.08);
       feather.rotation.set(-0.5, 0.4, -0.45);
       g.add(feather);
+      fall(standard(bin, p.trunk));
       break;
     }
 
     case "bare": {
+      const hairMat = standard(bin, p.trunk);
       const hair = new Mesh(
         bin.add(
           new SphereGeometry(0.228, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.45),
         ),
-        standard(bin, p.trunk),
+        hairMat,
       );
 
       hair.position.y = y + 0.01;
       hair.rotation.x = -0.3;
       g.add(hair);
+      fall(hairMat);
       break;
     }
   }

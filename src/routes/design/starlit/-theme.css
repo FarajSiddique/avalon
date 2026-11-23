@@ -570,6 +570,19 @@
     outline-offset: 2px;
   }
 
+  /* The tick on a chosen swatch: a dark disc ringed in ink, so it reads on
+     the palest and the darkest swatch alike. */
+  .sl-swatch__check {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    background: var(--canvas);
+    color: var(--ink);
+    box-shadow: 0 0 0 1.5px var(--ink);
+  }
+
   .sl-toggle {
     display: inline-flex;
     align-items: center;

@@ -16,6 +16,11 @@ import {
 // the default 30 seconds.
 test.describe.configure({ timeout: 90_000 });
 
+// Every player is its own context. Close them all, even when a test fails.
+test.afterEach(async ({ browser }) => {
+  await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 async function kick(host: Page, name: string) {
   await host.getByRole("button", { name: `Remove ${name}` }).click();
   await host
@@ -83,9 +88,6 @@ test("the host kicks a connected player, who can join again under the same name"
   await guest.page.getByRole("button", { name: "Join room" }).click();
   await expect(players(host.page)).toHaveCount(2);
   await expect(players(guest.page).nth(1)).toContainText("Ansel (you)");
-
-  await host.context.close();
-  await guest.context.close();
 });
 
 test("a seat kicked while away finds the join form when it wakes", async ({
@@ -112,9 +114,6 @@ test("a seat kicked while away finds the join form when it wakes", async ({
   await expect(
     woke.getByRole("main").getByRole("alert").filter({ hasText: /./ }),
   ).toContainText("That seat no longer exists");
-
-  await host.context.close();
-  await guest.context.close();
 });
 
 test("leaving closes every tab of that seat and goes home", async ({
@@ -145,10 +144,6 @@ test("leaving closes every tab of that seat and goes home", async ({
 
   await joinRoom(other.page, code, "Ansel");
   await expect(players(host.page)).toHaveCount(2);
-
-  await host.context.close();
-  await guest.context.close();
-  await other.context.close();
 });
 
 test("a leaving host hands over at once, and the last seat out ends the room", async ({
@@ -189,9 +184,4 @@ test("a leaving host hands over at once, and the last seat out ends the room", a
   await expect(late.page.getByRole("main").getByRole("alert")).toContainText(
     "does not exist",
   );
-
-  await wren.context.close();
-  await ansel.context.close();
-  await mira.context.close();
-  await late.context.close();
 });

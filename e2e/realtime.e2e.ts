@@ -169,15 +169,26 @@ test("a malformed room code shows the not-found page", async ({ page }) => {
   await expect(page.getByTestId("room-code")).toHaveCount(0);
 });
 
+interface SentView {
+  players: Array<{ name: string; ready: boolean }>;
+  settings?: { optionalRoles: Array<string>; ladyOfTheLake: boolean };
+  startBlockers?: Array<{ kind: string; allowed?: number }>;
+}
+
 /**
  * Open a second socket from this page, take the page's seat with its stored
- * token, then send one `lobby:ready`. Returns its answer and the seats in the
- * state that followed. Phase 1 has no Ready button on the real room screen
- * yet, so this drives the protocol directly.
+ * token, then send one request. Returns its answer and the view in the state
+ * that followed. Phase 1 has no lobby controls on the real room screen yet,
+ * so this drives the protocol directly.
  */
-async function sendReady(page: Page, code: string, ready: boolean) {
+async function sendRequest(
+  page: Page,
+  code: string,
+  event: string,
+  payload: unknown,
+) {
   return page.evaluate(
-    async ({ code, ready }) => {
+    async ({ code, event, payload }) => {
       const token = window.localStorage.getItem(`avalon:seat:${code}`);
       const url = new URL(`/api/socket/${code}`, window.location.href);
 
@@ -187,15 +198,15 @@ async function sendReady(page: Page, code: string, ready: boolean) {
         type: string;
         id?: number;
         result?: { ok: boolean; error?: { code: string } };
-        view?: { players: Array<{ name: string; ready: boolean }> };
+        view?: SentView;
       }> = [];
 
       await new Promise((resolve) => {
         socket.addEventListener("open", resolve);
       });
-      socket.addEventListener("message", (event) => {
-        if (typeof event.data === "string" && event.data !== "pong") {
-          frames.push(JSON.parse(event.data));
+      socket.addEventListener("message", (message) => {
+        if (typeof message.data === "string" && message.data !== "pong") {
+          frames.push(JSON.parse(message.data));
         }
       });
       const answer = (id: number) =>
@@ -219,9 +230,7 @@ async function sendReady(page: Page, code: string, ready: boolean) {
       await answer(1);
       const before = frames.length;
 
-      socket.send(
-        JSON.stringify({ id: 2, event: "lobby:ready", payload: { ready } }),
-      );
+      socket.send(JSON.stringify({ id: 2, event, payload }));
       const ack = await answer(2);
 
       await new Promise((resolve) => {
@@ -233,13 +242,21 @@ async function sendReady(page: Page, code: string, ready: boolean) {
 
       socket.close();
 
-      return {
-        result: ack.result,
-        seats: state?.view?.players.map((p) => [p.name, p.ready]) ?? null,
-      };
+      return { result: ack.result, view: state?.view ?? null };
     },
-    { code, ready },
+    { code, event, payload },
   );
+}
+
+async function sendReady(page: Page, code: string, ready: boolean) {
+  const { result, view } = await sendRequest(page, code, "lobby:ready", {
+    ready,
+  });
+
+  return {
+    result,
+    seats: view?.players.map((p) => [p.name, p.ready]) ?? null,
+  };
 }
 
 test("a guest readies up, and the host cannot", async ({ browser }) => {
@@ -284,4 +301,73 @@ test("a guest readies up, and the host cannot", async ({ browser }) => {
 
   await hostContext.close();
   await guestContext.close();
+});
+
+test("the host saves any role mix, and too many Evil roles block Start", async ({
+  browser,
+}) => {
+  const contexts = await Promise.all(
+    Array.from({ length: 5 }, () => browser.newContext()),
+  );
+  const pages = await Promise.all(contexts.map((c) => c.newPage()));
+  const [host, ...guests] = pages;
+
+  if (!host) {
+    throw new Error("No host page");
+  }
+
+  await host.goto("/");
+  await field(host, "Your name").fill("Wren");
+  await host.getByRole("button", { name: "Create a room" }).click();
+  await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
+  const code = await host.getByTestId("room-code").innerText();
+
+  for (const [i, guest] of guests.entries()) {
+    await guest.goto(`/room/${code}`);
+    await field(guest, "Your name").fill(`Guest${i + 1}`);
+    await guest.getByRole("button", { name: "Join room" }).click();
+    await expect(players(guest)).toHaveCount(i + 2);
+    await sendReady(guest, code, true);
+  }
+
+  const tooMany = await sendRequest(host, code, "lobby:settings", {
+    optionalRoles: ["morgana", "mordred"],
+    ladyOfTheLake: true,
+  });
+
+  expect(tooMany.result).toEqual({ ok: true, data: null });
+  expect(tooMany.view?.settings).toEqual({
+    optionalRoles: ["morgana", "mordred"],
+    ladyOfTheLake: true,
+  });
+  expect(tooMany.view?.startBlockers).toEqual([
+    { kind: "too_many_evil_roles", allowed: 2 },
+  ]);
+
+  const guest = guests[0];
+
+  if (!guest) {
+    throw new Error("No guest page");
+  }
+
+  const guestTried = await sendRequest(guest, code, "lobby:settings", {
+    optionalRoles: [],
+    ladyOfTheLake: false,
+  });
+
+  expect(guestTried.result).toMatchObject({
+    ok: false,
+    error: { code: "NOT_HOST" },
+  });
+
+  // A lone Morgana and the Lady at 5 seats are hints, not blockers.
+  const fits = await sendRequest(host, code, "lobby:settings", {
+    optionalRoles: ["morgana"],
+    ladyOfTheLake: true,
+  });
+
+  expect(fits.view?.startBlockers).toEqual([]);
+  expect(fits.view?.players.slice(1).every((p) => p.ready)).toBe(true);
+
+  await Promise.all(contexts.map((c) => c.close()));
 });

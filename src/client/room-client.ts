@@ -90,10 +90,12 @@ export class RoomClient {
       if (result.ok) {
         saveToken(result.data.code, result.data.token);
       } else {
+        const gone = result.error.code === "ROOM_NOT_FOUND";
+
         this.set({
           error: result.error,
-          status:
-            result.error.code === "ROOM_NOT_FOUND" ? "closed" : "needs_name",
+          status: gone ? "closed" : "needs_name",
+          closedReason: gone ? "not_found" : null,
         });
       }
     });

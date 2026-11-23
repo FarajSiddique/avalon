@@ -230,7 +230,8 @@ export function nextExpiryCheck(
  * Who becomes host when the host goes: the first connected seat after the
  * old host in seat order, wrapping round. If nobody else is connected, the
  * next seat in seat order, so a room always has a host while it has seats.
- * Null when the old host was the only seat.
+ * Null when the old host was the only seat. Throws NOT_IN_ROOM if `fromId`
+ * has no seat.
  */
 export function pickNextHost(
   players: ReadonlyArray<PlayerRecord>,
@@ -238,6 +239,11 @@ export function pickNextHost(
   connected: ReadonlySet<PlayerId>,
 ): PlayerId | null {
   const from = players.findIndex((p) => p.id === fromId);
+
+  if (from === -1) {
+    throw new RoomError("NOT_IN_ROOM", "That player is not in the room.");
+  }
+
   const after = [...players.slice(from + 1), ...players.slice(0, from + 1)];
   const others = after.filter((p) => p.id !== fromId);
 

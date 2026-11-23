@@ -300,12 +300,7 @@ export class RoomObject extends DurableObject<Env> {
   }
 
   private async ready(socket: WebSocket, ready: boolean): Promise<null> {
-    const playerId = seatOf(socket);
-
-    if (!playerId) {
-      throw new RoomError("NOT_IN_ROOM", "Join the room first.");
-    }
-
+    const playerId = this.requireSeated(socket);
     const loaded = await this.requireRoom();
     const state = setReady(loaded, playerId, ready);
 

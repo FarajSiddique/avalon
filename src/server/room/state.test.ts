@@ -332,6 +332,12 @@ describe("next host", () => {
     ).toBe(id(expected));
   });
 
+  it("is refused for a seat that is not in the room", () => {
+    expect(
+      errorCode(() => pickNextHost(state.players, "nobody", new Set())),
+    ).toBe("NOT_IN_ROOM");
+  });
+
   it("is nobody when the host is the only seat", () => {
     const solo = lobby(["A"]);
 

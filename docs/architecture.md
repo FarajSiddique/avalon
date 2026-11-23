@@ -16,7 +16,7 @@ decisions. Answered and open points are listed in
 | Room state         | One Durable Object per room, addressed by room code. The room is saved to the object's storage after every change. |
 | Identity           | No accounts. A random seat token per player per room, kept in the browser's `localStorage`, hashed on the server.  |
 | Hidden information | The room sends each player one full, filtered view (`RoomView`). Raw room state never leaves the room object.      |
-| Client state       | The latest `RoomView`, held in a tiny store read with `useSyncExternalStore`. No Zustand, no client game logic.    |
+| Client state       | The latest `RoomView`, in a Zustand vanilla store read with `useSyncExternalStore`. No client game logic.          |
 | UI kit             | Hand-built components on design tokens. No shadcn/ui.                                                              |
 | Tests              | Vitest for pure logic, Playwright for multi-browser flows against the built Worker, Bruno for the health check.    |
 
@@ -864,7 +864,7 @@ agent session can follow:
 | 1     | Code standards: oxlint, folder layout, pre-commit hook        | `docs/plans/01-standards-and-ci-cd.md`, Part A   |
 | 2     | CI/CD: a preview for every pull request, deploy on merge      | `docs/plans/01-standards-and-ci-cd.md`, Part B   |
 | 3     | Phase 0                                                       | `docs/plans/02-phase-0-starlit-design-system.md` |
-| 4     | TypeScript 7 and type-aware lint, before Phase 1 if it passes | `docs/plans/01-standards-and-ci-cd.md`, Part C   |
+| 4     | TypeScript 7, optional (type-aware lint already runs on tsrs) | `docs/plans/01-standards-and-ci-cd.md`, Part C   |
 
 Status is tracked in the owner's Notion page "Avalon: Developer Roadmap".
 
@@ -879,22 +879,33 @@ The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
 - Starlit Vale's tokens, component classes, motion and fonts move from
   `src/routes/design/starlit` to `src/styles`, on `:root`.
 - Its primitives and drawings move to `src/components/ui` and
-  `src/components/art`. Its lobby, role and table components stay in the
-  prototype until the phase that builds each screen moves them.
+  `src/components/art`; the shared stage and the three.js Star Table move
+  to `src/components/stage` and `src/components/three`; the avatar helpers
+  move to `src/client`. Nothing moved may import `src/design`. Its lobby,
+  role and table components stay in the prototype until the phase that
+  builds each screen moves them.
+- **`/` uses the 3D Star Table hero** (owner's decision, 22 November 2026),
+  as the prototype landing does. The real `/` and `/room/$code` share one
+  pathless layout (`src/routes/_app/route.tsx`) that owns the stage, so the
+  lobby can join it in Phase 1. `/room/$code` stays a flat panel and the
+  real form does not fly the camera yet.
 - Ember & Rune and Lavender Vigil are already deleted, with their specs and
-  fonts, and so are the tweak studio, the motion gallery and the flat 2D game
-  screens (21 November 2026).
+  fonts, and so are the tweak studio, the motion gallery, the drawn camp and
+  the flat 2D game screens (21 November 2026).
 - **The Starlit prototype stays** at `/design/starlit`
   as the reference for screens that are not built yet (owner's decision, 16
   November 2026). They import the moved code, so there is one copy of
   everything. They are deleted when Phase 4 ends.
 - `/` and the `/room/$code` placeholder are restyled with the real components.
-- The large drawings render in the browser only, and `/room/$code` renders in
-  the browser only, as settled under
+- The sky and the stage render in the browser only, three.js stays out of
+  the Worker bundle, and `/room/$code` renders in the browser only, as
+  settled under
   [Measured CPU time on the live Worker](#measured-cpu-time-on-the-live-worker).
-- Done when: `/` and `/room/$code` look like Starlit Vale at 390px and 1440px
-  (screenshots), the existing e2e tests still pass, and on the live Worker the
-  90th percentile CPU time for both is under 10 ms.
+- Done when: `/` matches the prototype landing on the 3D hero and
+  `/room/$code` looks like Starlit Vale, at 390px and 1440px (screenshots);
+  the landing still creates and joins rooms without WebGL; the existing e2e
+  tests still pass; and on the live Worker the 90th percentile CPU time for
+  both is under 10 ms.
 
 ### Phase 1: the lobby
 
@@ -906,13 +917,34 @@ The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
   `settingsBlockers` in `src/server/game/setup.ts`, added to `startBlockers`
   in `projectView`. A per-socket message budget kept in the socket's
   attachment.
-- Client: the real lobby screen, driven by `LobbyView`. Move the prototype's
-  lobby components from `src/routes/design/starlit/-components/lobby` to
-  `src/components/lobby` and make the prototype import them from there:
-  code with copy and share, player list, ready toggle, host settings, start
-  button with blocker messages (`startBlockerMessages`).
+- Client: the real lobby screen on the 3D Star Table, driven by
+  `LobbyView`. Move the prototype's lobby components from
+  `src/routes/design/starlit/-components/lobby` to `src/components/lobby`
+  and make the prototype import them from there: code with copy and share,
+  player list, ready toggle, host settings, start button with blocker
+  messages (`startBlockerMessages`). The lobby claims the stage in `lobby`
+  mode with the seated players (`useStagePlayers`), and the landing's Create
+  and Join fly the camera into it (`depart`, then the lobby's slot takes the
+  pending flight), as the prototype does. `StageProvider` in the `_app`
+  layout gets the real "next step" rule (landing to `/room/$code`).
+  Without WebGL the lobby shows the notice
+  (`-components/no-webgl-notice.tsx`, moved with it).
+- Avatars (owner's decision, 22 November 2026): each player picks a look in
+  the lobby and the room stores it per seat. A look is a body (male or
+  female), a skin colour (six everyday tones and six fantastical ones), a
+  cloak, headwear and an emblem, all from fixed lists. `Avatar` and `sanitizeAvatar`
+  move from `src/client/avatar.ts` to `src/shared`, with a zod schema. The
+  join request carries an optional look (the browser prefills the player's
+  last pick from `localStorage`); a missing or invalid one becomes
+  `avatarFor(playerId)` on the server. A `lobby:avatar` request changes it,
+  accepted only in the lobby, so looks are fixed once the game starts.
+  Duplicate looks are allowed: names on the tags tell players apart. The look
+  is public and lives in `RoomState` per seat and in `LobbyView` and
+  `GameView` per player. Adding it changes the saved room shape, so a room
+  saved without it loads with `avatarFor(playerId)`.
 - Tests: unit tests for every rule and refusal; e2e with five contexts that
-  ready up until Start enables; the restart check extended to a lobby with
+  ready up until Start enables; e2e of the flight from `/` into the lobby
+  and of the lobby without WebGL; the restart check extended to a lobby with
   ready states.
 
 ### Phase 2: the engine
@@ -934,10 +966,13 @@ The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
 ### Phase 3: the game screens
 
 - Role reveal, then the table for `team_building`, `team_vote` and `quest`,
-  from the prototype components (moved from the prototype's `role` and `table`
-  folders to `src/components/role` and `src/components/table`), driven by
-  `GameView` and sending
-  `game:action`. Vote and quest reveal sequences triggered by view changes,
+  on the same stage in `role` and `table` modes, from the prototype
+  components (moved from the prototype's `role` and `table` folders to
+  `src/components/role` and `src/components/table`, with
+  `stage/stage-tags.tsx` and `table-stage.css`), driven by `GameView` and
+  sending `game:action`. A small mapper from `GameView` to the scene's
+  `TablePlay` and `TablePlayer` replaces the prototype's
+  `stage/game-players.ts` mock. Leaders pick by tapping figures or tags. Vote and quest reveal sequences triggered by view changes,
   with the motion and sound from the chosen direction's spec. A "my role"
   control that uses `useHoldToReveal`. Away markers on seats. Quest cards
   follow the privacy rule under [Client](#client): both cards look the same
@@ -954,8 +989,9 @@ The full plan is `docs/plans/02-phase-0-starlit-design-system.md`. In short:
 - Tests: engine cases for each ending; e2e reaching both a Good and an Evil
   win.
 - Last: delete the Starlit prototype (`src/routes/design`, `src/design`,
-  `e2e/design.shots.ts`, `docs/design/screenshots/starlit`). Every screen it
-  showed now exists for real.
+  `e2e/design.shots.ts`, the prototype tests in `e2e/game.e2e.ts`,
+  `docs/design/screenshots/starlit`). Every screen it showed now exists for
+  real.
 
 ### Phase 5: the Lady of the Lake (required)
 
@@ -1041,5 +1077,12 @@ Also answered on 16 November 2026:
 | Starlit prototype during the build | Kept as a reference until Phase 4 ends. The other two directions go in Phase 0.           |
 | Deploys                            | Automatic on merge to `main`, with a preview for every pull request. Merging is approval. |
 | Roadmap                            | Tracked in Notion. The repo stays the source for how things are built.                    |
+
+Answered on 22 November 2026:
+
+| Question                | Answer                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| The real landing's hero | The 3D Star Table, in Phase 0. The room screen stays flat until Phase 1.                   |
+| Avatars in real rooms   | Each player picks a look in the lobby; the room stores it per seat. Details under Phase 1. |
 
 Nothing is open.

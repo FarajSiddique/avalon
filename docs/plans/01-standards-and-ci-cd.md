@@ -796,6 +796,8 @@ Watch the `deploy` job with `gh run watch`. Expected: deploy, 4 browser tests an
 
 # Part C: TypeScript 7 and type-aware lint (pull request 3, before Phase 1 if it can pass)
 
+> **Update, 21 November 2026:** the owner turned on `@cloudflare/oxlint-config` with type-aware rules through tsrs, without TypeScript 7 (see Owner decisions in `docs/architecture.md`). This part is now optional: do it only for TypeScript 7 itself, not to unlock lint rules.
+
 Why it is separate: oxlint's type-aware rules need TypeScript 7, and the repo is on 6.0. TypeScript 7 is a new compiler. Its stable programmatic interface arrives with 7.1, which was still in beta on 16 November 2026, and any tool here that calls into the `typescript` package may not work until then. That risk should not ride along with a lint swap or a design change. Why it should not wait long: `no-floating-promises` catches an unawaited storage write in the room object, which is the most expensive kind of bug this app can have, and Phase 1 is where that code starts to grow.
 
 ### Task C1: try the upgrade

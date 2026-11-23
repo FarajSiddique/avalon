@@ -575,6 +575,7 @@ Details:
 - A disconnected player keeps their seat, in the lobby and in the game. The
   game simply waits for them. Others see them as "away".
 - The host can remove a player in the lobby (`lobby:kick`). Not during a game.
+  See "Kick, leave and rejoin" below.
 - If the host is away for 60 seconds, the host role passes to the next
   connected player in seat order. This is an alarm in the room object, not
   part of the engine.
@@ -593,6 +594,38 @@ Ready (decided in issue 16):
 - On host hand-over the old host becomes an ordinary seat that is not ready.
   The new host's stored ready no longer matters.
 - Every phone plays the `all-ready` sound when `startBlockers` becomes empty.
+
+Kick, leave and rejoin (decided in issue 17):
+
+- Kick and leave exist only in the lobby. During a game both are refused
+  with `NOT_ALLOWED`.
+- The host can kick any other seat, connected or away, after a one-step
+  confirm on the host's phone ("Remove Sam?"). Kicking an away seat is the
+  main use: it clears a `disconnected` blocker for a phone that is not coming
+  back. The host cannot kick itself, and a kick for a seat that is not in the
+  room (for example one that left a moment earlier) is refused with
+  `NOT_IN_ROOM`.
+- A kicked seat is removed at once. Every open socket of that seat gets
+  `closed` with reason `kicked`, and that browser deletes its stored token.
+- There is no ban. The room remembers nothing about a removed seat, so its
+  name is free at once and the player can join again as a new seat: new
+  token, not ready, at the end of seat order. Without accounts any ban is
+  easy to dodge (a private tab, a new name), rooms are short-lived, and the
+  host can simply kick again.
+- A seat kicked while away finds out when its phone wakes: `room:resume`
+  fails with `SESSION_INVALID` and the join form shows the generic "That
+  seat no longer exists" message. There is no special "you were removed"
+  notice for this case, because that would mean remembering kicked tokens.
+- Leave (`room:leave`): one confirm ("Leave the room?"), then the seat is
+  removed at once. Every open socket of that seat (other tabs too) gets
+  `closed` with reason `left`, the browser deletes its stored token, and the
+  player lands on the home page.
+- A host who leaves hands over at once, by the same pick as the 60-second
+  away hand-over (issue 19 settles its edge cases). The host can always
+  leave; there is no "pass host first" step.
+- If the last seat leaves, the room ends at once: its storage is deleted and
+  anyone opening the link gets `not_found`. A room never sits with no seats.
+- Kicks and leaves never change anyone else's ready (see Ready above).
 - Tokens are opaque, not JWTs. The room has to look the seat up anyway, so a
   signed token adds a secret to manage and nothing else. A token dies with
   its room.

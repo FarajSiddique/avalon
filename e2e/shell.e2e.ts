@@ -40,37 +40,57 @@ test("the Worker sends a light, readable landing page", async ({ request }) => {
   expect(html.length).toBeLessThan(30_000);
 });
 
+/** The scene draws in software WebGL, which is slow on a busy CI runner. */
+const STAGE = { timeout: 60_000 };
+
 test.describe("with the scene", () => {
   test("the landing settles on the Star Table hero", async ({ page }) => {
     await page.goto("/");
     const stage = page.locator("[data-stage-host]");
 
-    await expect(stage.locator("canvas")).toHaveCount(1, { timeout: 60_000 });
-    await expect(stage).toHaveAttribute("data-stage", "hero", {
-      timeout: 60_000,
-    });
+    await expect(stage.locator("canvas")).toHaveCount(1, STAGE);
+    await expect(stage).toHaveAttribute("data-stage", "hero", STAGE);
   });
 
-  // The panel rises 8px into place as it appears. Reduced motion skips that,
-  // so the boxes below measure layout only: a jump would be the band's
-  // space not being reserved.
-  test.describe("measuring layout", () => {
-    test.use({ reducedMotion: "reduce" });
+  // On a phone the hero is a band in the flow between the title and the
+  // form (on a wide screen it is a backdrop and cannot push anything). The
+  // panel rises 8px into place as it appears; reduced motion skips that, so
+  // the boxes below measure layout only, and a jump means the band's space
+  // was not reserved.
+  test.describe("measuring layout on a phone", () => {
+    test.use({
+      reducedMotion: "reduce",
+      viewport: { width: 390, height: 844 },
+    });
 
     test("the form does not move when the stage appears", async ({ page }) => {
-      await page.goto("/", { waitUntil: "commit" });
+      // Hold back the three.js chunk, so the first box is measured before
+      // the scene can appear, however fast this machine is. The page is
+      // hydrated and its fonts are in by then.
+      let release: (() => void) | undefined;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+
+      await page.route(/\/assets\/engine-[^/]+\.js$/, async (route) => {
+        await held;
+        await route.continue();
+      });
+      await page.goto("/");
+      await page.evaluate(() => document.fonts.ready);
       const button = page.getByRole("button", { name: "Create a room" });
 
-      await button.waitFor();
-      const before = await button.boundingBox();
+      await expect(button).toBeEnabled(STAGE);
+      await expect(page.locator("[data-stage-host] canvas")).toHaveCount(0);
+      const before = await button.boundingBox(STAGE);
 
+      release?.();
       await expect(page.locator("[data-stage-host]")).toHaveAttribute(
         "data-stage",
         "hero",
-        { timeout: 60_000 },
+        STAGE,
       );
-      await expect(button).toBeEnabled();
-      const after = await button.boundingBox();
+      const after = await button.boundingBox(STAGE);
 
       expect(after?.y).toBe(before?.y);
       expect(after?.x).toBe(before?.x);
@@ -91,14 +111,14 @@ test.describe("with the scene", () => {
     await expect(page.locator("[data-stage-host]")).toHaveAttribute(
       "data-stage",
       "hero",
-      { timeout: 60_000 },
+      STAGE,
     );
     const sound = page.getByRole("button", { name: "Sound" });
 
     await expect(sound).toHaveAttribute("aria-pressed", "false");
     expect(audio).toEqual([]);
-    await sound.click();
-    await expect(sound).toHaveAttribute("aria-pressed", "true");
+    await sound.click(STAGE);
+    await expect(sound).toHaveAttribute("aria-pressed", "true", STAGE);
     expect(
       await page.evaluate(() => localStorage.getItem("avalon:sound")),
     ).toBe("on");
@@ -111,11 +131,11 @@ test.describe("with the scene", () => {
     await expect(page.locator("[data-stage-host]")).toHaveAttribute(
       "data-stage",
       "hero",
-      { timeout: 60_000 },
+      STAGE,
     );
     await page.getByLabel("Your name").fill("Wren");
-    await page.getByRole("button", { name: "Create a room" }).click();
-    await expect(page.getByTestId("room-code")).toBeVisible();
+    await page.getByRole("button", { name: "Create a room" }).click(STAGE);
+    await expect(page.getByTestId("room-code")).toBeVisible(STAGE);
     await expect(page.locator("[data-stage-host]")).toHaveCount(0);
   });
 });

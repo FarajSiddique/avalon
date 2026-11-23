@@ -164,8 +164,10 @@ export function RoomScreen({ code }: { code: RoomCode }) {
         </section>
       )}
 
+      {/* On a panel: at the bottom of the page the hills and clouds behind
+          it are too light for muted text. */}
       <footer
-        className="text-ink-muted mt-auto inline-flex items-center gap-2 text-sm"
+        className="sl-panel text-ink-muted mt-auto inline-flex items-center gap-2 self-start px-3 py-2 text-sm"
         data-testid="connection"
         data-online={room.online}
       >

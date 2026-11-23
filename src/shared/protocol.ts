@@ -88,7 +88,7 @@ export interface RoomRequests {
   "room:watch": { input: null; output: null };
   /** Next run. */
   "room:leave": { input: null; output: null };
-  /** Next run. */
+  /** Not the host: pressing Start is the host's ready. */
   "lobby:ready": { input: { ready: boolean }; output: null };
   /** Next run. Host only. */
   "lobby:settings": { input: SettingsInput; output: null };

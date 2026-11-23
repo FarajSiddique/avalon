@@ -659,19 +659,19 @@ Defined in `src/shared/protocol.ts`, validated by `src/shared/schemas.ts`.
 
 **Requests.**
 
-| Request          | Payload                            | Who             | Status                        |
-| ---------------- | ---------------------------------- | --------------- | ----------------------------- |
-| `createRoom`     | `{ name }`                         | anyone          | Implemented (server function) |
-| `room:join`      | `{ name }`                         | anyone          | Implemented                   |
-| `room:resume`    | `{ token }`                        | seat holder     | Implemented                   |
-| `room:watch`     | none                               | anyone, no seat | Next run                      |
-| `room:leave`     | none                               | seated, lobby   | Next run                      |
-| `lobby:ready`    | `{ ready }`                        | seated          | Next run                      |
-| `lobby:settings` | `{ optionalRoles, ladyOfTheLake }` | host            | Next run                      |
-| `lobby:kick`     | `{ playerId }`                     | host            | Next run                      |
-| `lobby:start`    | none                               | host            | Next run                      |
-| `game:action`    | `GameAction` (see below)           | depends         | Next run                      |
-| `room:reset`     | none                               | host            | Next run                      |
+| Request          | Payload                            | Who              | Status                        |
+| ---------------- | ---------------------------------- | ---------------- | ----------------------------- |
+| `createRoom`     | `{ name }`                         | anyone           | Implemented (server function) |
+| `room:join`      | `{ name }`                         | anyone           | Implemented                   |
+| `room:resume`    | `{ token }`                        | seat holder      | Implemented                   |
+| `room:watch`     | none                               | anyone, no seat  | Next run                      |
+| `room:leave`     | none                               | seated, lobby    | Next run                      |
+| `lobby:ready`    | `{ ready }`                        | seated, not host | Implemented                   |
+| `lobby:settings` | `{ optionalRoles, ladyOfTheLake }` | host             | Next run                      |
+| `lobby:kick`     | `{ playerId }`                     | host             | Next run                      |
+| `lobby:start`    | none                               | host             | Next run                      |
+| `game:action`    | `GameAction` (see below)           | depends          | Next run                      |
+| `room:reset`     | none                               | host             | Next run                      |
 
 `GameAction` is one of: `confirm_role`, `draft_team { playerIds }`,
 `propose_team { playerIds }`, `vote { vote }`, `play_card { card }`,
@@ -932,7 +932,7 @@ What is left is the live CPU check, which runs after the merge (below).
 
 ### Phase 1: the lobby
 
-- Room: handlers for `lobby:ready`, `lobby:settings`, `lobby:kick` and
+- Room: handlers for `lobby:settings`, `lobby:kick` and
   `room:leave` in `room-object.ts`, with the rules as pure functions in
   `state.ts`. Host-only checks. Host hand-over after 60 seconds away, as an
   alarm (extend `nextExpiryCheck` into one "what is due next" function). A

@@ -49,7 +49,10 @@ function startBlockers(
     blockers.push({ kind: "disconnected", playerIds: away.map((p) => p.id) });
   }
 
-  const notReady = state.players.filter((p) => !p.ready);
+  // The host has no ready: pressing Start is the host's ready.
+  const notReady = state.players.filter(
+    (p) => p.id !== state.hostId && !p.ready,
+  );
 
   if (notReady.length > 0) {
     blockers.push({ kind: "not_ready", playerIds: notReady.map((p) => p.id) });

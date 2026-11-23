@@ -24,6 +24,7 @@ import {
 import {
   clientMessageSchema,
   joinRoomSchema,
+  readySchema,
   resumeSchema,
 } from "@/shared/schemas";
 import type { PlayerId, RoomCode } from "@/shared/views";
@@ -34,6 +35,7 @@ import {
   findSeat,
   joinRoom,
   nextExpiryCheck,
+  setReady,
   withPresence,
   type RoomDeps,
   type RoomState,
@@ -232,6 +234,10 @@ export class RoomObject extends DurableObject<Env> {
           return await this.run(resumeSchema, payload, (input) =>
             this.resume(socket, input.token),
           );
+        case "lobby:ready":
+          return await this.run(readySchema, payload, (input) =>
+            this.ready(socket, input.ready),
+          );
         default:
           return fail("NOT_ALLOWED", "That is not available yet.");
       }
@@ -281,6 +287,24 @@ export class RoomObject extends DurableObject<Env> {
     const player = findSeat(state, token);
 
     return this.seat(socket, { state, player, token });
+  }
+
+  private async ready(socket: WebSocket, ready: boolean): Promise<null> {
+    const playerId = seatOf(socket);
+
+    if (!playerId) {
+      throw new RoomError("NOT_IN_ROOM", "Join the room first.");
+    }
+
+    const loaded = await this.requireRoom();
+    const state = setReady(loaded, playerId, ready);
+
+    if (state !== loaded) {
+      await this.save(state);
+      this.publish(state);
+    }
+
+    return null;
   }
 
   /** Bind the socket to a seat, save, and tell everyone. */

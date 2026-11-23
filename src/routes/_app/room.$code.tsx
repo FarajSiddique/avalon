@@ -6,7 +6,7 @@ import { ROOM_CODE_PATTERN, normalizeRoomCode } from "@/shared/constants";
  * The room route. It only checks the code's shape. Whether the room exists
  * is answered over the socket by the room itself.
  */
-export const Route = createFileRoute("/room/$code")({
+export const Route = createFileRoute("/_app/room/$code")({
   beforeLoad: ({ params }) => {
     if (!ROOM_CODE_PATTERN.test(normalizeRoomCode(params.code))) {
       throw notFound();

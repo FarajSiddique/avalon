@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { StartForm } from "@/components/landing/start-form";
 
-export const Route = createFileRoute("/")({ component: HomePage });
+export const Route = createFileRoute("/_app/")({ component: HomePage });
 
 /**
  * Placeholder landing page. It is wired to the real room server, but it is

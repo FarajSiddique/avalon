@@ -1,10 +1,7 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { AppShell } from "@/components/ui/app-shell";
 import { DesignNav } from "@/design/design-nav";
 import { isPrototypeNextInFlow } from "@/design/flow";
-import { NightSky } from "@/components/art/night-sky";
-import { SoundToggle } from "@/components/ui/sound-toggle";
-import { Stage } from "@/components/stage/stage";
-import { StageProvider } from "@/components/stage/stage-context";
 
 export const Route = createFileRoute("/design/starlit")({
   head: () => ({ meta: [{ title: "Starlit Vale" }] }),
@@ -13,17 +10,8 @@ export const Route = createFileRoute("/design/starlit")({
 
 function Layout() {
   return (
-    <div
-      data-app-shell=""
-      className="bg-canvas font-body text-ink relative isolate flex min-h-dvh flex-1 flex-col"
-    >
-      <DesignNav />
-      <NightSky />
-      <StageProvider isNextInFlow={isPrototypeNextInFlow}>
-        <Stage />
-        <Outlet />
-      </StageProvider>
-      <SoundToggle />
-    </div>
+    <AppShell bar={<DesignNav />} isNextInFlow={isPrototypeNextInFlow}>
+      <Outlet />
+    </AppShell>
   );
 }

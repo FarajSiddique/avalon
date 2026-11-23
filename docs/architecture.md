@@ -578,6 +578,21 @@ Details:
 - If the host is away for 60 seconds, the host role passes to the next
   connected player in seat order. This is an alarm in the room object, not
   part of the engine.
+
+Ready (decided in issue 16):
+
+- The host has no ready. Pressing Start is the host's ready, so the host is
+  never listed in the `not_ready` blocker.
+- Only the seat itself changes its ready (`lobby:ready`), at any time in the
+  lobby. Settings changes, joins, leaves, kicks and being away never change
+  anyone's ready. Away is its own blocker (`disconnected`).
+- Messages are applied in the order the room receives them. If an un-ready
+  arrives before Start, Start is refused with the current blockers; if Start
+  arrives first, the game begins and the un-ready is refused.
+- `room:reset` (play again) sets every seat to not ready.
+- On host hand-over the old host becomes an ordinary seat that is not ready.
+  The new host's stored ready no longer matters.
+- Every phone plays the `all-ready` sound when `startBlockers` becomes empty.
 - Tokens are opaque, not JWTs. The room has to look the seat up anyway, so a
   signed token adds a secret to manage and nothing else. A token dies with
   its room.
@@ -844,13 +859,13 @@ decisions were treated as input.
 | --- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | HTTP creates the room, then the client opens a socket                              | **Kept in spirit.** Creating a room is a server function, because the room object does not exist yet. Joining and everything after are socket requests. |
 | 2   | Short-lived signed JWT per player                                                  | **Dropped.** Opaque random seat token, hashed in the room. Nothing to sign, no secret to configure, dies with the room.                                 |
-| 3   | Ready state is sticky                                                              | **Kept.** Ready never resets by itself.                                                                                                                 |
+| 3   | Ready state is sticky                                                              | **Kept.** Ready never resets by itself, except that play again clears it.                                                                               |
 | 4   | Host disconnect destroys the room at once                                          | **Dropped.** Phones lock their screens all the time. The host's seat is held like anyone's, and the host role moves on after 60 seconds away.           |
 | 5   | Settings checked for shape on update, for rules at start                           | **Kept, and extended.** The lobby view also carries `startBlockers`, so the host sees why Start is disabled before pressing it.                         |
 | 6   | Names: unique ignoring case, 1 to 20 ASCII characters                              | **Changed.** Still unique ignoring case. 1 to 16 characters so they fit a seat label on a phone, and letters in any script so real names work.          |
-| 7   | Host has a ready toggle; start needs everyone ready                                | **Kept.**                                                                                                                                               |
+| 7   | Host has a ready toggle; start needs everyone ready                                | **Changed** (issue 16). Start needs every non-host seat ready; pressing Start is the host's ready.                                                      |
 | 8   | Host-only room is removed after 5 minutes                                          | **Replaced** by one rule: any room with nobody connected for 10 minutes is removed, and every room after 12 hours.                                      |
-| 9   | A non-host's seat is held; host can kick; start needs everyone connected and ready | **Kept**, and now applies to the host too.                                                                                                              |
+| 9   | A non-host's seat is held; host can kick; start needs everyone connected and ready | **Kept**. Being connected now applies to the host too; ready does not (see #7).                                                                         |
 | n/a | 6-character codes with digits                                                      | **Changed** to 4 letters, easier to say and type across a table.                                                                                        |
 | n/a | One socket per player (new connection kicks the old)                               | **Changed.** Several sockets per seat are allowed.                                                                                                      |
 | n/a | One event per thing that happens                                                   | **Replaced** by one full `state` message per player.                                                                                                    |

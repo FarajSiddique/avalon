@@ -94,7 +94,7 @@ export interface RoomRequests {
   "room:leave": { input: null; output: null };
   /** Not the host: pressing Start is the host's ready. */
   "lobby:ready": { input: { ready: boolean }; output: null };
-  /** Next run. Host only. */
+  /** Host only. Any mix is saved; Start is blocked if it does not fit the seats. */
   "lobby:settings": { input: SettingsInput; output: null };
   /** Host only, lobby only. Removes another seat. */
   "lobby:kick": { input: KickInput; output: null };

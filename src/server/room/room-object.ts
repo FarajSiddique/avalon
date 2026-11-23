@@ -28,8 +28,9 @@ import {
   kickSchema,
   readySchema,
   resumeSchema,
+  settingsSchema,
 } from "@/shared/schemas";
-import type { PlayerId, RoomCode } from "@/shared/views";
+import type { GameSettings, PlayerId, RoomCode } from "@/shared/views";
 import { projectView } from "./project-view";
 import {
   RoomError,
@@ -40,6 +41,7 @@ import {
   leaveRoom,
   nextExpiryCheck,
   setReady,
+  setSettings,
   withPresence,
   type RoomDeps,
   type RoomState,
@@ -248,6 +250,10 @@ export class RoomObject extends DurableObject<Env> {
           );
         case "room:leave":
           return await this.run(emptySchema, payload, () => this.leave(socket));
+        case "lobby:settings":
+          return await this.run(settingsSchema, payload, (input) =>
+            this.settings(socket, input),
+          );
         default:
           return fail("NOT_ALLOWED", "That is not available yet.");
       }
@@ -303,6 +309,27 @@ export class RoomObject extends DurableObject<Env> {
     const playerId = this.requireSeated(socket);
     const loaded = await this.requireRoom();
     const state = setReady(loaded, playerId, ready);
+
+    if (state !== loaded) {
+      await this.save(state);
+      this.publish(state);
+    }
+
+    return null;
+  }
+
+  private async settings(
+    socket: WebSocket,
+    settings: GameSettings,
+  ): Promise<null> {
+    const playerId = seatOf(socket);
+
+    if (!playerId) {
+      throw new RoomError("NOT_IN_ROOM", "Join the room first.");
+    }
+
+    const loaded = await this.requireRoom();
+    const state = setSettings(loaded, playerId, settings);
 
     if (state !== loaded) {
       await this.save(state);

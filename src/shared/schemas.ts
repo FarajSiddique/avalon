@@ -16,6 +16,7 @@ import type {
   CreateRoomInput,
   GameAction,
   JoinRoomInput,
+  KickInput,
   ResumeInput,
   RoomRequests,
   SettingsInput,
@@ -49,6 +50,13 @@ export const resumeSchema = z.object({
 export const readySchema = z.object({
   ready: z.boolean(),
 }) satisfies z.ZodType<RoomRequests["lobby:ready"]["input"]>;
+
+export const kickSchema = z.object({
+  playerId: playerIdSchema,
+}) satisfies z.ZodType<KickInput>;
+
+/** For requests that carry nothing. */
+export const emptySchema = z.null();
 
 export const settingsSchema = z.object({
   optionalRoles: z

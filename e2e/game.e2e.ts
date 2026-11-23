@@ -493,7 +493,10 @@ test("without WebGL, the game screens say so and the landing form still works", 
   expect(changes).toBeLessThan(5);
   await page.getByLabel("Your name").fill("Faraj");
   await page.getByRole("link", { name: "Create a room" }).click();
-  await expect(notice).toBeVisible();
+  // The notice shows once a fresh page's stage has tried WebGL and failed,
+  // a stage event like any other: on a busy CI runner with software WebGL
+  // that has taken more than the default five seconds.
+  await expect(notice).toBeVisible(STAGE_TIMEOUT);
   await expect(page).toHaveURL(/via=create/);
 
   for (const url of [
@@ -501,7 +504,7 @@ test("without WebGL, the game screens say so and the landing form still works", 
     "/design/starlit/table/propose",
   ]) {
     await page.goto(url);
-    await expect(notice).toBeVisible();
+    await expect(notice).toBeVisible(STAGE_TIMEOUT);
     await expect(
       page.locator("main[data-role-stage], main[data-step]"),
     ).toHaveCount(0);
@@ -513,7 +516,7 @@ test("without WebGL, the game screens say so and the landing form still works", 
 
   await nav.getByRole("link", { name: "Role", exact: true }).click();
   await expect(page).toHaveURL(/\/role\/merlin/);
-  await expect(notice).toBeVisible();
+  await expect(notice).toBeVisible(STAGE_TIMEOUT);
   expect(errors).toEqual([]);
 });
 
@@ -571,6 +574,11 @@ test("the lobby table seats everyone, takes newcomers and keeps your look", asyn
     page.locator('[data-section="look"] button[aria-expanded]'),
   ).toContainText("Moss cloak, helm");
   await page.reload();
+  // As on the first visit, let the reloaded page settle before using it: on
+  // CI the reload alone has taken twenty seconds, and the page answered
+  // nothing for a while after.
+  await expect(stage.locator("canvas")).toBeVisible(STAGE_TIMEOUT);
+  await expect(stage).toHaveAttribute("data-stage", "lobby", STAGE_TIMEOUT);
   await openSection(page, "look");
   await expect(helm).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-look="cloak:moss"]')).toHaveAttribute(

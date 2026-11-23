@@ -626,6 +626,31 @@ Kick, leave and rejoin (decided in issue 17):
 - If the last seat leaves, the room ends at once: its storage is deleted and
   anyone opening the link gets `not_found`. A room never sits with no seats.
 - Kicks and leaves never change anyone else's ready (see Ready above).
+
+Settings and start blockers (decided in issue 18):
+
+- `lobby:settings` is host only (`NOT_HOST` otherwise) and lobby only
+  (`ROOM_IN_PROGRESS` during a game). It replaces the whole settings object
+  and accepts any mix the schema allows. It never changes anyone's ready.
+- The settings are checked against the seats at the time, not when they are
+  saved: seats join, leave and are kicked after the host picks roles, so a
+  check at save time would be stale anyway. `projectView` recomputes the
+  blockers for every view, and `lobby:start` refuses while any remain.
+- `too_many_evil_roles` is the only settings blocker: the Assassin plus the
+  Evil optional roles exceed `TEAM_BALANCE[count].evil`. It is only checked
+  at 5 to 10 seats; below 5, `too_few_players` already blocks. Its `allowed`
+  is the total Evil seats, Assassin included; the copy says so and how many
+  roles to switch off. Settings blockers come after the seat blockers.
+- Lady of the Lake below 7 seats and a lone Percival or Morgana are allowed.
+  They are settings hints (`settingsHints` in `src/shared/settings.ts`),
+  worked out in the browser from the `LobbyView`, never start blockers.
+- The rule is pure and shared (`src/shared/settings.ts`), so the prototype
+  lobby runs the same check as the room. `settingsBlockers` in
+  `src/server/game/setup.ts` turns it into start blockers. `rolesFor` joins it
+  in Phase 2.
+- The host settings never disable a toggle. The overflow message sits under
+  the role list and in the list next to Start; settings hints sit under the
+  role list too, for host and guests alike.
 - Tokens are opaque, not JWTs. The room has to look the seat up anyway, so a
   signed token adds a secret to manage and nothing else. A token dies with
   its room.
@@ -700,7 +725,7 @@ Defined in `src/shared/protocol.ts`, validated by `src/shared/schemas.ts`.
 | `room:watch`     | none                               | anyone, no seat  | Next run                      |
 | `room:leave`     | none                               | seated, lobby    | Next run                      |
 | `lobby:ready`    | `{ ready }`                        | seated, not host | Implemented                   |
-| `lobby:settings` | `{ optionalRoles, ladyOfTheLake }` | host             | Next run                      |
+| `lobby:settings` | `{ optionalRoles, ladyOfTheLake }` | host             | Implemented                   |
 | `lobby:kick`     | `{ playerId }`                     | host             | Next run                      |
 | `lobby:start`    | none                               | host             | Next run                      |
 | `game:action`    | `GameAction` (see below)           | depends          | Next run                      |

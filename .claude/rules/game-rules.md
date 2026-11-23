@@ -96,7 +96,9 @@ already knows (do not exclude Oberon, that would reveal him).
 - After the 2nd, 3rd and 4th quest, the holder examines one other player's
   alignment (Good or Evil, not the role). Only the holder learns the result.
 - The token passes to the examined player. A player who has held it cannot be
-  examined. Used exactly 3 times per game. Best with 7 or more players.
+  examined. Used exactly 3 times per game. Best with 7 or more players: it is
+  allowed with fewer, and the host settings show a settings hint, never a
+  blocker.
 
 ## Protocol
 

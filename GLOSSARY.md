@@ -36,9 +36,17 @@ _Avoid_: Quit, disconnect
 The host removing another seat, connected or away, in the lobby. Nothing is remembered: the same person may join again as a new seat, under any name.
 _Avoid_: Ban, remove
 
+**Settings**:
+The host's choices for the next game: which optional roles are in, and whether Lady of the Lake is used. Any mix can be saved; whether it can start depends on the seats at the moment of Start.
+_Avoid_: Config, options
+
 **Start blocker**:
-A reason the host cannot start yet, shown next to Start: too few seats, a seat not ready, a seat away, or settings that break the rules.
+A reason the host cannot start yet, shown next to Start: too few seats, a seat not ready, a seat away, or more Evil roles than the seats have Evil places for.
 _Avoid_: Error, validation
+
+**Settings hint**:
+Advice about the settings that never stops Start, for example Lady of the Lake with fewer than 7 seats, or Percival without Morgana. Unlike a start blocker, the table may play on knowingly.
+_Avoid_: Warning, soft blocker
 
 **Play again**:
 The host returning a finished game's room to the lobby with the same seats.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { projectView } from "./project-view";
-import { createRoom, joinRoom, type RoomDeps } from "./state";
+import { createRoom, joinRoom, setReady, type RoomDeps } from "./state";
 
 let n = 0;
 const deps: RoomDeps = {
@@ -64,7 +64,42 @@ describe("projectView (lobby)", () => {
 
     expect(view.startBlockers).toEqual([
       { kind: "too_few_players", needed: 4 },
-      { kind: "not_ready", playerIds: [host.player.id] },
+    ]);
+  });
+
+  it("waits on every seat but the host to ready up", () => {
+    const host = createRoom("BCDF", "Wren", deps);
+    let state = host.state;
+    const guests = ["Ansel", "Mira", "Tobias", "Isolde"].map((name) => {
+      const seated = joinRoom(state, name, deps);
+
+      state = seated.state;
+
+      return seated.player.id;
+    });
+    const everyone = new Set([host.player.id, ...guests]);
+
+    const blockers = () => {
+      const view = projectView(state, host.player.id, everyone);
+
+      return view.stage === "lobby" ? view.startBlockers : [];
+    };
+
+    expect(blockers()).toEqual([{ kind: "not_ready", playerIds: guests }]);
+
+    for (const id of guests) {
+      state = setReady(state, id, true);
+    }
+
+    // The host never readied, and nothing stands in the way of Start.
+    expect(state.players[0]?.ready).toBe(false);
+    expect(blockers()).toEqual([]);
+
+    // Being away still blocks, the host included.
+    const view = projectView(state, host.player.id, new Set(guests));
+
+    expect(view.stage === "lobby" && view.startBlockers).toEqual([
+      { kind: "disconnected", playerIds: [host.player.id] },
     ]);
   });
 });

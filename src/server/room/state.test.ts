@@ -11,6 +11,7 @@ import {
   findSeat,
   joinRoom,
   nextExpiryCheck,
+  setReady,
   withPresence,
   type RoomDeps,
 } from "./state";
@@ -161,5 +162,65 @@ describe("room expiry", () => {
 
     expect(nextExpiryCheck(occupied, 2000)).toBe(1000 + ROOM_MAX_AGE_MS);
     expect(nextExpiryCheck(occupied, 1000 + ROOM_MAX_AGE_MS)).toBe("expired");
+  });
+});
+
+function table() {
+  const { deps } = fixedDeps();
+  const host = createRoom("BCDF", "Wren", deps);
+  const ansel = joinRoom(host.state, "Ansel", deps);
+  const mira = joinRoom(ansel.state, "Mira", deps);
+
+  return { deps, state: mira.state, host, ansel, mira };
+}
+
+const readyOf = (state: { players: Array<{ id: string; ready: boolean }> }) =>
+  Object.fromEntries(state.players.map((p) => [p.id, p.ready]));
+
+describe("ready (issue 16)", () => {
+  it("changes only the caller's own seat", () => {
+    const { state, host, ansel, mira } = table();
+    const next = setReady(state, ansel.player.id, true);
+
+    expect(readyOf(next)).toEqual({
+      [host.player.id]: false,
+      [ansel.player.id]: true,
+      [mira.player.id]: false,
+    });
+  });
+
+  it("can be taken back, and repeating it changes nothing", () => {
+    const { state, ansel } = table();
+    const on = setReady(state, ansel.player.id, true);
+
+    expect(setReady(on, ansel.player.id, true)).toBe(on);
+    expect(readyOf(setReady(on, ansel.player.id, false))[ansel.player.id]).toBe(
+      false,
+    );
+  });
+
+  it("stays when someone else joins", () => {
+    const { deps, state, ansel } = table();
+    const on = setReady(state, ansel.player.id, true);
+    const joined = joinRoom(on, "Tobias", deps);
+
+    expect(readyOf(joined.state)[ansel.player.id]).toBe(true);
+    expect(joined.player.ready).toBe(false);
+  });
+
+  it("is refused for the host: pressing Start is the host's ready", () => {
+    const { state, host } = table();
+
+    expect(errorCode(() => setReady(state, host.player.id, true))).toBe(
+      "NOT_ALLOWED",
+    );
+  });
+
+  it("is refused for a seat that is not in the room", () => {
+    const { state } = table();
+
+    expect(errorCode(() => setReady(state, "nobody", true))).toBe(
+      "NOT_IN_ROOM",
+    );
   });
 });

@@ -74,7 +74,8 @@ export const lobbyView: LobbyView = {
   stage: "lobby",
   code: ROOM_CODE,
   players: [
-    seat(ids.wren, "Wren", { isHost: true }),
+    // The host has no ready: pressing Start is the host's ready.
+    seat(ids.wren, "Wren", { isHost: true, ready: false }),
     seat(ids.ansel, "Ansel"),
     seat(ids.mira, "Mira"),
     seat(ids.tobias, "Tobias", { ready: false }),

@@ -17,6 +17,7 @@ import type {
   GameAction,
   JoinRoomInput,
   ResumeInput,
+  RoomRequests,
   SettingsInput,
 } from "./protocol";
 import { OPTIONAL_ROLES } from "./roles";
@@ -44,6 +45,10 @@ export const joinRoomSchema = z.object({
 export const resumeSchema = z.object({
   token: z.string().min(1).max(200),
 }) satisfies z.ZodType<ResumeInput>;
+
+export const readySchema = z.object({
+  ready: z.boolean(),
+}) satisfies z.ZodType<RoomRequests["lobby:ready"]["input"]>;
 
 export const settingsSchema = z.object({
   optionalRoles: z

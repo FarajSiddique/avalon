@@ -19,6 +19,15 @@ function PlayerState({ player }: { player: SeatView }) {
     );
   }
 
+  if (player.isHost) {
+    // The host has no ready: pressing Start is the host's ready.
+    return (
+      <span className="text-ink-muted sl-pop sl-seq inline-flex items-center gap-1.5 text-base font-bold">
+        Starts the game
+      </span>
+    );
+  }
+
   if (!player.ready) {
     return (
       <span className="text-warning sl-pop sl-seq inline-flex items-center gap-1.5 text-base font-bold">
@@ -39,6 +48,10 @@ function PlayerState({ player }: { player: SeatView }) {
 function stateKey(player: SeatView): string {
   if (!player.connected) {
     return "away";
+  }
+
+  if (player.isHost) {
+    return "host";
   }
 
   return player.ready ? "ready" : "waiting";

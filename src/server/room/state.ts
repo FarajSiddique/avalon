@@ -139,6 +139,43 @@ export function joinRoom(
   };
 }
 
+/**
+ * A seat says it is, or is no longer, happy to start. Only the seat itself
+ * calls this. The host has no ready (pressing Start is the host's ready), so
+ * the host's own record stays false. Nothing else changes a seat's ready:
+ * joins, leaves, settings and being away all keep it.
+ */
+export function setReady(
+  state: RoomState,
+  playerId: PlayerId,
+  ready: boolean,
+): RoomState {
+  if (state.game !== null) {
+    throw new RoomError("ROOM_IN_PROGRESS", "The game has already started.");
+  }
+
+  if (playerId === state.hostId) {
+    throw new RoomError("NOT_ALLOWED", "The host starts the game instead.");
+  }
+
+  const seat = state.players.find((p) => p.id === playerId);
+
+  if (!seat) {
+    throw new RoomError("NOT_IN_ROOM", "You are not in this room.");
+  }
+
+  if (seat.ready === ready) {
+    return state;
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === playerId ? { ...p, ready } : p,
+    ),
+  };
+}
+
 /** The seat a token belongs to. Tokens look like `CODE.secret`. */
 export function findSeat(state: RoomState, token: string): PlayerRecord {
   const dot = token.indexOf(".");

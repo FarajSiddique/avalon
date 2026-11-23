@@ -168,3 +168,120 @@ test("a malformed room code shows the not-found page", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByTestId("room-code")).toHaveCount(0);
 });
+
+/**
+ * Open a second socket from this page, take the page's seat with its stored
+ * token, then send one `lobby:ready`. Returns its answer and the seats in the
+ * state that followed. Phase 1 has no Ready button on the real room screen
+ * yet, so this drives the protocol directly.
+ */
+async function sendReady(page: Page, code: string, ready: boolean) {
+  return page.evaluate(
+    async ({ code, ready }) => {
+      const token = window.localStorage.getItem(`avalon:seat:${code}`);
+      const url = new URL(`/api/socket/${code}`, window.location.href);
+
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      const socket = new WebSocket(url);
+      const frames: Array<{
+        type: string;
+        id?: number;
+        result?: { ok: boolean; error?: { code: string } };
+        view?: { players: Array<{ name: string; ready: boolean }> };
+      }> = [];
+
+      await new Promise((resolve) => {
+        socket.addEventListener("open", resolve);
+      });
+      socket.addEventListener("message", (event) => {
+        if (typeof event.data === "string" && event.data !== "pong") {
+          frames.push(JSON.parse(event.data));
+        }
+      });
+      const answer = (id: number) =>
+        new Promise<(typeof frames)[number]>((resolve) => {
+          const check = () => {
+            const ack = frames.find((f) => f.type === "ack" && f.id === id);
+
+            if (ack) {
+              resolve(ack);
+            } else {
+              window.setTimeout(check, 20);
+            }
+          };
+
+          check();
+        });
+
+      socket.send(
+        JSON.stringify({ id: 1, event: "room:resume", payload: { token } }),
+      );
+      await answer(1);
+      const before = frames.length;
+
+      socket.send(
+        JSON.stringify({ id: 2, event: "lobby:ready", payload: { ready } }),
+      );
+      const ack = await answer(2);
+
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 200);
+      });
+      const state = frames
+        .slice(before)
+        .findLast((f) => f.type === "state" && f.view);
+
+      socket.close();
+
+      return {
+        result: ack.result,
+        seats: state?.view?.players.map((p) => [p.name, p.ready]) ?? null,
+      };
+    },
+    { code, ready },
+  );
+}
+
+test("a guest readies up, and the host cannot", async ({ browser }) => {
+  const hostContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const host = await hostContext.newPage();
+  const guest = await guestContext.newPage();
+
+  await host.goto("/");
+  await field(host, "Your name").fill("Wren");
+  await host.getByRole("button", { name: "Create a room" }).click();
+  await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
+  const code = await host.getByTestId("room-code").innerText();
+
+  await guest.goto(`/room/${code}`);
+  await field(guest, "Your name").fill("Ansel");
+  await guest.getByRole("button", { name: "Join room" }).click();
+  await expect(players(host)).toHaveCount(2);
+  await expect(players(guest)).toHaveCount(2);
+
+  const readied = await sendReady(guest, code, true);
+
+  expect(readied.result).toEqual({ ok: true, data: null });
+  expect(readied.seats).toEqual([
+    ["Wren", false],
+    ["Ansel", true],
+  ]);
+
+  const hostTried = await sendReady(host, code, true);
+
+  expect(hostTried.result).toMatchObject({
+    ok: false,
+    error: { code: "NOT_ALLOWED" },
+  });
+
+  const unreadied = await sendReady(guest, code, false);
+
+  expect(unreadied.seats).toEqual([
+    ["Wren", false],
+    ["Ansel", false],
+  ]);
+
+  await hostContext.close();
+  await guestContext.close();
+});

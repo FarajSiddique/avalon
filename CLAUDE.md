@@ -151,3 +151,17 @@ staged files.
 - Fonts are self-hosted with Fontsource packages. No font CDN.
 - In browser tests, the address changes before the new screen is drawn. Wait for an
   element of the new screen, not for the URL.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.

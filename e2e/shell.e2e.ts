@@ -9,6 +9,10 @@ test.use({
   },
 });
 
+// The e2e project defaults to reduced motion (see playwright.config.ts).
+// This file tests the running scene, so it starts with full motion.
+test.use({ reducedMotion: "no-preference" });
+
 /*
  * What the Worker sends, and what appears once the page runs in the
  * browser. The sky and the stage are drawn in the browser only, so the

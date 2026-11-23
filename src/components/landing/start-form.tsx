@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import { saveToken } from "@/client/session";
 import { useHydrated } from "@/client/use-hydrated";
+import { IconArrowRight, IconStar } from "@/components/ui/icons";
 import { createRoom } from "@/functions/rooms";
 import {
   NAME_MAX_LENGTH,
@@ -10,13 +11,6 @@ import {
   normalizeName,
   normalizeRoomCode,
 } from "@/shared/constants";
-
-const inputClass =
-  "border-line bg-well text-ink placeholder:text-ink-muted/70 h-12 w-full rounded-md border px-3 text-base";
-const primaryButton =
-  "bg-accent text-on-accent hover:bg-accent-strong h-12 cursor-pointer rounded-md px-4 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
-const secondaryButton =
-  "border-line-strong text-ink hover:bg-surface h-12 cursor-pointer rounded-md border px-4 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 /** The value of a named text field, read at submit time. */
 function field(form: HTMLFormElement, name: string): string {
@@ -34,6 +28,7 @@ export function StartForm() {
   const hydrated = useHydrated();
   const nameId = useId();
   const codeId = useId();
+  const hintId = useId();
   const [busy, setBusy] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -85,59 +80,83 @@ export function StartForm() {
   }
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={(event) => void onCreate(event)} className="space-y-3">
-        <label htmlFor={nameId} className="block text-sm font-medium">
-          Your name
-        </label>
-        <input
-          id={nameId}
-          name="name"
-          className={inputClass}
-          maxLength={NAME_MAX_LENGTH}
-          autoComplete="nickname"
-          autoCapitalize="words"
-          enterKeyHint="go"
-          required
-        />
+    <div className="flex flex-col gap-4">
+      <form
+        onSubmit={(event) => void onCreate(event)}
+        className="flex flex-col gap-4"
+      >
+        <div>
+          <label htmlFor={nameId} className="sl-label">
+            Your name
+          </label>
+          <input
+            id={nameId}
+            name="name"
+            type="text"
+            className="sl-input"
+            placeholder="What the table calls you"
+            maxLength={NAME_MAX_LENGTH}
+            autoComplete="nickname"
+            autoCapitalize="words"
+            spellCheck={false}
+            enterKeyHint="go"
+            required
+          />
+        </div>
         <button
           type="submit"
-          className={`${primaryButton} w-full`}
+          className="sl-btn sl-btn--primary w-full"
           disabled={!hydrated || busy}
         >
+          <IconStar size={18} />
           {busy ? "Creating…" : "Create a room"}
         </button>
-        <p role="alert" className="text-fail min-h-5 text-sm">
+        <p role="alert" className="text-fail -mt-2 min-h-5 text-sm">
           {createError}
         </p>
       </form>
 
-      <form onSubmit={onJoin} className="space-y-3">
-        <label htmlFor={codeId} className="block text-sm font-medium">
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="border-line h-px flex-1 border-t border-dashed" />
+        <span className="text-ink-muted text-base font-semibold">
+          or join friends
+        </span>
+        <span className="border-line h-px flex-1 border-t border-dashed" />
+      </div>
+
+      <form onSubmit={onJoin}>
+        <label htmlFor={codeId} className="sl-label">
           Have a room code?
         </label>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <input
             id={codeId}
             name="code"
-            className={`${inputClass} tracking-[0.3em] uppercase`}
+            type="text"
+            className="sl-input sl-input--code min-w-0 flex-1"
+            placeholder="KNGT"
             maxLength={ROOM_CODE_LENGTH + 2}
             inputMode="text"
             autoComplete="off"
             autoCapitalize="characters"
             spellCheck={false}
             enterKeyHint="go"
+            aria-describedby={hintId}
             required
           />
           <button
             type="submit"
-            className={secondaryButton}
+            className="sl-btn sl-btn--ghost flex-none"
             disabled={!hydrated}
           >
             Join
+            <IconArrowRight size={18} />
           </button>
         </div>
-        <p role="alert" className="text-fail min-h-5 text-sm">
+        <p id={hintId} className="text-ink-muted mt-2 text-base leading-snug">
+          Four letters, shown on the host&apos;s screen.
+        </p>
+        <p role="alert" className="text-fail mt-2 min-h-5 text-sm">
           {joinError}
         </p>
       </form>

@@ -1,7 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { isTableStep } from "@/design/directions";
 import { NoWebGLNotice } from "./-components/no-webgl-notice";
-import { useStage } from "./-components/stage/stage-context";
+import { useStage } from "@/components/stage/stage-context";
 import { TableStageScreen } from "./-components/table/table-stage-screen";
 
 export const Route = createFileRoute("/design/starlit/table/$step")({

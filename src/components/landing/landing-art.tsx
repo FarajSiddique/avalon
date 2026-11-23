@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useStage, useStageSlot } from "./stage/stage-context";
+import { useStage, useStageSlot } from "@/components/stage/stage-context";
 
 /** The landing band's soft top edge. */
 const FADE = 0.16;

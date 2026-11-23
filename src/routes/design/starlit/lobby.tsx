@@ -6,7 +6,7 @@ import {
 } from "@/shared/constants";
 import { LobbyScreen } from "./-components/lobby/lobby-screen";
 import { NoWebGLNotice } from "./-components/no-webgl-notice";
-import { useStage } from "./-components/stage/stage-context";
+import { useStage } from "@/components/stage/stage-context";
 
 /**
  * How you got here, from the landing: "create" (you host a new room) or

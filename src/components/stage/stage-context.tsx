@@ -69,7 +69,18 @@ export interface StageValue {
   setTagLayer: (el: HTMLElement | null) => void;
   /** The live scene answers "whose figure is here"; the stage sets this. */
   picker: RefObject<Picker | null>;
+  /**
+   * Is going from one address to the other the game's next step? Then the
+   * camera moves; otherwise it cuts. Read by the stage when the address
+   * changes. The app's default: every change of screen cuts.
+   */
+  isNextInFlow: IsNextInFlow;
 }
+
+/** Whether a change of address is the game's next step (see StageValue). */
+export type IsNextInFlow = (from: string, to: string) => boolean;
+
+const neverInFlow: IsNextInFlow = () => false;
 
 export type StageStore = StoreApi<StageValue>;
 
@@ -77,8 +88,9 @@ export type StageStore = StoreApi<StageValue>;
  * Every setter leaves the state object alone when nothing changes, so (as
  * with React state) readers do not re-render for a value they already have.
  */
-function createStageStore(): StageStore {
+function createStageStore(isNextInFlow: IsNextInFlow): StageStore {
   return createDevStore<StageValue>("stage", (set) => ({
+    isNextInFlow,
     slot: null,
     players: [],
     pending: null,
@@ -126,8 +138,15 @@ function createStageStore(): StageStore {
 
 const StageContext = createContext<StageStore | null>(null);
 
-export function StageProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(createStageStore);
+export function StageProvider({
+  children,
+  isNextInFlow = neverInFlow,
+}: {
+  children: ReactNode;
+  isNextInFlow?: IsNextInFlow;
+}) {
+  // The rule is read once: a layout passes a module-level function.
+  const [store] = useState(() => createStageStore(isNextInFlow));
 
   return (
     <StageContext.Provider value={store}>{children}</StageContext.Provider>

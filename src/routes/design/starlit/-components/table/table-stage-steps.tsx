@@ -21,7 +21,7 @@ import { useReducedMotion } from "../use-reduced-motion";
 import { seededRandom } from "@/components/art/seeded";
 import { joinNames, numberWord } from "../names";
 import type { SeatMark } from "../stage/stage-tags";
-import type { TablePlay, TablePlayer } from "../three/types";
+import type { TablePlay, TablePlayer } from "@/components/three/types";
 import { REVEAL_TIMELINE, RESULT_TIMELINE, ms } from "./result-timeline";
 import {
   CARD,

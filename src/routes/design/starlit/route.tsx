@@ -1,9 +1,10 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { DesignNav } from "@/design/design-nav";
+import { isPrototypeNextInFlow } from "@/design/flow";
 import { NightSky } from "@/components/art/night-sky";
 import { SoundToggle } from "@/components/ui/sound-toggle";
-import { Stage } from "./-components/stage/stage";
-import { StageProvider } from "./-components/stage/stage-context";
+import { Stage } from "@/components/stage/stage";
+import { StageProvider } from "@/components/stage/stage-context";
 
 export const Route = createFileRoute("/design/starlit")({
   head: () => ({ meta: [{ title: "Starlit Vale" }] }),
@@ -18,7 +19,7 @@ function Layout() {
     >
       <DesignNav />
       <NightSky />
-      <StageProvider>
+      <StageProvider isNextInFlow={isPrototypeNextInFlow}>
         <Stage />
         <Outlet />
       </StageProvider>

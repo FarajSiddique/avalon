@@ -20,8 +20,8 @@ import {
   useStage,
   useStagePlayers,
   useStageSlot,
-} from "../stage/stage-context";
-import type { TablePlayer } from "../three/types";
+} from "@/components/stage/stage-context";
+import type { TablePlayer } from "@/components/three/types";
 import { AvatarMaker } from "./avatar-maker";
 import { Disclosure } from "./disclosure";
 import { HostSettings } from "./host-settings";

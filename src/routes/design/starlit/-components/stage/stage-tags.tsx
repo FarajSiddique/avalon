@@ -8,9 +8,9 @@ import {
   IconRing,
   IconStar,
 } from "@/components/ui/icons";
-import type { TablePlayer } from "../three/types";
+import type { TablePlayer } from "@/components/three/types";
 import "../table/table-stage.css";
-import { useTagLayer } from "./stage-context";
+import { useTagLayer } from "@/components/stage/stage-context";
 
 type SeatStatus =
   | "chosen"

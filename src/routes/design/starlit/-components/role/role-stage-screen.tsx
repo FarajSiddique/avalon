@@ -24,9 +24,9 @@ import {
   useStagePlay,
   useStagePlayers,
   useStageSlot,
-} from "../stage/stage-context";
+} from "@/components/stage/stage-context";
 import { StageTags } from "../stage/stage-tags";
-import type { TablePlay } from "../three/types";
+import type { TablePlay } from "@/components/three/types";
 import { RoleFace } from "./role-face";
 import { SkyCard } from "./sky-card";
 

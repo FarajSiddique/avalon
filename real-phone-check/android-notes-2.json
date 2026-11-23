@@ -1,0 +1,46 @@
+{
+  "canvasAt3s": [
+    {
+      "w": 616,
+      "h": 1251,
+      "top": 0,
+      "vis": "visible",
+      "op": "1",
+      "disp": "block"
+    }
+  ],
+  "canvasAt15s": [
+    {
+      "w": 616,
+      "h": 1251,
+      "top": 0,
+      "vis": "visible",
+      "op": "1",
+      "disp": "block"
+    }
+  ],
+  "mql": {
+    "reduced": false,
+    "saveData": false,
+    "mem": 4,
+    "cores": 4
+  },
+  "logs1": [],
+  "lookPanel": {
+    "count": 32,
+    "viewportH": 834,
+    "small": [],
+    "lowestTop": 1129
+  },
+  "tapErr_body:": "locator.tap: The page does not support tap. Use hasTouch context option to enable touch support.",
+  "tapErr_cloak:": "locator.tap: The page does not support tap. Use hasTouch context option to enable touch support.",
+  "tapErr_headwear:": "locator.tap: The page does not support tap. Use hasTouch context option to enable touch support.",
+  "tapErr_emblem:": "locator.tap: The page does not support tap. Use hasTouch context option to enable touch support.",
+  "docScroll": {
+    "sh": 834,
+    "ih": 834,
+    "sw": 411,
+    "iw": 411
+  },
+  "logs2": []
+}

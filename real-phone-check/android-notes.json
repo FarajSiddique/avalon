@@ -1,0 +1,41 @@
+{
+  "viewport": {
+    "w": 411,
+    "h": 810,
+    "dpr": 2.625,
+    "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Mobile Safari/537.36"
+  },
+  "webgl": "ANGLE (Google (Apple), Android Emulator OpenGL ES Translator (Apple M5 Pro), OpenGL ES 3.0)",
+  "landingFps": {
+    "fps": 52.8,
+    "p50ms": 16.7,
+    "p95ms": 33.3,
+    "maxms": 116.7,
+    "over50ms": 2
+  },
+  "landingSmallTargets": [
+    {
+      "t": "SoundOff",
+      "w": 113,
+      "h": 32
+    }
+  ],
+  "soundLabelBefore": "SoundOff",
+  "soundLabelAfter": "SoundOn",
+  "roomUrl": "https://avalon.hong-ladder.workers.dev/room/PXKV",
+  "roomFps": {
+    "fps": 60.4,
+    "p50ms": 16.7,
+    "p95ms": 16.8,
+    "maxms": 16.8,
+    "over50ms": 0
+  },
+  "roomSmallTargets": [
+    {
+      "t": "SoundOn",
+      "w": 113,
+      "h": 32
+    }
+  ],
+  "roomText": "ROOM CODE\n\nPXKV\n\nOthers join at this page's address or with the room code.\n\nPLAYERS (1 OF 10, 5 NEEDED)\nE\nEmulator (you)\nHost\nOnline\nConnected"
+}

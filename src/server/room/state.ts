@@ -9,6 +9,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   EMPTY_ROOM_TTL_MS,
+  HOST_AWAY_MS,
   MAX_PLAYERS,
   ROOM_MAX_AGE_MS,
 } from "@/shared/constants";
@@ -33,6 +34,11 @@ export interface RoomState {
   createdAt: number;
   /** When the last seated socket left, or null while anyone is connected. */
   emptySince: number | null;
+  /**
+   * When the host's last open socket closed, or null while the host is
+   * connected. Kept in storage so a pending hand-over survives a restart.
+   */
+  hostAwaySince: number | null;
   /** The game engine state. Added in the next run; null means "in the lobby". */
   game: null;
 }
@@ -104,6 +110,7 @@ export function createRoom(
       settings: { optionalRoles: [], ladyOfTheLake: false },
       createdAt: now,
       emptySince: now,
+      hostAwaySince: null,
       game: null,
     },
     player,
@@ -236,33 +243,76 @@ export function findSeat(state: RoomState, token: string): PlayerRecord {
   );
 }
 
-/** Record whether anyone is connected. Call after every connect and disconnect. */
-export function withPresence(
-  state: RoomState,
-  anyoneConnected: boolean,
-  now: number,
-): RoomState {
-  if (anyoneConnected) {
-    return state.emptySince === null ? state : { ...state, emptySince: null };
+/**
+ * Fills the fields added after a room was saved, so a room stored by an
+ * older deploy loads as a current `RoomState`. Applied on every load. Only
+ * added fields with a safe default belong here; a field that changes
+ * meaning needs a version.
+ */
+export function upgradeRoom(stored: RoomState): RoomState {
+  const saved: Partial<RoomState> = stored;
+
+  if (saved.hostAwaySince !== undefined) {
+    return stored;
   }
 
-  return state.emptySince !== null ? state : { ...state, emptySince: now };
+  return { ...stored, hostAwaySince: null };
 }
 
 /**
- * When to look at this room again: the moment it would expire if nothing
- * changes. Returns "expired" when that moment has passed.
+ * Record who is connected. Call after every connect, disconnect, kick, leave
+ * and alarm. It keeps `emptySince` and `hostAwaySince` in step with the live
+ * sockets, then passes the host role on if the host has been away for
+ * `HOST_AWAY_MS` and another seat is connected. Returns the same object when
+ * nothing changed.
+ *
+ * @param connected ids of the players with at least one open socket.
  */
-export function nextExpiryCheck(
+export function withPresence(
   state: RoomState,
+  connected: ReadonlySet<PlayerId>,
   now: number,
-): number | "expired" {
+): RoomState {
+  const emptySince = connected.size > 0 ? null : (state.emptySince ?? now);
+  const hostAwaySince = connected.has(state.hostId)
+    ? null
+    : (state.hostAwaySince ?? now);
+  const next =
+    emptySince === state.emptySince && hostAwaySince === state.hostAwaySince
+      ? state
+      : { ...state, emptySince, hostAwaySince };
+
+  if (hostAwaySince === null || now < hostAwaySince + HOST_AWAY_MS) {
+    return next;
+  }
+
+  const to = pickConnectedHost(next.players, next.hostId, connected);
+
+  return to === null ? next : handOver(next, to);
+}
+
+/**
+ * When this room next needs looking at: the earlier of its expiry and a host
+ * hand-over deadline. The deadline counts only while it is still ahead, so a
+ * passed deadline with nobody to take over never re-fires the alarm. Returns
+ * "expired" when the room's time is up.
+ */
+export function nextDue(state: RoomState, now: number): number | "expired" {
   const tooOldAt = state.createdAt + ROOM_MAX_AGE_MS;
   const idleAt =
     state.emptySince === null ? Infinity : state.emptySince + EMPTY_ROOM_TTL_MS;
-  const at = Math.min(tooOldAt, idleAt);
+  const expiresAt = Math.min(tooOldAt, idleAt);
 
-  return now >= at ? "expired" : at;
+  if (now >= expiresAt) {
+    return "expired";
+  }
+
+  const handOverAt =
+    state.hostAwaySince === null
+      ? Infinity
+      : state.hostAwaySince + HOST_AWAY_MS;
+
+  return handOverAt > now ? Math.min(expiresAt, handOverAt) : expiresAt;
 }
 
 /**
@@ -287,6 +337,43 @@ export function pickNextHost(
   const others = [...players.slice(from + 1), ...players.slice(0, from)];
 
   return (others.find((p) => connected.has(p.id)) ?? others[0])?.id ?? null;
+}
+
+/**
+ * Who takes over from a host who is away: the first connected seat after the
+ * old host in seat order, wrapping round. Null when no other seat is
+ * connected (the away host then keeps the role). Throws NOT_IN_ROOM if
+ * `fromId` has no seat.
+ */
+export function pickConnectedHost(
+  players: ReadonlyArray<PlayerRecord>,
+  fromId: PlayerId,
+  connected: ReadonlySet<PlayerId>,
+): PlayerId | null {
+  const next = pickNextHost(players, fromId, connected);
+
+  return next !== null && connected.has(next) ? next : null;
+}
+
+/**
+ * Pass the host role to `toId`. The old host becomes an ordinary seat that
+ * is not ready, and the new host's stored ready is cleared too, so the
+ * host's own record always reads "not ready" (pressing Start is the host's
+ * ready).
+ */
+function handOver(state: RoomState, toId: PlayerId): RoomState {
+  const fromId = state.hostId;
+
+  return {
+    ...state,
+    hostId: toId,
+    hostAwaySince: null,
+    players: state.players.map((p) =>
+      (p.id === fromId || p.id === toId) && p.ready
+        ? { ...p, ready: false }
+        : p,
+    ),
+  };
 }
 
 function requireLobby(state: RoomState): void {
@@ -344,18 +431,23 @@ export function leaveRoom(
   requireLobby(state);
   requireSeat(state, playerId);
 
-  const hostId =
-    playerId === state.hostId
-      ? pickNextHost(state.players, playerId, connected)
-      : state.hostId;
+  if (playerId !== state.hostId) {
+    return {
+      ...state,
+      players: state.players.filter((p) => p.id !== playerId),
+    };
+  }
+
+  const hostId = pickNextHost(state.players, playerId, connected);
 
   if (hostId === null) {
     return null;
   }
 
+  const handed = handOver(state, hostId);
+
   return {
-    ...state,
-    hostId,
-    players: state.players.filter((p) => p.id !== playerId),
+    ...handed,
+    players: handed.players.filter((p) => p.id !== playerId),
   };
 }

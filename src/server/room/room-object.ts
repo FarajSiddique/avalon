@@ -31,6 +31,7 @@ import {
   settingsSchema,
 } from "@/shared/schemas";
 import type { GameSettings, PlayerId, RoomCode } from "@/shared/views";
+import { fullBudget, spend, type Budget } from "./budget";
 import { projectView } from "./project-view";
 import {
   RoomError,
@@ -39,9 +40,10 @@ import {
   joinRoom,
   kickSeat,
   leaveRoom,
-  nextExpiryCheck,
+  nextDue,
   setReady,
   setSettings,
+  upgradeRoom,
   withPresence,
   type RoomDeps,
   type RoomState,
@@ -50,10 +52,16 @@ import {
 
 const ROOM_KEY = "room";
 
-/** What each socket remembers across hibernation. */
-interface SocketAttachment {
+/**
+ * What each socket remembers across hibernation: its seat and its message
+ * budget. Read and written only through `readAttachment` and
+ * `writeAttachment`, so binding a seat never resets the budget.
+ */
+interface SocketAttachment extends Budget {
   playerId: PlayerId | null;
 }
+
+const RATE_LIMITED_MESSAGE = "Too fast. Wait a moment and try again.";
 
 const deps: RoomDeps = {
   now: () => Date.now(),
@@ -68,19 +76,81 @@ const deps: RoomDeps = {
   },
 };
 
-function seatOf(socket: WebSocket): PlayerId | null {
-  const attachment: unknown = socket.deserializeAttachment();
-
-  return isSocketAttachment(attachment) ? attachment.playerId : null;
-}
-
-function isSocketAttachment(value: unknown): value is SocketAttachment {
+function isBudget(value: unknown): value is Budget {
   return (
     typeof value === "object" &&
     value !== null &&
-    "playerId" in value &&
-    (value.playerId === null || typeof value.playerId === "string")
+    "tokens" in value &&
+    typeof value.tokens === "number" &&
+    "refilledAt" in value &&
+    typeof value.refilledAt === "number" &&
+    "limited" in value &&
+    typeof value.limited === "boolean"
   );
+}
+
+/**
+ * A socket's attachment. One written before the budget existed (only
+ * `{ playerId }`, from a socket that slept through a deploy) reads as a full
+ * budget.
+ */
+function readAttachment(socket: WebSocket, now: number): SocketAttachment {
+  const value: unknown = socket.deserializeAttachment();
+
+  if (typeof value !== "object" || value === null) {
+    return { playerId: null, ...fullBudget(now) };
+  }
+
+  const playerId =
+    "playerId" in value && typeof value.playerId === "string"
+      ? value.playerId
+      : null;
+  const budget: Budget = isBudget(value)
+    ? {
+        tokens: value.tokens,
+        refilledAt: value.refilledAt,
+        limited: value.limited,
+      }
+    : fullBudget(now);
+
+  return { playerId, ...budget };
+}
+
+function writeAttachment(
+  socket: WebSocket,
+  attachment: SocketAttachment,
+): void {
+  socket.serializeAttachment(attachment);
+}
+
+function seatOf(socket: WebSocket): PlayerId | null {
+  return readAttachment(socket, deps.now()).playerId;
+}
+
+/** Bind the socket to a seat (or unbind it with null), keeping its budget. */
+function bindSeat(socket: WebSocket, playerId: PlayerId | null): void {
+  writeAttachment(socket, { ...readAttachment(socket, deps.now()), playerId });
+}
+
+/** The envelope of a client message, or null if it is not one. */
+function parseEnvelope(
+  raw: string | ArrayBuffer,
+): { id: number; event: string; payload: unknown } | null {
+  if (typeof raw !== "string" || raw.length > MAX_MESSAGE_LENGTH) {
+    return null;
+  }
+
+  let json: unknown;
+
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  const message = clientMessageSchema.safeParse(json);
+
+  return message.success ? message.data : null;
 }
 
 function send(socket: WebSocket, message: ServerMessage): void {
@@ -111,7 +181,9 @@ export class RoomObject extends DurableObject<Env> {
 
   private async load(): Promise<RoomState | null> {
     if (this.room === undefined) {
-      this.room = (await this.ctx.storage.get<RoomState>(ROOM_KEY)) ?? null;
+      const stored = await this.ctx.storage.get<RoomState>(ROOM_KEY);
+
+      this.room = stored ? upgradeRoom(stored) : null;
     }
 
     return this.room;
@@ -120,6 +192,13 @@ export class RoomObject extends DurableObject<Env> {
   private async save(state: RoomState): Promise<void> {
     this.room = state;
     await this.ctx.storage.put(ROOM_KEY, state);
+  }
+
+  /** Save, re-arm the alarm from the new state, and tell every seat. */
+  private async commit(state: RoomState, except?: WebSocket): Promise<void> {
+    await this.save(state);
+    await this.scheduleAlarm(state);
+    this.publish(state, except);
   }
 
   /* --------------------------------------------------- called by the Worker */
@@ -136,7 +215,7 @@ export class RoomObject extends DurableObject<Env> {
     const seated = createRoom(code, hostName, deps);
 
     await this.save(seated.state);
-    await this.scheduleExpiryCheck(seated.state);
+    await this.scheduleAlarm(seated.state);
 
     return { code, token: seated.token };
   }
@@ -152,7 +231,7 @@ export class RoomObject extends DurableObject<Env> {
     const server = pair[1];
 
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ playerId: null } satisfies SocketAttachment);
+    writeAttachment(server, { playerId: null, ...fullBudget(deps.now()) });
 
     if (!(await this.load())) {
       // A browser cannot read a failed handshake, so accept and then say why.
@@ -168,29 +247,48 @@ export class RoomObject extends DurableObject<Env> {
     socket: WebSocket,
     raw: string | ArrayBuffer,
   ): Promise<void> {
-    if (typeof raw !== "string" || raw.length > MAX_MESSAGE_LENGTH) {
+    // Every message costs one token before anything else, so oversized,
+    // unreadable and invalid messages are capped too.
+    const now = deps.now();
+    const attachment = readAttachment(socket, now);
+    const spent = spend(attachment, now);
+
+    writeAttachment(socket, { ...attachment, ...spent.budget });
+
+    const message = parseEnvelope(raw);
+
+    if (!spent.allowed) {
+      if (spent.firstRefusal) {
+        const code = (await this.load())?.code ?? "(no room)";
+
+        console.warn(
+          "[room] message budget exceeded",
+          code,
+          attachment.playerId ?? "(no seat)",
+          message?.event ?? "(unreadable)",
+        );
+      }
+
+      // Refused without doing anything else. The socket stays open: closing
+      // it would only hand the phone a fresh budget when it reconnects.
+      if (message) {
+        send(socket, {
+          type: "ack",
+          id: message.id,
+          result: fail("RATE_LIMITED", RATE_LIMITED_MESSAGE),
+        });
+      }
+
       return;
     }
 
-    let json: unknown;
-
-    try {
-      json = JSON.parse(raw);
-    } catch {
+    if (!message) {
       return;
     }
 
-    const message = clientMessageSchema.safeParse(json);
+    const result = await this.handle(socket, message.event, message.payload);
 
-    if (!message.success) {
-      return;
-    }
-
-    const { id, event, payload } = message.data;
-
-    const result = await this.handle(socket, event, payload);
-
-    send(socket, { type: "ack", id, result });
+    send(socket, { type: "ack", id: message.id, result });
   }
 
   override async webSocketClose(socket: WebSocket): Promise<void> {
@@ -201,7 +299,7 @@ export class RoomObject extends DurableObject<Env> {
     await this.socketGone(socket);
   }
 
-  /** Runs when the room may have expired (see nextExpiryCheck). */
+  /** Runs when the room may have expired or a hand-over is due (see nextDue). */
   override async alarm(): Promise<void> {
     const state = await this.load();
 
@@ -209,7 +307,9 @@ export class RoomObject extends DurableObject<Env> {
       return;
     }
 
-    if (nextExpiryCheck(state, deps.now()) === "expired") {
+    const now = deps.now();
+
+    if (nextDue(state, now) === "expired") {
       for (const socket of this.ctx.getWebSockets()) {
         this.closeSocket(socket, "expired");
       }
@@ -220,7 +320,13 @@ export class RoomObject extends DurableObject<Env> {
       return;
     }
 
-    await this.scheduleExpiryCheck(state);
+    const next = withPresence(state, this.connectedIds(), now);
+
+    if (next === state) {
+      await this.scheduleAlarm(state);
+    } else {
+      await this.commit(next);
+    }
   }
 
   /* ----------------------------------------------------------- requests */
@@ -311,8 +417,7 @@ export class RoomObject extends DurableObject<Env> {
     const state = setReady(loaded, playerId, ready);
 
     if (state !== loaded) {
-      await this.save(state);
-      this.publish(state);
+      await this.commit(state);
     }
 
     return null;
@@ -332,8 +437,7 @@ export class RoomObject extends DurableObject<Env> {
     const state = setSettings(loaded, playerId, settings);
 
     if (state !== loaded) {
-      await this.save(state);
-      this.publish(state);
+      await this.commit(state);
     }
 
     return null;
@@ -341,13 +445,12 @@ export class RoomObject extends DurableObject<Env> {
 
   /** Bind the socket to a seat, save, and tell everyone. */
   private async seat(socket: WebSocket, seated: Seated): Promise<SeatGrant> {
-    socket.serializeAttachment({
-      playerId: seated.player.id,
-    } satisfies SocketAttachment);
-    const state = withPresence(seated.state, true, deps.now());
+    bindSeat(socket, seated.player.id);
+    // Presence may also hand the host role over here: a seat connecting
+    // after the deadline passed with nobody else connected takes it at once.
+    const state = withPresence(seated.state, this.connectedIds(), deps.now());
 
-    await this.save(state);
-    this.publish(state);
+    await this.commit(state);
 
     return { code: state.code, token: seated.token };
   }
@@ -393,19 +496,13 @@ export class RoomObject extends DurableObject<Env> {
   ): Promise<void> {
     for (const socket of this.socketsOf(playerId)) {
       // Unbind first, so presence and publish no longer count this socket.
-      socket.serializeAttachment({ playerId: null } satisfies SocketAttachment);
+      bindSeat(socket, null);
       this.closeSocket(socket, reason);
     }
 
-    const state = withPresence(
-      removed,
-      this.connectedIds().size > 0,
-      deps.now(),
-    );
+    const state = withPresence(removed, this.connectedIds(), deps.now());
 
-    await this.save(state);
-    await this.scheduleExpiryCheck(state);
-    this.publish(state);
+    await this.commit(state);
   }
 
   /** The last seat left: the room ends now, like an expired room. */
@@ -413,7 +510,7 @@ export class RoomObject extends DurableObject<Env> {
     for (const socket of this.ctx.getWebSockets()) {
       const playerId = seatOf(socket);
 
-      socket.serializeAttachment({ playerId: null } satisfies SocketAttachment);
+      bindSeat(socket, null);
       // Sockets still on the join form had no seat: to them the room has
       // simply ended, which is what "not_found" tells the browser.
       this.closeSocket(socket, playerId === lastId ? "left" : "not_found");
@@ -501,15 +598,13 @@ export class RoomObject extends DurableObject<Env> {
       return;
     }
 
-    const connected = this.connectedIds(socket);
-    const state = withPresence(loaded, connected.size > 0, deps.now());
+    const state = withPresence(loaded, this.connectedIds(socket), deps.now());
 
-    if (state !== loaded) {
-      await this.save(state);
-      await this.scheduleExpiryCheck(state);
+    if (state === loaded) {
+      this.publish(state, socket);
+    } else {
+      await this.commit(state, socket);
     }
-
-    this.publish(state, socket);
   }
 
   private closeSocket(socket: WebSocket, reason: RoomClosedReason): void {
@@ -522,8 +617,9 @@ export class RoomObject extends DurableObject<Env> {
     }
   }
 
-  private async scheduleExpiryCheck(state: RoomState): Promise<void> {
-    const at = nextExpiryCheck(state, deps.now());
+  /** One alarm per object: set it for whatever is due next. */
+  private async scheduleAlarm(state: RoomState): Promise<void> {
+    const at = nextDue(state, deps.now());
 
     await this.ctx.storage.setAlarm(at === "expired" ? deps.now() : at);
   }

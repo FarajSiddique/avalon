@@ -17,6 +17,11 @@ test.use({
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
+// The e2e project defaults to reduced motion (see playwright.config.ts).
+// These tests watch the scene move (flights, reveals), so they start with
+// full motion.
+test.use({ reducedMotion: "no-preference" });
+
 const STAGE_TIMEOUT = { timeout: 60_000 };
 
 /** Page errors and console errors, to assert none at the end of a test. */

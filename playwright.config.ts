@@ -28,7 +28,16 @@ export default defineConfig({
   expect: { timeout: 5000 * slow },
   use: { baseURL, trace: "retain-on-failure", actionTimeout: 10_000 * slow },
   projects: [
-    { name: "e2e", testMatch: /.*\.e2e\.ts/ },
+    {
+      name: "e2e",
+      testMatch: /.*\.e2e\.ts/,
+      // A headless CI runner draws the 3D scene in software. Animating it in
+      // every page of a multi-player test starves the runner's CPU until
+      // clicks and fills time out. With reduced motion the scene draws one
+      // still frame and stops. The files that test the scene itself
+      // (game.e2e.ts, shell.e2e.ts) opt back in to full motion.
+      use: { reducedMotion: "reduce" },
+    },
     {
       name: "screenshots",
       testMatch: /.*\.shots\.ts/,

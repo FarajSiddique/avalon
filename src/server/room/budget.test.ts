@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MESSAGE_BURST } from "@/shared/constants";
-import { fullBudget, spend } from "./budget";
+import { fullBudget, readBudget, spend } from "./budget";
 
 /** `count` messages at time `at`. */
 const at = (time: number, count = 1): Array<number> =>
@@ -95,5 +95,35 @@ describe("message budget (issue 20)", () => {
 
     // oxlint-disable-next-line unicorn/prefer-structured-clone -- proves the budget survives JSON
     expect(JSON.parse(JSON.stringify(budget))).toEqual(budget);
+  });
+});
+
+describe("a budget read from a socket attachment", () => {
+  const stored = {
+    playerId: "p1",
+    tokens: 3.5,
+    refilledAt: 900,
+    limited: true,
+  };
+
+  it.each<[string, unknown, ReturnType<typeof readBudget>]>([
+    [
+      "keeps a stored budget",
+      stored,
+      { tokens: 3.5, refilledAt: 900, limited: true },
+    ],
+    [
+      "starts full for an attachment from before the budget",
+      { playerId: "p1" },
+      fullBudget(1000),
+    ],
+    [
+      "starts full for a budget with a field of the wrong type",
+      { ...stored, tokens: "3" },
+      fullBudget(1000),
+    ],
+    ["starts full for no attachment at all", null, fullBudget(1000)],
+  ])("%s", (_, attachment, expected) => {
+    expect(readBudget(attachment, 1000)).toEqual(expected);
   });
 });

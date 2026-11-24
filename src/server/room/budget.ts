@@ -55,3 +55,29 @@ export function spend(budget: Budget, now: number): Spent {
     firstRefusal: !limited,
   };
 }
+
+/**
+ * The budget stored in a socket attachment. Anything that is not one (an
+ * attachment written before the budget existed, from a socket that slept
+ * through a deploy) reads as a full budget.
+ */
+export function readBudget(stored: unknown, now: number): Budget {
+  if (
+    typeof stored === "object" &&
+    stored !== null &&
+    "tokens" in stored &&
+    typeof stored.tokens === "number" &&
+    "refilledAt" in stored &&
+    typeof stored.refilledAt === "number" &&
+    "limited" in stored &&
+    typeof stored.limited === "boolean"
+  ) {
+    return {
+      tokens: stored.tokens,
+      refilledAt: stored.refilledAt,
+      limited: stored.limited,
+    };
+  }
+
+  return fullBudget(now);
+}

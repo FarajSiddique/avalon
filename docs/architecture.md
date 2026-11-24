@@ -382,13 +382,13 @@ next one. Three rules follow, and every change to this file must keep them:
 
 What it does:
 
-| Entry point          | When                                       | What happens                                                                                           |
-| -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `create(code, name)` | Called by the `createRoom` server function | Claims the object for a new room and returns the host's seat token. Returns null if the code is taken. |
-| `fetch(request)`     | A browser opens `/api/socket/CODE`         | Accepts the WebSocket. If there is no room, says so and closes with code 4004.                         |
-| `webSocketMessage`   | A browser sends a request                  | Validates the envelope and the payload, runs the handler, answers with an `ack`.                       |
-| `webSocketClose`     | A socket goes away                         | Tells everyone else, and notes the moment if the room is now empty.                                    |
-| `alarm`              | Expiry or a host hand-over may be due      | Deletes an expired room, hands the host role over, or sets the next check.                             |
+| Entry point          | When                                       | What happens                                                                                                                                                        |
+| -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create(code, name)` | Called by the `createRoom` server function | Claims the object for a new room and returns the host's seat token. Returns null if the code is taken.                                                              |
+| `fetch(request)`     | A browser opens `/api/socket/CODE`         | Accepts the WebSocket. If there is no room, says so and closes with code 4004.                                                                                      |
+| `webSocketMessage`   | A browser sends a request                  | Spends one token of the socket's message budget, validates the envelope and the payload, runs the handler, answers with an `ack` (`RATE_LIMITED` when over budget). |
+| `webSocketClose`     | A socket goes away                         | Tells everyone else, and notes the moment if the room is now empty or the host is now away.                                                                         |
+| `alarm`              | Expiry or a host hand-over may be due      | Deletes an expired room, hands the host role over, or sets the next check.                                                                                          |
 
 Pure logic stays out of this file. `state.ts` holds the rules (create, join,
 find a seat, presence, expiry) as functions from old state to new state, and
@@ -655,7 +655,7 @@ Host hand-over (decided in issue 19):
   are now the host" to the new host. Nothing new is sent: a phone that
   reloads after the hand-over has no earlier view, so it shows no notice and
   just sees the new host.
-- One alarm covers expiry and hand-over. `nextExpiryCheck` becomes one
+- One alarm covers expiry and hand-over. `nextDue` (in `state.ts`) is one
   "what is due next" function: the earlier of expiry and the hand-over
   deadline, counting the deadline only while it is still ahead (so a
   deadline with nobody to take over does not keep firing the alarm). A
@@ -1126,7 +1126,7 @@ What is left is the live CPU check, which runs after the merge (below).
 - Room: handlers for `lobby:settings`, `lobby:kick` and
   `room:leave` in `room-object.ts`, with the rules as pure functions in
   `state.ts`. Host-only checks. Host hand-over after 60 seconds away, as an
-  alarm (extend `nextExpiryCheck` into one "what is due next" function; the
+  alarm (`nextDue`, one "what is due next" function; the
   rules are under "Host hand-over" above). A
   kicked player's sockets get `closed` with reason `kicked`.
   `settingsBlockers` in `src/server/game/setup.ts`, added to `startBlockers`

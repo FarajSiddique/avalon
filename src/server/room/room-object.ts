@@ -31,7 +31,7 @@ import {
   settingsSchema,
 } from "@/shared/schemas";
 import type { GameSettings, PlayerId, RoomCode } from "@/shared/views";
-import { fullBudget, spend, type Budget } from "./budget";
+import { fullBudget, readBudget, spend, type Budget } from "./budget";
 import { projectView } from "./project-view";
 import {
   RoomError,
@@ -76,19 +76,6 @@ const deps: RoomDeps = {
   },
 };
 
-function isBudget(value: unknown): value is Budget {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "tokens" in value &&
-    typeof value.tokens === "number" &&
-    "refilledAt" in value &&
-    typeof value.refilledAt === "number" &&
-    "limited" in value &&
-    typeof value.limited === "boolean"
-  );
-}
-
 /**
  * A socket's attachment. One written before the budget existed (only
  * `{ playerId }`, from a socket that slept through a deploy) reads as a full
@@ -105,15 +92,8 @@ function readAttachment(socket: WebSocket, now: number): SocketAttachment {
     "playerId" in value && typeof value.playerId === "string"
       ? value.playerId
       : null;
-  const budget: Budget = isBudget(value)
-    ? {
-        tokens: value.tokens,
-        refilledAt: value.refilledAt,
-        limited: value.limited,
-      }
-    : fullBudget(now);
 
-  return { playerId, ...budget };
+  return { playerId, ...readBudget(value, now) };
 }
 
 function writeAttachment(

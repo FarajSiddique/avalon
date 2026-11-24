@@ -57,5 +57,13 @@ Advice about the settings that never stops Start, for example Lady of the Lake w
 _Avoid_: Warning, soft blocker
 
 **Play again**:
-The host returning a finished game's room to the lobby with the same seats.
+The host returning a finished game's room to the lobby (the Back to lobby button), only at game over. Seats, looks, host and settings stay, away seats included; every ready and the game are cleared.
 _Avoid_: Restart, new game
+
+**Look**:
+A seat's figure at the table: body, skin, cloak, headwear and emblem from fixed lists. Chosen in the lobby, public, fixed once the game starts. Two seats may share a look.
+_Avoid_: Avatar (for the domain term; `Avatar` is only its type), skin, character
+
+**3D gate**:
+The landing page and the room link refusing to create or join a room in a browser that cannot draw the Star Table (no WebGL2). The player is told how to turn 3D on; there is no flat version.
+_Avoid_: Fallback, compatibility mode

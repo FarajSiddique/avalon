@@ -1165,7 +1165,7 @@ What is left is the live CPU check, which runs after the merge (below).
 - Slicing (decided in issue 23): ready, kick and leave, and settings are
   already built (#29, #31, #32). The rest is three pull requests in order.
   **1a, server rules:** the host hand-over alarm and the message budget
-  (built; plan: `docs/plans/03-phase-1-lobby.md`).
+  (built in #41; plan: `docs/plans/03-phase-1-lobby.md`).
   **1b, avatars per seat:** `Avatar` and its schema in `src/shared`, the
   look on `room:join`, `lobby:avatar`, the look in `RoomState`, `LobbyView`
   and `GameView`, and old saved rooms loading with `avatarFor`. **1c, the

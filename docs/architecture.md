@@ -710,6 +710,26 @@ Settings and start blockers (decided in issue 18):
 - The host settings never disable a toggle. The overflow message sits under
   the role list and in the list next to Start; settings hints sit under the
   role list too, for host and guests alike.
+  Back to lobby (decided in issue 22, built in Phase 4):
+
+- `room:reset` is host only (`NOT_HOST` otherwise) and only at game over.
+  In the lobby or during a game it is refused with `NOT_ALLOWED`, so a host
+  cannot abort a game that is going badly. A game that is stuck (someone
+  gone for good) is left with `room:leave` and a new room.
+- It keeps every seat (ids and seat secrets, so nobody joins again), names,
+  looks, seat order, the host and the settings. It clears every ready (see
+  Ready above) and the game. Looks can be changed again, because the room is
+  back in the lobby.
+- Away seats stay as away seats. Reset never removes anyone: a phone that
+  slept comes back to its seat, and a seat that is not coming back is
+  kicked by the host as in any lobby (`disconnected` explains why Start is
+  off).
+- Every phone moves to the lobby at once with the next view. The game over
+  reveal is gone for everyone; there is no "last game" recap. The table
+  talks it over before the host presses Back to lobby.
+
+Seat tokens:
+
 - Tokens are opaque, not JWTs. The room has to look the seat up anyway, so a
   signed token adds a secret to manage and nothing else. A token dies with
   its room.
@@ -788,7 +808,7 @@ Defined in `src/shared/protocol.ts`, validated by `src/shared/schemas.ts`.
 | `lobby:kick`     | `{ playerId }`                     | host             | Implemented                   |
 | `lobby:start`    | none                               | host             | Next run                      |
 | `game:action`    | `GameAction` (see below)           | depends          | Next run                      |
-| `room:reset`     | none                               | host             | Next run                      |
+| `room:reset`     | none                               | host, game over  | Phase 4                       |
 
 `GameAction` is one of: `confirm_role`, `draft_team { playerIds }`,
 `propose_team { playerIds }`, `vote { vote }`, `play_card { card }`,
@@ -849,6 +869,55 @@ newer client against an older room fails politely.
   builds leave the registry out and devtools off.
 - No shadcn/ui (the chosen direction's components are bespoke; native
   elements such as `<dialog>` cover the rest).
+
+3D gate (decided in issue 25):
+
+- Every screen draws on the 3D Star Table and there is no flat version, so
+  a browser that cannot draw it cannot create or join a room. The player is
+  told how to turn 3D on (another browser, or hardware acceleration). There
+  is no "continue anyway".
+- "No 3D" means the same check the engine uses: no `webgl2` context, or
+  `WebGLRenderer` throws. Software renderers (SwiftShader, llvmpipe) pass:
+  they draw the table, if slowly. A browser where WebGL runs but nothing
+  shows cannot be detected; the owner accepted that limit.
+- The gate sits in two places, with one shared check and one notice
+  component (`NoWebGLNotice`, moved out of the prototype): the landing page
+  shows the notice instead of the Create and Join form, and `/room/$code`
+  shows it instead of joining or resuming, so it never sends `room:join` or
+  `room:resume`. The landing form still renders on the server with its
+  buttons disabled until hydration, and the check runs once hydrated.
+- 3D lost after joining (the context is lost and does not come back): the
+  socket stays open and the seat is untouched; the screen shows the notice
+  with a Reload button. A reload runs the gate again. With 3D the player
+  resumes their seat; without it they see the notice and their seat is away,
+  like any closed tab (away and host hand-over rules apply).
+- Client only. The server cannot check a browser's 3D, so there is no
+  protocol change and no new `ErrorCode`.
+- e2e uses `withoutWebGL()` (`e2e/no-webgl.ts`): the landing shows the
+  notice and no form; `/room/CODE` from a link shows it and the room gains
+  no seat; a seated player reopening without WebGL gets it. A lost-context
+  e2e (`WEBGL_lose_context`) is added only if it is cheap.
+
+Avatar picker (decided in issue 21):
+
+- The look is chosen in the lobby only. The landing stays name and code.
+- `room:join` carries the last pick from `localStorage` when there is one.
+  A first-time player sends none and the server assigns `avatarFor(playerId)`,
+  so a table of newcomers is varied. `localStorage` is written only when the
+  player changes their look in the picker, so a player who never picks gets
+  a new varied look in each room. There is no first-time nudge beyond the
+  "Your look" button by your seat.
+- Opening the picker flies the stage camera to a close shot of your own
+  figure (a new portrait pose); closing flies back. On a phone the sheet
+  takes at most about half the screen so the figure stays in view; on a
+  wide screen it is a side panel with the same close shot.
+- Edits are a local draft: your own figure shows the draft at once, and
+  one `lobby:avatar` is sent when the picker closes (Done, Escape or
+  tapping away all save; an unchanged look sends nothing). Others only see
+  the saved look, with no "editing" sign. One message per edit keeps the
+  picker far from the message budget.
+- If the game starts while the picker is open, it closes and an unsent
+  draft is dropped (`lobby:avatar` is refused once the game starts).
 
 ### Effects
 
@@ -1043,7 +1112,8 @@ What is left is the live CPU check, which runs after the merge (below).
 - Done when (all met but the last): `/` matches the prototype landing on
   the 3D hero and `/room/$code` looks like Starlit Vale, at 390px and
   1440px (`e2e/app.shots.ts`); the landing still creates and joins rooms
-  without WebGL; the existing e2e tests still pass; and on the live Worker
+  without WebGL (replaced in Phase 1 by the 3D gate); the existing e2e
+  tests still pass; and on the live Worker
   the 90th percentile CPU time for both is under 10 ms (measured by the
   `deploy` job's `pnpm test:cpu` after the merge).
 
@@ -1068,8 +1138,8 @@ What is left is the live CPU check, which runs after the merge (below).
   and Join fly the camera into it (`depart`, then the lobby's slot takes the
   pending flight), as the prototype does. `StageProvider` in the `_app`
   layout gets the real "next step" rule (landing to `/room/$code`).
-  Without WebGL the lobby shows the notice
-  (`-components/no-webgl-notice.tsx`, moved with it).
+  The 3D gate guards the landing and `/room/$code` (see "3D gate" under
+  Client); `-components/no-webgl-notice.tsx` moves to `src/components`.
 - Avatars (owner's decision, 22 November 2026): each player picks a look in
   the lobby and the room stores it per seat. A look is a body (male or
   female), a skin colour (six everyday tones and six fantastical ones), a
@@ -1079,14 +1149,26 @@ What is left is the live CPU check, which runs after the merge (below).
   last pick from `localStorage`); a missing or invalid one becomes
   `avatarFor(playerId)` on the server. A `lobby:avatar` request changes it,
   accepted only in the lobby, so looks are fixed once the game starts.
-  Duplicate looks are allowed: names on the tags tell players apart. The look
+  Duplicate looks are allowed: names on the tags tell players apart. The
+  picker flow is under "Avatar picker" in Client. The look
   is public and lives in `RoomState` per seat and in `LobbyView` and
   `GameView` per player. Adding it changes the saved room shape, so a room
   saved without it loads with `avatarFor(playerId)`.
 - Tests: unit tests for every rule and refusal; e2e with five contexts that
   ready up until Start enables; e2e of the flight from `/` into the lobby
-  and of the lobby without WebGL; the restart check extended to a lobby with
-  ready states.
+  and of the 3D gate; the restart check extended to a lobby with ready
+  states, looks and a pending host hand-over.
+- Slicing (decided in issue 23): ready, kick and leave, and settings are
+  already built (#29, #31, #32). The rest is three pull requests in order.
+  **1a, server rules:** the host hand-over alarm and the message budget.
+  **1b, avatars per seat:** `Avatar` and its schema in `src/shared`, the
+  look on `room:join`, `lobby:avatar`, the look in `RoomState`, `LobbyView`
+  and `GameView`, and old saved rooms loading with `avatarFor`. **1c, the
+  lobby screen:** the 3D gate, the lobby components moved onto the Star
+  Table, the flight from the landing, the picker with the portrait camera,
+  the host-change notice, and the five-context e2e. 1a and 1b do not touch
+  each other; 1c needs 1b's view fields. `room:reset` is only specified
+  here and built in Phase 4.
 
 ### Phase 2: the engine
 
@@ -1124,7 +1206,8 @@ What is left is the live CPU check, which runs after the merge (below).
 ### Phase 4: the end of the game
 
 - Engine: `assassination`, `assassinate`, `game_over` with all four win
-  reasons. `room:reset` returns the room to the lobby with the same seats.
+  reasons. `room:reset` returns the room to the lobby with the same seats
+  (rules under "Back to lobby" in Player identity).
 - Screens: assassination (Assassin picks, everyone else waits), game over with
   every role revealed, play again.
 - Tests: engine cases for each ending; e2e reaching both a Good and an Evil
@@ -1225,5 +1308,14 @@ Answered on 22 November 2026:
 | ----------------------- | ------------------------------------------------------------------------------------------ |
 | The real landing's hero | The 3D Star Table, in Phase 0. The room screen stays flat until Phase 1.                   |
 | Avatars in real rooms   | Each player picks a look in the lobby; the room stores it per seat. Details under Phase 1. |
+
+Answered on 24 November 2026:
+
+| Question                 | Answer                                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| No 3D (issue 25)         | Hard gate on the landing and the room link, WebGL2 check, no flat version. See Client. |
+| Avatar picker (issue 21) | Lobby only, camera close on your seat, one `lobby:avatar` when the picker closes.      |
+| Back to lobby (issue 22) | Game over only; keeps seats, looks, host and settings; clears ready and the game.      |
+| Phase 1 slicing (23)     | Three pull requests: 1a server rules, 1b avatars, 1c the lobby screen.                 |
 
 Nothing is open.

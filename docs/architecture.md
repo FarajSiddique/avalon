@@ -375,8 +375,8 @@ next one. Three rules follow, and every change to this file must keep them:
    (`serializeAttachment({ playerId })`). Who is connected is read from the
    live sockets (`ctx.getWebSockets()`), never stored.
 3. **Anything that must happen later is an alarm**, not a `setTimeout`. One
-   object has one alarm, so `nextExpiryCheck` (and later the host hand-over)
-   work out the earliest moment something is due.
+   object has one alarm, so one function works out the earliest moment
+   something is due: room expiry or the host hand-over.
 
 What it does:
 
@@ -386,7 +386,7 @@ What it does:
 | `fetch(request)`     | A browser opens `/api/socket/CODE`         | Accepts the WebSocket. If there is no room, says so and closes with code 4004.                         |
 | `webSocketMessage`   | A browser sends a request                  | Validates the envelope and the payload, runs the handler, answers with an `ack`.                       |
 | `webSocketClose`     | A socket goes away                         | Tells everyone else, and notes the moment if the room is now empty.                                    |
-| `alarm`              | The room may have expired                  | Deletes an expired room, or sets the next check.                                                       |
+| `alarm`              | Expiry or a host hand-over may be due      | Deletes an expired room, hands the host role over, or sets the next check.                             |
 
 Pure logic stays out of this file. `state.ts` holds the rules (create, join,
 find a seat, presence, expiry) as functions from old state to new state, and
@@ -576,9 +576,8 @@ Details:
   game simply waits for them. Others see them as "away".
 - The host can remove a player in the lobby (`lobby:kick`). Not during a game.
   See "Kick, leave and rejoin" below.
-- If the host is away for 60 seconds, the host role passes to the next
-  connected player in seat order. This is an alarm in the room object, not
-  part of the engine.
+- If the host is away for 60 seconds, the host role passes to another
+  connected seat. See "Host hand-over" below.
 
 Ready (decided in issue 16):
 
@@ -621,11 +620,71 @@ Kick, leave and rejoin (decided in issue 17):
   `closed` with reason `left`, the browser deletes its stored token, and the
   player lands on the home page.
 - A host who leaves hands over at once, by the same pick as the 60-second
-  away hand-over (issue 19 settles its edge cases). The host can always
-  leave; there is no "pass host first" step.
+  away hand-over (see "Host hand-over" below). If no other seat is
+  connected, the role goes to the next seat even though it is away, so a
+  room always has a host while it has seats. The host can always leave;
+  there is no "pass host first" step.
 - If the last seat leaves, the room ends at once: its storage is deleted and
   anyone opening the link gets `not_found`. A room never sits with no seats.
 - Kicks and leaves never change anyone else's ready (see Ready above).
+
+Host hand-over (decided in issue 19):
+
+- The clock starts when the host's last open socket closes: the same moment
+  the other phones show the host as away. Any socket of the host's seat
+  opening again cancels it. `RoomState.hostAwaySince` (a time, or null)
+  holds it, so it survives a restart.
+- After `HOST_AWAY_MS` (60 seconds) the role passes by `pickNextHost`: the
+  first connected seat after the old host in seat order, wrapping round.
+  This is the same pick a leaving host uses.
+- The away hand-over only ever passes the role to a connected seat. If the
+  60 seconds pass with no other seat connected, the away host keeps the
+  role. The first time another seat connects after that, it becomes host at
+  once by the same pick.
+- The role does not come back. The old host returns as an ordinary seat that
+  is not ready (see Ready above). There is no "make host" action.
+- It runs the same in the lobby, during a game and at game over, so someone
+  connected can always press Back to lobby. It lives in the room object and
+  `state.ts`; the engine never sees it.
+- There is no countdown on screen. When `hostId` changes between two views,
+  the client shows a short notice: "Sam is now the host" to everyone, "You
+  are now the host" to the new host. Nothing new is sent: a phone that
+  reloads after the hand-over has no earlier view, so it shows no notice and
+  just sees the new host.
+- One alarm covers expiry and hand-over. `nextExpiryCheck` becomes one
+  "what is due next" function: the earlier of expiry and the hand-over
+  deadline, counting the deadline only while it is still ahead (so a
+  deadline with nobody to take over does not keep firing the alarm). A
+  server restart drops every socket, so the host's clock starts and is
+  cancelled when the host reconnects a few seconds later.
+
+Message budget (decided in issue 20):
+
+- Each socket has a token bucket: up to `MESSAGE_BURST` (20) messages at
+  once, refilling `MESSAGE_REFILL_PER_S` (5) a second, so about 300 a minute.
+  Fast tapping (role toggles, later `draft_team`) never reaches it. Pings
+  are answered without waking the room, so they cost nothing.
+- One bucket for every event. The cap is on the room's work, which is the
+  same whatever the event.
+- Every message that reaches `webSocketMessage` costs one token before any
+  parsing, so oversized, unparsable and invalid messages are capped too.
+  They are still dropped without an ack.
+- A valid request with no token left gets its ack with `RATE_LIMITED` and
+  does nothing else. The socket stays open and the bucket refills. Closing
+  it would only hand the phone a fresh bucket when it reconnects.
+- The first refusal in a run is logged once with `console.warn` (room code,
+  seat id, event). Nothing more is logged until the socket is back under
+  budget.
+- The bucket lives in the socket's attachment
+  (`{ playerId, tokens, refilledAt, limited }`), written after each message.
+  The arithmetic is a pure function beside `state.ts`, tested with an
+  injected clock.
+- The client treats `RATE_LIMITED` like any other refusal: its message
+  shows the way a refused kick does, and the next view puts the screen
+  right. The client does not throttle itself.
+- A new socket starts with a full bucket. Opening many sockets to dodge the
+  cap is left to the Phase 7 hardening (with the `Origin` check and limits
+  on room creation per address).
 
 Settings and start blockers (decided in issue 18):
 
@@ -993,11 +1052,12 @@ What is left is the live CPU check, which runs after the merge (below).
 - Room: handlers for `lobby:settings`, `lobby:kick` and
   `room:leave` in `room-object.ts`, with the rules as pure functions in
   `state.ts`. Host-only checks. Host hand-over after 60 seconds away, as an
-  alarm (extend `nextExpiryCheck` into one "what is due next" function). A
+  alarm (extend `nextExpiryCheck` into one "what is due next" function; the
+  rules are under "Host hand-over" above). A
   kicked player's sockets get `closed` with reason `kicked`.
   `settingsBlockers` in `src/server/game/setup.ts`, added to `startBlockers`
   in `projectView`. A per-socket message budget kept in the socket's
-  attachment.
+  attachment (see "Message budget" above).
 - Client: the real lobby screen on the 3D Star Table, driven by
   `LobbyView`. Move the prototype's lobby components from
   `src/routes/design/starlit/-components/lobby` to `src/components/lobby`

@@ -372,7 +372,9 @@ next one. Three rules follow, and every change to this file must keep them:
 1. **The room is saved after every change.** `RoomState` is plain JSON under
    one storage key. Fields on the class are only a cache of storage.
 2. **Each socket remembers its own seat** in its attachment
-   (`serializeAttachment({ playerId })`). Who is connected is read from the
+   (`{ playerId, tokens, refilledAt, limited }`: the seat and its message
+   budget, read and written through one helper so binding a seat never
+   resets the budget). Who is connected is read from the
    live sockets (`ctx.getWebSockets()`), never stored.
 3. **Anything that must happen later is an alarm**, not a `setTimeout`. One
    object has one alarm, so one function works out the earliest moment
@@ -525,6 +527,7 @@ interface RoomState {
   settings: GameSettings;
   createdAt: number;
   emptySince: number | null; // when the last seated socket left
+  hostAwaySince: number | null; // when the host's last socket closed
   game: GameState | null; // null means "in the lobby" (typed as null until the engine lands)
 }
 
@@ -547,7 +550,8 @@ interface PlayerRecord {
 - **Expiry.** A room with nobody connected for 10 minutes is deleted, and any
   room is deleted after 12 hours. An alarm does this.
 - **Storage.** One key per room in the room object's own storage. There is no
-  other database.
+  other database. `upgradeRoom` (in `state.ts`) runs on every load and fills
+  fields added after a room was saved, so older rooms load as they are.
 
 ## Player identity and reconnection
 
@@ -1020,16 +1024,16 @@ step in `load`, or a deploy at a time when no rooms exist (rooms live at most
 
 ## Testing
 
-| Layer               | Tool                                              | What it covers                                                                                                                                                                                                                                                                                   |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Shared tables       | Vitest (`src/shared/*.test.ts`)                   | Team balance, quest sizes, the two-fail rule, name and code cleanup.                                                                                                                                                                                                                             |
-| Room rules          | Vitest (`src/server/room/*.test.ts`)              | Create, join, seat tokens, presence, expiry, and that state is plain JSON. Clock and randomness are passed in.                                                                                                                                                                                   |
-| Engine (next run)   | Vitest (`src/server/game/*.test.ts`)              | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                                                                                                         |
-| View projection     | Vitest                                            | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own.                                                                                      |
-| Room object and app | Playwright (`e2e/*.e2e.ts`)                       | Separate browser contexts as separate phones, against the built Worker in Cloudflare's local runtime. Now: create, join, presence, drop, return, and that each browser is only ever sent its own view. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport. |
-| Restart             | `pnpm test:restart` (`scripts/restart-check.mjs`) | A room and its seats survive the server process being stopped and started, with no page reload.                                                                                                                                                                                                  |
-| HTTP                | Bruno (`bruno/`)                                  | The health endpoint.                                                                                                                                                                                                                                                                             |
-| Design              | Playwright (`e2e/*.shots.ts`)                     | Screenshots of every prototype screen at 390px and 1440px, with no console errors and no sideways scrolling.                                                                                                                                                                                     |
+| Layer               | Tool                                              | What it covers                                                                                                                                                                                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared tables       | Vitest (`src/shared/*.test.ts`)                   | Team balance, quest sizes, the two-fail rule, name and code cleanup.                                                                                                                                                                                                                                                                                          |
+| Room rules          | Vitest (`src/server/room/*.test.ts`)              | Create, join, seat tokens, presence, expiry, host hand-over, what is due next, the message budget, saved-room upgrades, and that state is plain JSON. Clock and randomness are passed in.                                                                                                                                                                     |
+| Engine (next run)   | Vitest (`src/server/game/*.test.ts`)              | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                                                                                                                                                                      |
+| View projection     | Vitest                                            | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own.                                                                                                                                                   |
+| Room object and app | Playwright (`e2e/*.e2e.ts`)                       | Separate browser contexts as separate phones, against the built Worker in Cloudflare's local runtime. Now: create, join, presence, drop, return, kick and leave, a message flood refused with `RATE_LIMITED`, and that each browser is only ever sent its own view. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport. |
+| Restart             | `pnpm test:restart` (`scripts/restart-check.mjs`) | A room and its seats survive the server process being stopped and started, with no page reload. A host hand-over pending at the restart still lands 60 seconds after the host left.                                                                                                                                                                           |
+| HTTP                | Bruno (`bruno/`)                                  | The health endpoint.                                                                                                                                                                                                                                                                                                                                          |
+| Design              | Playwright (`e2e/*.shots.ts`)                     | Screenshots of every prototype screen at 390px and 1440px, with no console errors and no sideways scrolling.                                                                                                                                                                                                                                                  |
 
 The room object is tested through real browsers and a real local Worker, not
 with a mocked runtime. `pnpm lint`, `pnpm typecheck`, `pnpm test`,
@@ -1160,7 +1164,8 @@ What is left is the live CPU check, which runs after the merge (below).
   states, looks and a pending host hand-over.
 - Slicing (decided in issue 23): ready, kick and leave, and settings are
   already built (#29, #31, #32). The rest is three pull requests in order.
-  **1a, server rules:** the host hand-over alarm and the message budget.
+  **1a, server rules:** the host hand-over alarm and the message budget
+  (built; plan: `docs/plans/03-phase-1-lobby.md`).
   **1b, avatars per seat:** `Avatar` and its schema in `src/shared`, the
   look on `room:join`, `lobby:avatar`, the look in `RoomState`, `LobbyView`
   and `GameView`, and old saved rooms loading with `avatarFor`. **1c, the

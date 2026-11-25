@@ -17,6 +17,7 @@
 
 import { spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
+import { HOST_AWAY_MS } from "../src/shared/constants.ts";
 
 const port = Number.parseInt(process.env.PORT ?? "3110", 10);
 const base = `http://localhost:${port}`;
@@ -57,8 +58,6 @@ const sleep = (ms) =>
     setTimeout(resolve, ms);
   });
 
-/** HOST_AWAY_MS in src/shared/constants.ts. */
-const HOST_AWAY_MS = 60_000;
 /** How long the server stays down while the hand-over is pending. */
 const HELD_DOWN_MS = 20_000;
 
@@ -126,7 +125,8 @@ try {
   console.log("The host closed their page. The guest sees them as away.");
 
   await stopServer(server);
-  await sleep(HELD_DOWN_MS - (Date.now() - hostLeftAt));
+  // Stopping can take a while; never sleep a negative time.
+  await sleep(Math.max(0, HELD_DOWN_MS - (Date.now() - hostLeftAt)));
   server = await startServer();
   const restartedAt = Date.now();
 

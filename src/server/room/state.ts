@@ -251,12 +251,15 @@ export function findSeat(state: RoomState, token: string): PlayerRecord {
  */
 export function upgradeRoom(stored: RoomState): RoomState {
   const saved: Partial<RoomState> = stored;
+  let room = stored;
 
-  if (saved.hostAwaySince !== undefined) {
-    return stored;
+  // One check per added field, each on its own, so a room that already has
+  // an earlier field still gets the later ones.
+  if (saved.hostAwaySince === undefined) {
+    room = { ...room, hostAwaySince: null };
   }
 
-  return { ...stored, hostAwaySince: null };
+  return room;
 }
 
 /**

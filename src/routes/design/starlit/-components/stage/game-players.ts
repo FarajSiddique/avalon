@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { avatarFor } from "@/client/avatar";
+import { avatarFor } from "@/shared/avatar";
 import { PLAYER_IDS } from "@/design/mock";
 import { useAvatar } from "@/client/use-avatar";
 import { useYourName } from "@/design/your-name";

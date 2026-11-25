@@ -1,22 +1,24 @@
 import type { ReactNode } from "react";
 import {
-  BODIES,
   BODY_LABELS,
-  CLOAKS,
   CLOAK_LABELS,
   CLOAK_TOKENS,
-  EMBLEMS,
   EMBLEM_LABELS,
-  HEADWEAR,
   HEADWEAR_LABELS,
-  FIRST_FANCY_SKIN,
-  SKINS,
   SKIN_LABELS,
   SKIN_TOKENS,
+} from "@/client/avatar";
+import {
+  BODIES,
+  CLOAKS,
+  EMBLEMS,
+  FIRST_FANCY_SKIN,
+  HEADWEAR,
+  SKINS,
   type Avatar,
   type Emblem,
   type Skin,
-} from "@/client/avatar";
+} from "@/shared/avatar";
 import { setAvatar, useAvatar } from "@/client/use-avatar";
 import { sparklePath } from "@/components/art/seeded";
 import { IconCheck, IconMoon, IconSun } from "@/components/ui/icons";

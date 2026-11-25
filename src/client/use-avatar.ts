@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { createDevStore } from "@/client/dev-store";
-import { DEFAULT_AVATAR, sanitizeAvatar, type Avatar } from "./avatar";
+import { DEFAULT_AVATAR, sanitizeAvatar, type Avatar } from "@/shared/avatar";
 
 /** Your look, saved in this browser (the prototype has no account). */
 const KEY = "avalon:starlit-avatar:v1";

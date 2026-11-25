@@ -17,13 +17,8 @@ import {
   TorusGeometry,
   Vector2,
 } from "three";
-import {
-  CLOAK_TOKENS,
-  SKIN_TOKENS,
-  type Avatar,
-  type Body,
-  type Emblem,
-} from "@/client/avatar";
+import { CLOAK_TOKENS, SKIN_TOKENS } from "@/client/avatar";
+import type { Avatar, Body, Emblem } from "@/shared/avatar";
 import { sparklePath } from "@/components/art/seeded";
 import { context2d, fillPath, isColorMaterial, isMesh } from "./guards";
 import { Bin } from "./kit";

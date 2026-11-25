@@ -372,7 +372,9 @@ next one. Three rules follow, and every change to this file must keep them:
 1. **The room is saved after every change.** `RoomState` is plain JSON under
    one storage key. Fields on the class are only a cache of storage.
 2. **Each socket remembers its own seat** in its attachment
-   (`serializeAttachment({ playerId })`). Who is connected is read from the
+   (`{ playerId, tokens, refilledAt, limited }`: the seat and its message
+   budget, read and written through one helper so binding a seat never
+   resets the budget). Who is connected is read from the
    live sockets (`ctx.getWebSockets()`), never stored.
 3. **Anything that must happen later is an alarm**, not a `setTimeout`. One
    object has one alarm, so one function works out the earliest moment
@@ -380,13 +382,13 @@ next one. Three rules follow, and every change to this file must keep them:
 
 What it does:
 
-| Entry point          | When                                       | What happens                                                                                           |
-| -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `create(code, name)` | Called by the `createRoom` server function | Claims the object for a new room and returns the host's seat token. Returns null if the code is taken. |
-| `fetch(request)`     | A browser opens `/api/socket/CODE`         | Accepts the WebSocket. If there is no room, says so and closes with code 4004.                         |
-| `webSocketMessage`   | A browser sends a request                  | Validates the envelope and the payload, runs the handler, answers with an `ack`.                       |
-| `webSocketClose`     | A socket goes away                         | Tells everyone else, and notes the moment if the room is now empty.                                    |
-| `alarm`              | Expiry or a host hand-over may be due      | Deletes an expired room, hands the host role over, or sets the next check.                             |
+| Entry point          | When                                       | What happens                                                                                                                                                        |
+| -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create(code, name)` | Called by the `createRoom` server function | Claims the object for a new room and returns the host's seat token. Returns null if the code is taken.                                                              |
+| `fetch(request)`     | A browser opens `/api/socket/CODE`         | Accepts the WebSocket. If there is no room, says so and closes with code 4004.                                                                                      |
+| `webSocketMessage`   | A browser sends a request                  | Spends one token of the socket's message budget, validates the envelope and the payload, runs the handler, answers with an `ack` (`RATE_LIMITED` when over budget). |
+| `webSocketClose`     | A socket goes away                         | Tells everyone else, and notes the moment if the room is now empty or the host is now away.                                                                         |
+| `alarm`              | Expiry or a host hand-over may be due      | Deletes an expired room, hands the host role over, or sets the next check.                                                                                          |
 
 Pure logic stays out of this file. `state.ts` holds the rules (create, join,
 find a seat, presence, expiry) as functions from old state to new state, and
@@ -525,6 +527,7 @@ interface RoomState {
   settings: GameSettings;
   createdAt: number;
   emptySince: number | null; // when the last seated socket left
+  hostAwaySince: number | null; // when the host's last socket closed
   game: GameState | null; // null means "in the lobby" (typed as null until the engine lands)
 }
 
@@ -547,7 +550,8 @@ interface PlayerRecord {
 - **Expiry.** A room with nobody connected for 10 minutes is deleted, and any
   room is deleted after 12 hours. An alarm does this.
 - **Storage.** One key per room in the room object's own storage. There is no
-  other database.
+  other database. `upgradeRoom` (in `state.ts`) runs on every load and fills
+  fields added after a room was saved, so older rooms load as they are.
 
 ## Player identity and reconnection
 
@@ -651,7 +655,7 @@ Host hand-over (decided in issue 19):
   are now the host" to the new host. Nothing new is sent: a phone that
   reloads after the hand-over has no earlier view, so it shows no notice and
   just sees the new host.
-- One alarm covers expiry and hand-over. `nextExpiryCheck` becomes one
+- One alarm covers expiry and hand-over. `nextDue` (in `state.ts`) is one
   "what is due next" function: the earlier of expiry and the hand-over
   deadline, counting the deadline only while it is still ahead (so a
   deadline with nobody to take over does not keep firing the alarm). A
@@ -1020,16 +1024,16 @@ step in `load`, or a deploy at a time when no rooms exist (rooms live at most
 
 ## Testing
 
-| Layer               | Tool                                              | What it covers                                                                                                                                                                                                                                                                                   |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Shared tables       | Vitest (`src/shared/*.test.ts`)                   | Team balance, quest sizes, the two-fail rule, name and code cleanup.                                                                                                                                                                                                                             |
-| Room rules          | Vitest (`src/server/room/*.test.ts`)              | Create, join, seat tokens, presence, expiry, and that state is plain JSON. Clock and randomness are passed in.                                                                                                                                                                                   |
-| Engine (next run)   | Vitest (`src/server/game/*.test.ts`)              | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                                                                                                         |
-| View projection     | Vitest                                            | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own.                                                                                      |
-| Room object and app | Playwright (`e2e/*.e2e.ts`)                       | Separate browser contexts as separate phones, against the built Worker in Cloudflare's local runtime. Now: create, join, presence, drop, return, and that each browser is only ever sent its own view. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport. |
-| Restart             | `pnpm test:restart` (`scripts/restart-check.mjs`) | A room and its seats survive the server process being stopped and started, with no page reload.                                                                                                                                                                                                  |
-| HTTP                | Bruno (`bruno/`)                                  | The health endpoint.                                                                                                                                                                                                                                                                             |
-| Design              | Playwright (`e2e/*.shots.ts`)                     | Screenshots of every prototype screen at 390px and 1440px, with no console errors and no sideways scrolling.                                                                                                                                                                                     |
+| Layer               | Tool                                              | What it covers                                                                                                                                                                                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared tables       | Vitest (`src/shared/*.test.ts`)                   | Team balance, quest sizes, the two-fail rule, name and code cleanup.                                                                                                                                                                                                                                                                                          |
+| Room rules          | Vitest (`src/server/room/*.test.ts`)              | Create, join, seat tokens, presence, expiry, host hand-over, what is due next, the message budget, saved-room upgrades, and that state is plain JSON. Clock and randomness are passed in.                                                                                                                                                                     |
+| Engine (next run)   | Vitest (`src/server/game/*.test.ts`)              | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                                                                                                                                                                      |
+| View projection     | Vitest                                            | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own.                                                                                                                                                   |
+| Room object and app | Playwright (`e2e/*.e2e.ts`)                       | Separate browser contexts as separate phones, against the built Worker in Cloudflare's local runtime. Now: create, join, presence, drop, return, kick and leave, a message flood refused with `RATE_LIMITED`, and that each browser is only ever sent its own view. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport. |
+| Restart             | `pnpm test:restart` (`scripts/restart-check.mjs`) | A room and its seats survive the server process being stopped and started, with no page reload. A host hand-over pending at the restart still lands 60 seconds after the host left.                                                                                                                                                                           |
+| HTTP                | Bruno (`bruno/`)                                  | The health endpoint.                                                                                                                                                                                                                                                                                                                                          |
+| Design              | Playwright (`e2e/*.shots.ts`)                     | Screenshots of every prototype screen at 390px and 1440px, with no console errors and no sideways scrolling.                                                                                                                                                                                                                                                  |
 
 The room object is tested through real browsers and a real local Worker, not
 with a mocked runtime. `pnpm lint`, `pnpm typecheck`, `pnpm test`,
@@ -1122,7 +1126,7 @@ What is left is the live CPU check, which runs after the merge (below).
 - Room: handlers for `lobby:settings`, `lobby:kick` and
   `room:leave` in `room-object.ts`, with the rules as pure functions in
   `state.ts`. Host-only checks. Host hand-over after 60 seconds away, as an
-  alarm (extend `nextExpiryCheck` into one "what is due next" function; the
+  alarm (`nextDue`, one "what is due next" function; the
   rules are under "Host hand-over" above). A
   kicked player's sockets get `closed` with reason `kicked`.
   `settingsBlockers` in `src/server/game/setup.ts`, added to `startBlockers`
@@ -1160,7 +1164,8 @@ What is left is the live CPU check, which runs after the merge (below).
   states, looks and a pending host hand-over.
 - Slicing (decided in issue 23): ready, kick and leave, and settings are
   already built (#29, #31, #32). The rest is three pull requests in order.
-  **1a, server rules:** the host hand-over alarm and the message budget.
+  **1a, server rules:** the host hand-over alarm and the message budget
+  (built in #41; plan: `docs/plans/03-phase-1-lobby.md`).
   **1b, avatars per seat:** `Avatar` and its schema in `src/shared`, the
   look on `room:join`, `lobby:avatar`, the look in `RoomState`, `LobbyView`
   and `GameView`, and old saved rooms loading with `avatarFor`. **1c, the

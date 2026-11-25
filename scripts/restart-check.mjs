@@ -67,6 +67,15 @@ function check(condition, message) {
   }
 }
 
+// The server must come back well before the hand-over is due, or the check
+// cannot tell a clock kept in storage from one restarted at boot (the last
+// assertion needs HOST_AWAY_MS - HELD_DOWN_MS to be more than 5 s, with room
+// for the restart itself).
+check(
+  HOST_AWAY_MS - HELD_DOWN_MS >= 30_000,
+  `HELD_DOWN_MS (${HELD_DOWN_MS}) is too close to HOST_AWAY_MS (${HOST_AWAY_MS})`,
+);
+
 const names = (page) => page.getByTestId("player").allInnerTexts();
 const online = (page, value) =>
   page

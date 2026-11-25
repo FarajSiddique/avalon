@@ -77,3 +77,11 @@ export function normalizeRoomCode(raw: string): string {
 export const EMPTY_ROOM_TTL_MS = 10 * 60_000;
 /** Hard cap on room lifetime. */
 export const ROOM_MAX_AGE_MS = 12 * 60 * 60_000;
+
+/** How long the host may be away before the host role passes on. */
+export const HOST_AWAY_MS = 60_000;
+
+/** Messages one socket may send at once (its message budget's burst). */
+export const MESSAGE_BURST = 20;
+/** Messages a second a socket's message budget refills by. */
+export const MESSAGE_REFILL_PER_S = 5;

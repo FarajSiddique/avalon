@@ -31,12 +31,17 @@ export default defineConfig({
     {
       name: "e2e",
       testMatch: /.*\.e2e\.ts/,
-      // A headless CI runner draws the 3D scene in software. Animating it in
-      // every page of a multi-player test starves the runner's CPU until
-      // clicks and fills time out. With reduced motion the scene draws one
-      // still frame and stops. The files that test the scene itself
-      // (game.e2e.ts, shell.e2e.ts) opt back in to full motion.
-      use: { reducedMotion: "reduce" },
+      // A headless CI runner draws the 3D scene in software. Building it
+      // (one still frame, even with reduced motion) froze a page's main
+      // thread for 7 to 8 seconds on a 4-vCPU runner, so clicks right after
+      // the landing loaded timed out. Room tests do not test the scene, so
+      // they run without WebGL: the app's own no-WebGL path, which skips
+      // the scene. The files that test it (game.e2e.ts, shell.e2e.ts) set
+      // their own launch options, with software WebGL and full motion.
+      use: {
+        reducedMotion: "reduce",
+        launchOptions: { args: ["--disable-webgl"] },
+      },
     },
     {
       name: "screenshots",

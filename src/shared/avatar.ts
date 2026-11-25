@@ -39,7 +39,7 @@ export const SKINS = [
   "starborn",
 ] as const;
 /** Where the fantastical tones start in `SKINS`, for grouping in the picker. */
-export const FIRST_FANCY_SKIN = 6;
+export const FIRST_FANCY_SKIN = SKINS.indexOf("moss");
 export const EMBLEMS = ["star", "moon", "sun", "leaf", "key"] as const;
 
 export type Cloak = (typeof CLOAKS)[number];

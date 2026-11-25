@@ -1179,7 +1179,7 @@ What is left is the live CPU check, which runs after the merge (below).
   **1b, avatars per seat:** `Avatar` and its schema in `src/shared`, the
   look on `room:join`, `lobby:avatar`, the look in `RoomState`, `LobbyView`
   and `GameView`, and old saved rooms loading with `avatarFor` (built in
-  the 1b pull request). **1c, the
+  #44). **1c, the
   lobby screen:** the 3D gate, the lobby components moved onto the Star
   Table, the flight from the landing, the picker with the portrait camera,
   the host-change notice, and the five-context e2e. 1a and 1b do not touch

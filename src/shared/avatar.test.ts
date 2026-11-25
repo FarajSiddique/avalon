@@ -4,6 +4,7 @@ import {
   CLOAKS,
   DEFAULT_AVATAR,
   EMBLEMS,
+  FIRST_FANCY_SKIN,
   HEADWEAR,
   SKINS,
   avatarFor,
@@ -100,5 +101,12 @@ describe("avatarKey", () => {
     const ghost: Avatar = { ...DEFAULT_AVATAR, skin: "ghost" };
 
     expect(avatarKey(honey)).not.toBe(avatarKey(ghost));
+  });
+});
+
+describe("FIRST_FANCY_SKIN", () => {
+  it("splits the six everyday tones from the six fantastical ones", () => {
+    expect(SKINS.slice(0, FIRST_FANCY_SKIN)).toHaveLength(6);
+    expect(SKINS[FIRST_FANCY_SKIN]).toBe("moss");
   });
 });

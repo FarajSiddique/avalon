@@ -21,7 +21,9 @@ import {
   type SeatGrant,
   type ServerMessage,
 } from "@/shared/protocol";
+import type { Avatar } from "@/shared/avatar";
 import {
+  avatarInputSchema,
   clientMessageSchema,
   emptySchema,
   joinRoomSchema,
@@ -41,6 +43,7 @@ import {
   kickSeat,
   leaveRoom,
   nextDue,
+  setAvatar,
   setReady,
   setSettings,
   upgradeRoom,
@@ -187,12 +190,16 @@ export class RoomObject extends DurableObject<Env> {
    * Claim this object for a new room. Returns null if the code is taken, so
    * the Worker can try another code.
    */
-  async create(code: RoomCode, hostName: string): Promise<SeatGrant | null> {
+  async create(
+    code: RoomCode,
+    hostName: string,
+    avatar: Avatar | undefined,
+  ): Promise<SeatGrant | null> {
     if (await this.load()) {
       return null;
     }
 
-    const seated = createRoom(code, hostName, deps);
+    const seated = createRoom(code, hostName, avatar, deps);
 
     await this.save(seated.state);
     await this.scheduleAlarm(seated.state);
@@ -320,7 +327,7 @@ export class RoomObject extends DurableObject<Env> {
       switch (event) {
         case "room:join":
           return await this.run(joinRoomSchema, payload, (input) =>
-            this.join(socket, input.name),
+            this.join(socket, input.name, input.avatar),
           );
         case "room:resume":
           return await this.run(resumeSchema, payload, (input) =>
@@ -336,6 +343,10 @@ export class RoomObject extends DurableObject<Env> {
           );
         case "room:leave":
           return await this.run(emptySchema, payload, () => this.leave(socket));
+        case "lobby:avatar":
+          return await this.run(avatarInputSchema, payload, (input) =>
+            this.avatar(socket, input.avatar),
+          );
         case "lobby:settings":
           return await this.run(settingsSchema, payload, (input) =>
             this.settings(socket, input),
@@ -378,8 +389,12 @@ export class RoomObject extends DurableObject<Env> {
     return state;
   }
 
-  private async join(socket: WebSocket, name: string): Promise<SeatGrant> {
-    const seated = joinRoom(await this.requireRoom(), name, deps);
+  private async join(
+    socket: WebSocket,
+    name: string,
+    avatar: Avatar | undefined,
+  ): Promise<SeatGrant> {
+    const seated = joinRoom(await this.requireRoom(), name, avatar, deps);
 
     return this.seat(socket, seated);
   }
@@ -395,6 +410,18 @@ export class RoomObject extends DurableObject<Env> {
     const playerId = this.requireSeated(socket);
     const loaded = await this.requireRoom();
     const state = setReady(loaded, playerId, ready);
+
+    if (state !== loaded) {
+      await this.commit(state);
+    }
+
+    return null;
+  }
+
+  private async avatar(socket: WebSocket, avatar: Avatar): Promise<null> {
+    const playerId = this.requireSeated(socket);
+    const loaded = await this.requireRoom();
+    const state = setAvatar(loaded, playerId, avatar);
 
     if (state !== loaded) {
       await this.commit(state);

@@ -6,6 +6,14 @@
 
 import { z } from "zod";
 import {
+  BODIES,
+  CLOAKS,
+  EMBLEMS,
+  HEADWEAR,
+  SKINS,
+  type Avatar,
+} from "./avatar";
+import {
   NAME_MAX_LENGTH,
   NAME_PATTERN,
   ROOM_CODE_PATTERN,
@@ -13,6 +21,7 @@ import {
   normalizeRoomCode,
 } from "./constants";
 import type {
+  AvatarInput,
   CreateRoomInput,
   GameAction,
   JoinRoomInput,
@@ -35,13 +44,36 @@ export const roomCodeSchema = z
 
 const playerIdSchema = z.string().min(1).max(64);
 
+/** A whole look, every trait from its list. */
+export const avatarSchema = z.object({
+  body: z.enum(BODIES),
+  skin: z.enum(SKINS),
+  cloak: z.enum(CLOAKS),
+  headwear: z.enum(HEADWEAR),
+  emblem: z.enum(EMBLEMS),
+}) satisfies z.ZodType<Avatar>;
+
+/**
+ * The look sent with a create or a join. An invalid one is dropped, never a
+ * failed request: the room then gives the seat a look from its id.
+ */
+// oxlint-disable-next-line unicorn/prefer-top-level-await -- zod's .catch, not a promise
+const optionalAvatarSchema = avatarSchema.optional().catch(undefined);
+
 export const createRoomSchema = z.object({
   name: nameSchema,
+  avatar: optionalAvatarSchema,
 }) satisfies z.ZodType<CreateRoomInput>;
 
 export const joinRoomSchema = z.object({
   name: nameSchema,
+  avatar: optionalAvatarSchema,
 }) satisfies z.ZodType<JoinRoomInput>;
+
+/** `lobby:avatar`: strict, so an invalid look is refused. */
+export const avatarInputSchema = z.object({
+  avatar: avatarSchema,
+}) satisfies z.ZodType<AvatarInput>;
 
 export const resumeSchema = z.object({
   token: z.string().min(1).max(200),

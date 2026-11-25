@@ -10,6 +10,7 @@
  * on the team, and quest 3 fails.
  */
 
+import { avatarFor } from "@/shared/avatar";
 import { ROLES } from "@/shared/roles";
 import type {
   GameSettings,
@@ -53,6 +54,7 @@ function seat(
     isHost: false,
     connected: true,
     ready: true,
+    avatar: avatarFor(id),
     ...overrides,
   };
 }

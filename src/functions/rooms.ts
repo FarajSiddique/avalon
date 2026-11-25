@@ -32,6 +32,7 @@ export const createRoom = createServerFn({ method: "POST" })
       const grant = await env.ROOM.getByName(code).create(
         code,
         parsed.data.name,
+        parsed.data.avatar,
       );
 
       if (grant) {

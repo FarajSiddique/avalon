@@ -7,6 +7,7 @@
  */
 
 import { createHash, timingSafeEqual } from "node:crypto";
+import { avatarFor, avatarKey, type Avatar } from "@/shared/avatar";
 import {
   EMPTY_ROOM_TTL_MS,
   HOST_AWAY_MS,
@@ -23,6 +24,8 @@ export interface PlayerRecord {
   tokenHash: string;
   joinedAt: number;
   ready: boolean;
+  /** The seat's look. Public, so it reaches every player. */
+  avatar: Avatar;
 }
 
 export interface RoomState {
@@ -79,16 +82,37 @@ interface NewPlayer {
   token: string;
 }
 
-function newPlayer(code: RoomCode, name: string, deps: RoomDeps): NewPlayer {
+/** A fresh object with exactly the five traits, never the caller's own. */
+function copyAvatar(avatar: Avatar): Avatar {
+  return {
+    body: avatar.body,
+    skin: avatar.skin,
+    cloak: avatar.cloak,
+    headwear: avatar.headwear,
+    emblem: avatar.emblem,
+  };
+}
+
+/**
+ * A new seat, with the look it brought or, without one, a look from its id.
+ */
+function newPlayer(
+  code: RoomCode,
+  name: string,
+  avatar: Avatar | undefined,
+  deps: RoomDeps,
+): NewPlayer {
   const secret = deps.newSecret();
+  const id = deps.newId();
 
   return {
     player: {
-      id: deps.newId(),
+      id,
       name,
       tokenHash: hashSecret(secret),
       joinedAt: deps.now(),
       ready: false,
+      avatar: avatar ? copyAvatar(avatar) : avatarFor(id),
     },
     token: `${code}.${secret}`,
   };
@@ -97,9 +121,10 @@ function newPlayer(code: RoomCode, name: string, deps: RoomDeps): NewPlayer {
 export function createRoom(
   code: RoomCode,
   hostName: string,
+  avatar: Avatar | undefined,
   deps: RoomDeps,
 ): Seated {
-  const { player, token } = newPlayer(code, hostName, deps);
+  const { player, token } = newPlayer(code, hostName, avatar, deps);
   const now = deps.now();
 
   return {
@@ -121,6 +146,7 @@ export function createRoom(
 export function joinRoom(
   state: RoomState,
   name: string,
+  avatar: Avatar | undefined,
   deps: RoomDeps,
 ): Seated {
   if (state.game !== null) {
@@ -137,7 +163,7 @@ export function joinRoom(
     throw new RoomError("NAME_TAKEN", "Someone in the room has that name.");
   }
 
-  const { player, token } = newPlayer(state.code, name, deps);
+  const { player, token } = newPlayer(state.code, name, avatar, deps);
 
   return {
     state: { ...state, players: [...state.players, player] },
@@ -179,6 +205,38 @@ export function setReady(
     ...state,
     players: state.players.map((p) =>
       p.id === playerId ? { ...p, ready } : p,
+    ),
+  };
+}
+
+/**
+ * A seat changes its own look, in the lobby only. Anyone may, the host too.
+ * Two seats may share a look. Nothing else changes, ready included. Returns
+ * the same object when the look is the one already stored.
+ */
+export function setAvatar(
+  state: RoomState,
+  playerId: PlayerId,
+  avatar: Avatar,
+): RoomState {
+  if (state.game !== null) {
+    throw new RoomError("ROOM_IN_PROGRESS", "The game has already started.");
+  }
+
+  const seat = state.players.find((p) => p.id === playerId);
+
+  if (!seat) {
+    throw new RoomError("NOT_IN_ROOM", "You are not in this room.");
+  }
+
+  if (avatarKey(seat.avatar) === avatarKey(avatar)) {
+    return state;
+  }
+
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === playerId ? { ...p, avatar: copyAvatar(avatar) } : p,
     ),
   };
 }
@@ -257,6 +315,21 @@ export function upgradeRoom(stored: RoomState): RoomState {
   // an earlier field still gets the later ones.
   if (saved.hostAwaySince === undefined) {
     room = { ...room, hostAwaySince: null };
+  }
+
+  const seats: Array<Partial<PlayerRecord>> = stored.players;
+
+  if (seats.some((p) => p.avatar === undefined)) {
+    room = {
+      ...room,
+      players: room.players.map((p) => {
+        const seat: Partial<PlayerRecord> = p;
+
+        return seat.avatar === undefined
+          ? { ...p, avatar: avatarFor(p.id) }
+          : p;
+      }),
+    };
   }
 
   return room;

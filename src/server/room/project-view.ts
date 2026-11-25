@@ -28,6 +28,8 @@ function seatViews(
     isHost: p.id === state.hostId,
     connected: connected.has(p.id),
     ready: p.ready,
+    // A copy: the stored object never goes out as is.
+    avatar: { ...p.avatar },
   }));
 }
 

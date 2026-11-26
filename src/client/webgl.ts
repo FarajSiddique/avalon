@@ -1,19 +1,10 @@
 /**
  * Whether this browser can draw the Star Table: a WebGL2 context on a fresh
- * canvas. The context is released straight away, since browsers allow only
- * a few at a time.
+ * canvas. The canvas is dropped at once, so the context goes with it.
  */
 export function hasWebGL2(): boolean {
   try {
-    const gl = document.createElement("canvas").getContext("webgl2");
-
-    if (!gl) {
-      return false;
-    }
-
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
-
-    return true;
+    return document.createElement("canvas").getContext("webgl2") !== null;
   } catch {
     return false;
   }

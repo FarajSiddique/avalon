@@ -4,11 +4,18 @@
  */
 
 import type { StoreApi } from "zustand/vanilla";
-import type { ProtocolError, RoomClosedReason } from "@/shared/protocol";
-import type { RoomCode, RoomView } from "@/shared/views";
+import type { Avatar } from "@/shared/avatar";
+import type {
+  ProtocolError,
+  RoomClosedReason,
+  RoomEvent,
+  RoomRequests,
+} from "@/shared/protocol";
+import type { GameSettings, RoomCode, RoomView } from "@/shared/views";
 import { RoomConnection } from "./connection";
 import { createDevStore } from "./dev-store";
 import { clearToken, loadToken, saveToken } from "./session";
+import { play } from "./sound";
 
 export type RoomStatus =
   /** Waiting for the socket or for the room to answer. */
@@ -55,7 +62,7 @@ export class RoomClient {
     this.connection = new RoomConnection(code, {
       onOpen: this.onOpen,
       onDrop: () => this.set({ online: false }),
-      onState: (view) => this.set({ status: "seated", view, error: null }),
+      onState: this.onState,
       onClosed: (reason) => {
         clearToken(this.code);
         this.set({
@@ -103,13 +110,26 @@ export class RoomClient {
 
   /** Host only. The room answers with a new view, or the reason it refused. */
   readonly kick = (playerId: string): void => {
-    this.set({ error: null });
-    void this.connection.request("lobby:kick", { playerId }).then((result) => {
-      // Offline: the reconnect brings a fresh view either way.
-      if (!result.ok && result.error.code !== "OFFLINE") {
-        this.set({ error: result.error });
-      }
-    });
+    void this.send("lobby:kick", { playerId });
+  };
+
+  /** Guests only: the host has no ready (Start is the host's ready). */
+  readonly setReady = (ready: boolean): void => {
+    void this.send("lobby:ready", { ready });
+  };
+
+  /** Host only. The whole settings object, not a change. */
+  readonly setSettings = (settings: GameSettings): void => {
+    void this.send("lobby:settings", settings);
+  };
+
+  /** Your own look. The same look again changes nothing in the room. */
+  readonly setAvatar = (avatar: Avatar): Promise<boolean> =>
+    this.send("lobby:avatar", { avatar });
+
+  /** Host only. Refused until the game exists (Phase 2), like any refusal. */
+  readonly start = (): void => {
+    void this.send("lobby:start", null);
   };
 
   /**
@@ -132,6 +152,44 @@ export class RoomClient {
     this.connection.stop();
     this.store.setState(initial);
     this.connection.start();
+  };
+
+  /**
+   * Send a request and show its refusal. Offline is not shown: the
+   * reconnect brings a fresh view either way. Resolves true on success.
+   */
+  private send<E extends RoomEvent>(
+    event: E,
+    payload: RoomRequests[E]["input"],
+  ): Promise<boolean> {
+    this.set({ error: null });
+
+    return this.connection.request(event, payload).then((result) => {
+      if (!result.ok && result.error.code !== "OFFLINE") {
+        this.set({ error: result.error });
+      }
+
+      return result.ok;
+    });
+  }
+
+  private readonly onState = (view: RoomView): void => {
+    const before = this.store.getState().view;
+
+    this.set({ status: "seated", view, error: null });
+
+    // Everyone is ready: the host's phone says so (only the host's, since
+    // the players share one room and Start is the host's). Not on the first
+    // view, so a reload is quiet.
+    if (
+      before?.stage === "lobby" &&
+      view.stage === "lobby" &&
+      view.you.isHost &&
+      before.startBlockers.length > 0 &&
+      view.startBlockers.length === 0
+    ) {
+      play("all-ready");
+    }
   };
 
   private set(patch: Partial<RoomSnapshot>): void {

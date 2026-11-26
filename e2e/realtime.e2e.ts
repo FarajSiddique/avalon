@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { z } from "zod";
-import { field, openLanding, players } from "./room-helpers";
+import { field, onStage, openLanding, players } from "./room-helpers";
 
 /**
  * The real-time proof for this checkpoint: two separate browsers (separate
@@ -58,6 +58,7 @@ test("two players see each other join, drop and return", async ({
   await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
@@ -74,6 +75,7 @@ test("two players see each other join, drop and return", async ({
   await expect(guest.getByTestId("room-code")).toHaveText(code);
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest, "lobby");
 
   // Both browsers now show both players, without a reload.
   for (const page of [host, guest]) {
@@ -131,12 +133,14 @@ test("each browser is only ever sent its own view", async ({ browser }) => {
   await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`/room/${code}`);
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest, "lobby");
   await expect(players(host)).toHaveCount(2);
   await expect(players(guest)).toHaveCount(2);
 
@@ -265,12 +269,14 @@ test("a guest readies up, and the host cannot", async ({ browser }) => {
   await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`/room/${code}`);
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest, "lobby");
   await expect(players(host)).toHaveCount(2);
   await expect(players(guest)).toHaveCount(2);
 
@@ -316,6 +322,7 @@ test("the host saves any role mix, and too many Evil roles block Start", async (
   await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
@@ -323,6 +330,7 @@ test("the host saves any role mix, and too many Evil roles block Start", async (
     await guest.goto(`/room/${code}`);
     await field(guest, "Your name").fill(`Guest${i + 1}`);
     await guest.getByRole("button", { name: "Join room" }).click();
+    await onStage(guest, "lobby");
     await expect(players(guest)).toHaveCount(i + 2);
     await sendReady(guest, code, true);
   }

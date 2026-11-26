@@ -38,7 +38,9 @@ export default defineConfig({
       // page's main thread for 7 to 8 seconds on a 4-vCPU runner. So tests
       // wait for the stage to settle (`onStage` in e2e/room-helpers.ts)
       // before their first click, and reduced motion stays on. Files that
-      // watch the scene move set full motion themselves.
+      // watch the scene move set full motion themselves. Each page builds
+      // the scene, so a test with several players gets three times as long.
+      timeout: 90_000 * slow,
       use: {
         reducedMotion: "reduce",
         launchOptions: {

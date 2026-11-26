@@ -52,6 +52,7 @@ export async function createRoom(page: Page, name: string): Promise<string> {
   await openLanding(page);
   await field(page, "Your name").fill(name);
   await page.getByRole("button", { name: "Create a room" }).click();
+  await onStage(page, "lobby");
   await expect(page.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   await expect(players(page)).toHaveCount(1);
 
@@ -62,6 +63,7 @@ export async function joinRoom(page: Page, code: string, name: string) {
   await page.goto(`/room/${code}`);
   await field(page, "Your name").fill(name);
   await page.getByRole("button", { name: "Join room" }).click();
+  await onStage(page, "lobby");
   await expect(players(page).filter({ hasText: `${name} (you)` })).toHaveCount(
     1,
   );

@@ -6,6 +6,7 @@ import {
   field,
   joinRoom,
   newPlayer,
+  onStage,
   players,
 } from "./room-helpers";
 
@@ -87,6 +88,7 @@ test("the host kicks a connected player, who can join again under the same name"
   await guest.page.getByRole("button", { name: "Join again" }).click();
   await field(guest.page, "Your name").fill("Ansel");
   await guest.page.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest.page, "lobby");
   await expect(players(host.page)).toHaveCount(2);
   await expect(players(guest.page).nth(1)).toContainText("Ansel (you)");
 });

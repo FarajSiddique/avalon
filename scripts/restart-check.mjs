@@ -170,9 +170,11 @@ try {
   const hostLeftAt = Date.now();
 
   await host.context().close();
+  // Up to HELD_DOWN_MS: a page drawing the table in software (CI) can take
+  // a while to show the change, and the sleep below takes off what it used.
   await guest
     .locator('[data-testid="player"][data-connected="false"]')
-    .waitFor({ timeout: 10_000 });
+    .waitFor({ timeout: HELD_DOWN_MS });
   console.log("The host closed their page. The guest sees them as away.");
 
   await stopServer(server);

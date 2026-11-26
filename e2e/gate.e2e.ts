@@ -100,13 +100,19 @@ test("a context lost after joining shows Reload and keeps the seat", async ({
 
   await joinRoom(guest.page, code, "Ansel");
   // The GPU drops the table, as a phone under memory pressure can.
-  await guest.page.evaluate(() => {
-    document
+  const lost = await guest.page.evaluate(() => {
+    const lose = document
       .querySelector<HTMLCanvasElement>("[data-stage-host] canvas")
       ?.getContext("webgl2")
-      ?.getExtension("WEBGL_lose_context")
-      ?.loseContext();
+      ?.getExtension("WEBGL_lose_context");
+
+    lose?.loseContext();
+
+    return lose !== undefined && lose !== null;
   });
+
+  // Fail here, not later, if the canvas or the extension was not found.
+  expect(lost).toBe(true);
   await expect(notice(guest.page)).toBeVisible();
   await expect(
     guest.page.getByRole("button", { name: "Reload" }),

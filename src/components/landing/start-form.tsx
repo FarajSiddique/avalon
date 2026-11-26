@@ -66,6 +66,8 @@ export function StartForm() {
     }
 
     window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
+    // A second submit (a double tap on Join) replaces the pending trip.
+    window.clearTimeout(timer.current);
     timer.current = window.setTimeout(
       () => {
         void navigate({ to: "/room/$code", params: { code } });

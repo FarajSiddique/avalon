@@ -103,6 +103,7 @@ try {
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`${base}/room/${code}`);
+  await onStage(guest);
   await guest.getByRole("textbox", { name: "Your name" }).fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
   await host.getByTestId("player").nth(1).waitFor();

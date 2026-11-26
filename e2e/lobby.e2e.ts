@@ -95,6 +95,7 @@ test("a picked look reaches the table once, on Done", async ({ browser }) => {
   await openPicker(guest.page);
   await picker(guest.page).getByRole("button", { name: "Done" }).click();
   await expect(picker(guest.page)).toHaveCount(0);
+  expect(sent.sent).toBe(1);
 
   // Escape saves too.
   const third = otherCloak(chosen);

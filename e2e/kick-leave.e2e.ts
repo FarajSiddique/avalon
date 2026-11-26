@@ -15,10 +15,6 @@ import {
  * room object. Each player is a separate browser context, like a phone.
  */
 
-// Several browsers each load the landing and its scene, so allow longer than
-// the default 30 seconds.
-test.describe.configure({ timeout: 90_000 });
-
 // Close the players' contexts even when a test fails. Only the ones
 // `newPlayer` made, so Playwright's own fixtures are left alone.
 test.afterEach(closePlayers);

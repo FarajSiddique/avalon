@@ -879,8 +879,11 @@ export async function mountStarTable(
       settled = true;
     }
 
-    // In the lobby a new shot (the look picker) is always the next step.
-    retarget(next.mode === "lobby" || (next.move ?? false));
+    // Within the lobby a new shot (the look picker) is always the next
+    // step; arriving in the lobby from elsewhere moves only when asked.
+    retarget(
+      (next.mode === "lobby" && was === "lobby") || (next.move ?? false),
+    );
 
     // A new screen's framing: settled now, or once the move arrives.
     if (settled) {

@@ -40,8 +40,9 @@ export default defineConfig({
       // before their first click, and reduced motion stays on. Files that
       // watch the scene move set full motion themselves. Each page builds
       // and redraws the scene in software, so a test with several players
-      // gets three times as long, and each assertion 15 seconds.
-      timeout: 90_000 * slow,
+      // gets three minutes (they take about one locally), and each
+      // assertion 15 seconds.
+      timeout: 180_000 * slow,
       expect: { timeout: 15_000 * slow },
       use: {
         reducedMotion: "reduce",

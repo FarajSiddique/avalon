@@ -90,3 +90,31 @@ test("a seated guest who reopens without WebGL is away, not reseated", async ({
   );
   expect(sockets.opened).toBe(0);
 });
+
+test("a context lost after joining shows Reload and keeps the seat", async ({
+  browser,
+}) => {
+  const host = await newPlayer(browser);
+  const code = await createRoom(host.page, "Wren");
+  const guest = await newPlayer(browser);
+
+  await joinRoom(guest.page, code, "Ansel");
+  // The GPU drops the table, as a phone under memory pressure can.
+  await guest.page.evaluate(() => {
+    document
+      .querySelector<HTMLCanvasElement>("[data-stage-host] canvas")
+      ?.getContext("webgl2")
+      ?.getExtension("WEBGL_lose_context")
+      ?.loseContext();
+  });
+  await expect(notice(guest.page)).toBeVisible();
+  await expect(
+    guest.page.getByRole("button", { name: "Reload" }),
+  ).toBeVisible();
+  // The socket and the seat are untouched.
+  await guest.page.waitForTimeout(1000);
+  await expect(players(host.page).nth(1)).toHaveAttribute(
+    "data-connected",
+    "true",
+  );
+});

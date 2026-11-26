@@ -182,8 +182,8 @@ interface SentView {
 /**
  * Open a second socket from this page, take the page's seat with its stored
  * token, then send one request. Returns its answer and the view in the state
- * that followed. Phase 1 has no lobby controls on the real room screen yet,
- * so this drives the protocol directly.
+ * that followed. This drives the protocol directly, to test the room's
+ * answers (refusals included) apart from the lobby's controls.
  */
 async function sendRequest(
   page: Page,

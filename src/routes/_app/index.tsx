@@ -6,8 +6,7 @@ export const Route = createFileRoute("/_app/")({ component: HomePage });
 
 /**
  * The landing on the 3D Star Table. The form creates or joins a real room
- * and navigates there; it does not fly the camera, since the room has no
- * stage to land on until Phase 1.
+ * and the camera flies there, into the lobby on the same table.
  */
 function HomePage() {
   return (

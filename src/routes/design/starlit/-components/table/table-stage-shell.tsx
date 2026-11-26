@@ -14,7 +14,7 @@ import { flushSync } from "react-dom";
 import { TABLE_STEP_LABELS, type TableStep } from "@/design/directions";
 import type { GameView, ProposalRecord } from "@/shared/views";
 import { IconChevronDown } from "@/components/ui/icons";
-import { Disclosure } from "../lobby/disclosure";
+import { Disclosure } from "@/components/lobby/disclosure";
 import { RolePeek } from "../role/role-peek";
 import {
   usePickAt,

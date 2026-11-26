@@ -9,7 +9,7 @@ import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play } from "@/client/sound";
 import { lookSummary } from "@/client/avatar";
 import { designPaths } from "@/design/directions";
-import { useAvatar } from "@/client/use-avatar";
+import { setAvatar, useAvatar } from "@/client/use-avatar";
 import { useMockLobby } from "@/design/use-mock-lobby";
 import { startBlockerMessages } from "@/shared/copy";
 import type { LobbySearch } from "../../lobby";
@@ -22,12 +22,12 @@ import {
   useStageSlot,
 } from "@/components/stage/stage-context";
 import type { TablePlayer } from "@/components/three/types";
-import { AvatarMaker } from "./avatar-maker";
-import { Disclosure } from "./disclosure";
-import { HostSettings } from "./host-settings";
-import { PlayerList } from "./player-list";
-import { RoomCode } from "./room-code";
-import { playersSummary, settingsSummary } from "./summaries";
+import { AvatarMaker } from "@/components/lobby/avatar-maker";
+import { Disclosure } from "@/components/lobby/disclosure";
+import { HostSettings } from "@/components/lobby/host-settings";
+import { PlayerList } from "@/components/lobby/player-list";
+import { RoomCode } from "@/components/lobby/room-code";
+import { playersSummary, settingsSummary } from "@/components/lobby/summaries";
 
 const paths = designPaths();
 
@@ -236,7 +236,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
             open={open.look}
             onToggle={toggle("look")}
           >
-            <AvatarMaker />
+            <AvatarMaker value={yours} onChange={setAvatar} />
           </Disclosure>
           <Disclosure
             name="settings"

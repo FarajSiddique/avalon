@@ -1,12 +1,12 @@
 import { playerNames } from "@/design/mock";
 import { ROLES } from "@/shared/roles";
 import type { GameView } from "@/shared/views";
-import { AlignmentTag } from "../alignment-tag";
+import { AlignmentTag } from "@/components/lobby/alignment-tag";
 import {
   Constellation,
   constellationFor,
 } from "@/components/art/constellation";
-import { joinNames } from "../names";
+import { joinNames } from "@/components/lobby/names";
 
 interface KnowledgeText {
   title: string;

@@ -103,9 +103,10 @@ for (const viewport of VIEWPORTS) {
     test("02-landing-no-webgl", async ({ page }) => {
       await withoutWebGL(page);
       await page.goto("/");
+      // The 3D gate: the notice takes the form's place.
       await expect(
-        page.getByRole("button", { name: "Create a room" }),
-      ).toBeEnabled();
+        page.getByRole("heading", { name: "This game needs 3D graphics" }),
+      ).toBeVisible();
       await capture(page, "02-landing-no-webgl", viewport.width);
     });
 

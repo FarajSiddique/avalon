@@ -53,6 +53,7 @@ export function RoomCode({ code }: { code: string }) {
           className="sl-code sl-code--compact font-display"
           aria-label={spoken}
           data-wave={copies > 0}
+          data-testid="room-code"
         >
           {code.split("").map((letter, index) => (
             <span

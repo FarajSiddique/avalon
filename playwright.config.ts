@@ -23,7 +23,9 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  reporter: process.env.CI ? "github" : "list",
+  // In CI, list prints every test with its duration as it finishes (even in
+  // a run that is cancelled), and github turns failures into annotations.
+  reporter: process.env.CI ? [["list"], ["github"]] : "list",
   timeout: 30_000 * slow,
   expect: { timeout: 5000 * slow },
   use: { baseURL, trace: "retain-on-failure", actionTimeout: 10_000 * slow },

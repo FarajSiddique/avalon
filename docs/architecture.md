@@ -969,14 +969,19 @@ run only in GitHub Actions. Nobody runs `pnpm run deploy`, `wrangler deploy` or
 `wrangler preview` by hand.
 
 - **A merge to `main` deploys.** The owner merging is the approval. The
-  `deploy` job in `.github/workflows/ci.yml` runs after `check` passes, then
-  runs the browser tests and the CPU check (`pnpm test:cpu`) against the live
-  site. A failure turns the run red; it does not roll back. Deploys queue, so a
-  second merge waits for the running deploy to finish.
+  `deploy` job in `.github/workflows/ci.yml` runs after `check` and `e2e`
+  pass and runs the CPU check (`pnpm test:cpu`) against the live site; then
+  `live-e2e` runs the browser tests against it. A failure turns the run red; it
+  does not roll back. Deploys queue, so a second merge waits for the running
+  deploy to finish.
+- **Browser tests run in four shards.** Every test draws the 3D table in
+  software (the room needs WebGL, see the 3D gate), which is several times
+  slower on a 4-vCPU runner than on a laptop, so `e2e`, `live-e2e` and
+  `preview-e2e` each split the suite with `--shard=N/4` into parallel jobs.
 - **Every pull request from a branch in this repo gets a preview.**
   `.github/workflows/preview.yml` uploads a preview named `pr-<number>`,
-  comments its address on the pull request, and runs the browser tests against
-  it. Closing the pull request deletes the preview. Previews do not inherit
+  comments its address on the pull request, and `preview-e2e` runs the
+  browser tests against it. Closing the pull request deletes the preview. Previews do not inherit
   bindings, so `wrangler.jsonc` repeats the `ROOM` binding under `previews`;
   each preview has its own empty set of rooms. Pull requests from forks and
   from Dependabot have no secrets, so they get no preview.

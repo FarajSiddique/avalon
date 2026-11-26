@@ -5,7 +5,7 @@ import {
   normalizeRoomCode,
 } from "@/shared/constants";
 import { LobbyScreen } from "./-components/lobby/lobby-screen";
-import { NoWebGLNotice } from "./-components/no-webgl-notice";
+import { NoWebGLNotice } from "@/components/ui/no-webgl-notice";
 import { useStage } from "@/components/stage/stage-context";
 
 /**

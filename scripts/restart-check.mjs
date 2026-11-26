@@ -83,13 +83,20 @@ const online = (page, value) =>
     .waitFor({ timeout: 20_000 });
 
 let server = await startServer();
-const browser = await chromium.launch();
+// Software WebGL: a browser without it may not take a seat (the 3D gate).
+const browser = await chromium.launch({
+  args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+});
+/** The stage has settled, so the page is interactive (see e2e/room-helpers.ts). */
+const onStage = (page) =>
+  page.locator("[data-stage-host][data-stage]").waitFor({ timeout: 60_000 });
 
 try {
   const host = await (await browser.newContext()).newPage();
   const guest = await (await browser.newContext()).newPage();
 
   await host.goto(base);
+  await onStage(host);
   await host.getByRole("textbox", { name: "Your name" }).fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
   await host.getByTestId("room-code").waitFor();

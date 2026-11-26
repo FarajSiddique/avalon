@@ -9,6 +9,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { hasWebGL2 } from "@/client/webgl";
 import { isHtmlElement, at as nth, need } from "./guards";
 import { readPalette } from "./palette";
 import type {
@@ -164,7 +165,7 @@ export async function mountStarTable(
   );
 
   // Ask quietly first: three.js logs an error when it cannot get a context.
-  if (!document.createElement("canvas").getContext("webgl2")) {
+  if (!hasWebGL2()) {
     return null;
   }
 

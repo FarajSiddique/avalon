@@ -1,6 +1,9 @@
 import { Link, Navigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import { useRoom } from "@/client/use-room";
+import { useWebGLGate } from "@/client/use-webgl-gate";
+import { useStageStatus } from "@/components/stage/stage-context";
+import { NoWebGLNotice } from "@/components/ui/no-webgl-notice";
 import {
   IconArrowRight,
   IconCheck,
@@ -26,7 +29,21 @@ import type { RoomCode } from "@/shared/views";
  * in the browser only and does not claim the stage.
  */
 export function RoomScreen({ code }: { code: RoomCode }) {
+  // Checked before the socket opens: a browser that cannot draw the table
+  // must not join, or it would take a seat it cannot play from.
+  const gate = useWebGLGate();
+
+  if (gate !== "ok") {
+    return gate === "none" ? <NoWebGLNotice /> : null;
+  }
+
+  return <RoomSession code={code} />;
+}
+
+/** The room once the browser can draw it: the socket is open while mounted. */
+function RoomSession({ code }: { code: RoomCode }) {
   const room = useRoom(code);
+  const stageFailed = useStageStatus() === "failed";
   const nameId = useId();
   /** The seat the host is about to remove, waiting for the confirm. */
   const [removing, setRemoving] = useState<string | null>(null);
@@ -34,6 +51,13 @@ export function RoomScreen({ code }: { code: RoomCode }) {
 
   if (room.status === "closed" && room.closedReason === "left") {
     return <Navigate to="/" />;
+  }
+
+  // The GPU dropped the table after the page had it. The socket and the
+  // seat stay as they are (this component stays mounted); a reload brings
+  // the table back.
+  if (stageFailed) {
+    return <NoWebGLNotice onReload={() => window.location.reload()} />;
   }
 
   return (

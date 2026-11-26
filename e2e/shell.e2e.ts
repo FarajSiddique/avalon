@@ -144,17 +144,6 @@ test.describe("with the scene", () => {
   });
 });
 
-test("without WebGL the landing still creates a room", async ({ page }) => {
-  await withoutWebGL(page);
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "This game needs 3D graphics" }),
-  ).toHaveCount(0);
-  await page.getByLabel("Your name").fill("Wren");
-  await page.getByRole("button", { name: "Create a room" }).click();
-  await expect(page.getByTestId("room-code")).toBeVisible();
-});
-
 // BCDF is a well-formed code (ABCD is not: A is not in the alphabet).
 test("the room page is rendered in the browser only", async ({
   request,

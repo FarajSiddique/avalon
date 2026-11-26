@@ -2,6 +2,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import { saveToken } from "@/client/session";
 import { useHydrated } from "@/client/use-hydrated";
+import { useWebGLGate } from "@/client/use-webgl-gate";
+import { useStageStatus } from "@/components/stage/stage-context";
+import { NoWebGLNotice } from "@/components/ui/no-webgl-notice";
 import { IconArrowRight, IconStar } from "@/components/ui/icons";
 import { createRoom } from "@/functions/rooms";
 import {
@@ -32,6 +35,8 @@ export function StartForm() {
   const [busy, setBusy] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const gate = useWebGLGate();
+  const stageFailed = useStageStatus() === "failed";
 
   async function onCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,6 +82,13 @@ export function StartForm() {
 
     setJoinError(null);
     void navigate({ to: "/room/$code", params: { code } });
+  }
+
+  // The game is played at the 3D table: without it there is nothing to
+  // create or join. The server's page keeps the form (its buttons wait for
+  // hydration), so the swap happens only once the browser has answered.
+  if (gate === "none" || stageFailed) {
+    return <NoWebGLNotice bare />;
   }
 
   return (

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { z } from "zod";
-import { field, players } from "./room-helpers";
+import { field, openLanding, players } from "./room-helpers";
 
 /**
  * The real-time proof for this checkpoint: two separate browsers (separate
@@ -55,7 +55,7 @@ test("two players see each other join, drop and return", async ({
   const guest = await guestContext.newPage();
 
   // Host creates a room from the landing page.
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
@@ -67,7 +67,7 @@ test("two players see each other join, drop and return", async ({
   await expectConnected(host);
 
   // Guest joins with the code from the landing page.
-  await guest.goto("/");
+  await openLanding(guest);
   await field(guest, "Have a room code?").fill(code.toLowerCase());
   await guest.getByRole("button", { name: "Join", exact: true }).click();
   // The address changes before the new screen is drawn, so wait for the screen.
@@ -128,7 +128,7 @@ test("each browser is only ever sent its own view", async ({ browser }) => {
   const hostSaw = watch(host);
   const guestSaw = watch(guest);
 
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
@@ -262,7 +262,7 @@ test("a guest readies up, and the host cannot", async ({ browser }) => {
   const host = await hostContext.newPage();
   const guest = await guestContext.newPage();
 
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
@@ -313,7 +313,7 @@ test("the host saves any role mix, and too many Evil roles block Start", async (
     throw new Error("No host page");
   }
 
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);

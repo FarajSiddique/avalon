@@ -31,7 +31,7 @@ export interface StageSlot {
   fade: number;
 }
 
-type StageStatus = "idle" | "loading" | "running" | "failed";
+export type StageStatus = "idle" | "loading" | "running" | "failed";
 
 type Picker = (clientX: number, clientY: number) => string | null;
 
@@ -166,6 +166,11 @@ export function useStageStore(): StageStore {
 
 export function useStage(): StageValue {
   return useStore(useStageStore());
+}
+
+/** Only the stage's status, so a screen does not re-render on every change. */
+export function useStageStatus(): StageStatus {
+  return useStore(useStageStore(), (s) => s.status);
 }
 
 /*

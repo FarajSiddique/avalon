@@ -24,7 +24,7 @@
 
 ## Decisions made here
 
-The map left four things "not yet specified" (protocol, copy, test plan, saved-room migration). None changes the design or a public API in a way that is expensive to redo, so they are settled here.
+The map left four things "not yet specified" (protocol, copy, test plan, saved-room migration). None changes the design or a public API in a way that is expensive to redo, so they are settled here. D19 to D23 are the owner's answers to a later grilling of 1c's calls (26 November 2026); D16 to D18 were confirmed as written.
 
 | #   | Topic                       | Decision                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -46,6 +46,11 @@ The map left four things "not yet specified" (protocol, copy, test plan, saved-r
 | D16 | Host-change notice          | `hostChangeNotice(before, after)` in `src/shared/copy.ts`, worked out in the room client from two consecutive views. No protocol change.                                                                                                                                                                                                                                                                     |
 | D17 | Saved look key              | The real app keeps the prototype's `localStorage` key `avalon:starlit-avatar:v1`, so a look picked in the prototype carries over. 1c writes it only when the player changes their look in the picker.                                                                                                                                                                                                        |
 | D18 | Portrait pose               | A new camera shot `"portrait"` in `src/components/three/scenes/table-shots.ts`, a close shot of the viewer's seat, used by the lobby while the picker is open.                                                                                                                                                                                                                                               |
+| D19 | Start before Phase 2        | The host's Start is the real button: disabled while `startBlockers` is not empty, the blocker list beside it. Pressed, it sends `lobby:start` and shows the refusal like any other until Phase 2 handles it. (Owner, 26 November 2026.)                                                                                                                                                                      |
+| D20 | Host notice lifetime        | A 5 second `role="status"` toast for everyone, the new host included. The host marker in the seat list is the lasting signal; no sticky notice. (Owner, 26 November 2026.)                                                                                                                                                                                                                                   |
+| D21 | Picker closing              | Done, Escape and tapping outside all close and save. No Cancel: a look is easy to change again. (Owner, 26 November 2026.)                                                                                                                                                                                                                                                                                   |
+| D22 | Host notice e2e             | No 60 second browser test. The browser test makes the host press Leave (an instant hand-over through the same client diff). The away timing stays covered by the `state.ts` tables and `pnpm test:restart`. (Owner, 26 November 2026.)                                                                                                                                                                       |
+| D23 | All-ready sound             | Only the host's phone plays `all-ready`: the players share one room, and Start is the host's. (Owner, 26 November 2026.)                                                                                                                                                                                                                                                                                     |
 
 ## Global Constraints
 
@@ -635,7 +640,7 @@ git add -A && git commit -m "refactor: move the lobby components out of the prot
 - `RoomClient` gains `setReady(ready: boolean)`, `setSettings(settings: GameSettings)`, `setAvatar(avatar: Avatar)`, `start()`. Each sets `snapshot.error` on a refusal other than `OFFLINE`, as `kick` does. `RATE_LIMITED` is not special.
 - `LobbyScreen(props: { view: LobbyView; client: RoomClient })`: claims the stage with `useStageSlot({ mode: "lobby", reveal: "whole", fade: 0 }, focus)` and `useStagePlayers` with every seat's `SeatView.avatar` (no more `avatarFor` at the call site). Sections as the prototype: players, your look, settings (host editable, guests read only). Non-host: "I'm ready" (`aria-pressed`). Host: Start, disabled while `startBlockers` is not empty, with `startBlockerMessages` in a `role="status"` list beside it. Pressing Start sends `lobby:start`; until Phase 2 the refusal ("That is not available yet.") shows like any other. "Leave room" with its confirm group as today.
 - `RoomScreen` keeps the join form, the closed states, "Join again" and `data-testid="connection"`, and renders `LobbyScreen` once seated in the lobby.
-- The `all-ready` sound plays when `startBlockers` becomes empty between two views (not on first view).
+- The `all-ready` sound plays on the host's phone only, when `startBlockers` becomes empty between two views (not on first view) (D23).
 
 - [ ] **Step 1: Make the existing e2e pass on the new screen**
 
@@ -707,7 +712,7 @@ export function hostChangeNotice(
 ): string | null;
 ```
 
-`RoomClient` keeps the last notice in its snapshot (`notice: string | null`), set from `hostChangeNotice(previous, next)` in `onState`, cleared by `dismissNotice()` and by the next notice. The screen shows it in a `role="status"` toast for 5 seconds, dismissed with a CSS animation end, not a timer.
+`RoomClient` keeps the last notice in its snapshot (`notice: string | null`), set from `hostChangeNotice(previous, next)` in `onState`, cleared by `dismissNotice()` and by the next notice. The screen shows it in a `role="status"` toast for 5 seconds, dismissed with a CSS animation end, not a timer. No sticky notice, the seat list's host marker is the lasting signal (D20).
 
 - [ ] **Step 1: Table-driven unit tests**
 
@@ -738,7 +743,7 @@ Host creates; four guests join (each a `newPlayer` context, reduced motion on). 
 
 - [ ] **Step 2: Host-change notice in the browser**
 
-In the same file, marked `test.slow()`: the host closes their page; after 60 seconds the next guest sees "You are now the host" and the others "{name} is now the host". This is the only 60-second e2e; skip it with `test.skip(Boolean(process.env.E2E_BASE_URL))` against remote sites if it proves flaky there.
+In the same file: the host presses "Leave room" and confirms; the next guest sees "You are now the host" and the others "{name} is now the host" (D22). No test waits the 60 second away hand-over: the `state.ts` tables and `pnpm test:restart` cover it.
 
 - [ ] **Step 3: The restart check gains ready states and looks**
 

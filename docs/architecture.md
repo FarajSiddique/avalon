@@ -596,7 +596,8 @@ Ready (decided in issue 16):
 - `room:reset` (play again) sets every seat to not ready.
 - On host hand-over the old host becomes an ordinary seat that is not ready.
   The new host's stored ready no longer matters.
-- Every phone plays the `all-ready` sound when `startBlockers` becomes empty.
+- Only the host's phone plays the `all-ready` sound when `startBlockers`
+  becomes empty (the players share one room, and Start is the host's).
 
 Kick, leave and rejoin (decided in issue 17):
 

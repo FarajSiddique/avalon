@@ -5,6 +5,7 @@ import {
   MAX_PLAYERS,
   ROOM_MAX_AGE_MS,
 } from "@/shared/constants";
+import { DEFAULT_AVATAR, avatarFor, type Avatar } from "@/shared/avatar";
 import { randomRoomCode } from "./code";
 import {
   RoomError,
@@ -16,6 +17,7 @@ import {
   nextDue,
   pickConnectedHost,
   pickNextHost,
+  setAvatar,
   setReady,
   setSettings,
   upgradeRoom,
@@ -61,7 +63,12 @@ describe("room codes", () => {
 describe("room state", () => {
   it("creates a room with the creator as host", () => {
     const { deps } = fixedDeps();
-    const { state, player, token } = createRoom("BCDF", "Wren", deps);
+    const { state, player, token } = createRoom(
+      "BCDF",
+      "Wren",
+      undefined,
+      deps,
+    );
 
     expect(state.hostId).toBe(player.id);
     expect(state.players).toEqual([player]);
@@ -71,8 +78,8 @@ describe("room state", () => {
 
   it("seats joiners in order without changing the old state", () => {
     const { deps } = fixedDeps();
-    const created = createRoom("BCDF", "Wren", deps);
-    const joined = joinRoom(created.state, "Ansel", deps);
+    const created = createRoom("BCDF", "Wren", undefined, deps);
+    const joined = joinRoom(created.state, "Ansel", undefined, deps);
 
     expect(joined.state.players.map((p) => p.name)).toEqual(["Wren", "Ansel"]);
     expect(created.state.players).toHaveLength(1);
@@ -80,21 +87,25 @@ describe("room state", () => {
 
   it("rejects a taken name and a full room", () => {
     const { deps } = fixedDeps();
-    let state = createRoom("BCDF", "P1", deps).state;
+    let state = createRoom("BCDF", "P1", undefined, deps).state;
 
-    expect(errorCode(() => joinRoom(state, "p1", deps))).toBe("NAME_TAKEN");
+    expect(errorCode(() => joinRoom(state, "p1", undefined, deps))).toBe(
+      "NAME_TAKEN",
+    );
 
     for (let i = 2; i <= MAX_PLAYERS; i += 1) {
-      state = joinRoom(state, `P${i}`, deps).state;
+      state = joinRoom(state, `P${i}`, undefined, deps).state;
     }
 
-    expect(errorCode(() => joinRoom(state, "Late", deps))).toBe("ROOM_FULL");
+    expect(errorCode(() => joinRoom(state, "Late", undefined, deps))).toBe(
+      "ROOM_FULL",
+    );
   });
 
   it("finds a seat only with the right token for this room", () => {
     const { deps } = fixedDeps();
-    const host = createRoom("BCDF", "Wren", deps);
-    const guest = joinRoom(host.state, "Ansel", deps);
+    const host = createRoom("BCDF", "Wren", undefined, deps);
+    const guest = joinRoom(host.state, "Ansel", undefined, deps);
 
     expect(findSeat(guest.state, guest.token)).toBe(guest.player);
     expect(findSeat(guest.state, host.token).id).toBe(host.player.id);
@@ -108,7 +119,7 @@ describe("room state", () => {
 
   it("stores a hash of the seat secret, never the secret", () => {
     const { deps } = fixedDeps();
-    const { state, token } = createRoom("BCDF", "Wren", deps);
+    const { state, token } = createRoom("BCDF", "Wren", undefined, deps);
     const secret = token.slice(token.indexOf(".") + 1);
 
     expect(JSON.stringify(state)).not.toContain(secret);
@@ -118,8 +129,9 @@ describe("room state", () => {
   it("is plain JSON, so it survives storage unchanged", () => {
     const { deps } = fixedDeps();
     const { state } = joinRoom(
-      createRoom("BCDF", "Wren", deps).state,
+      createRoom("BCDF", "Wren", undefined, deps).state,
       "Ansel",
+      undefined,
       deps,
     );
 
@@ -132,7 +144,7 @@ describe("room state", () => {
 describe("room expiry", () => {
   it("tracks when the room became empty", () => {
     const { deps, clock } = fixedDeps();
-    const { state } = createRoom("BCDF", "Wren", deps);
+    const { state } = createRoom("BCDF", "Wren", undefined, deps);
 
     expect(state.emptySince).toBe(1000);
 
@@ -151,7 +163,12 @@ describe("room expiry", () => {
 
   it("expires an empty room after the idle time, and keeps the seat until then", () => {
     const { deps } = fixedDeps();
-    const { state, token, player } = createRoom("BCDF", "Wren", deps);
+    const { state, token, player } = createRoom(
+      "BCDF",
+      "Wren",
+      undefined,
+      deps,
+    );
 
     expect(nextDue(state, 1000)).toBe(1000 + EMPTY_ROOM_TTL_MS);
     expect(nextDue(state, 1000 + EMPTY_ROOM_TTL_MS - 1)).not.toBe("expired");
@@ -161,7 +178,7 @@ describe("room expiry", () => {
 
   it("keeps an occupied room until the age cap", () => {
     const { deps } = fixedDeps();
-    const created = createRoom("BCDF", "Wren", deps).state;
+    const created = createRoom("BCDF", "Wren", undefined, deps).state;
     const occupied = withPresence(created, new Set([created.hostId]), 1000);
 
     expect(nextDue(occupied, 2000)).toBe(1000 + ROOM_MAX_AGE_MS);
@@ -171,9 +188,9 @@ describe("room expiry", () => {
 
 function table() {
   const { deps } = fixedDeps();
-  const host = createRoom("BCDF", "Wren", deps);
-  const ansel = joinRoom(host.state, "Ansel", deps);
-  const mira = joinRoom(ansel.state, "Mira", deps);
+  const host = createRoom("BCDF", "Wren", undefined, deps);
+  const ansel = joinRoom(host.state, "Ansel", undefined, deps);
+  const mira = joinRoom(ansel.state, "Mira", undefined, deps);
 
   return { deps, state: mira.state, host, ansel, mira };
 }
@@ -206,7 +223,7 @@ describe("ready (issue 16)", () => {
   it("stays when someone else joins", () => {
     const { deps, state, ansel } = table();
     const on = setReady(state, ansel.player.id, true);
-    const joined = joinRoom(on, "Tobias", deps);
+    const joined = joinRoom(on, "Tobias", undefined, deps);
 
     expect(readyOf(joined.state)[ansel.player.id]).toBe(true);
     expect(joined.player.ready).toBe(false);
@@ -233,12 +250,12 @@ describe("ready (issue 16)", () => {
 function lobby(names: Array<string>) {
   const { deps } = fixedDeps();
   const [first = "Wren", ...rest] = names;
-  const created = createRoom("BCDF", first, deps);
+  const created = createRoom("BCDF", first, undefined, deps);
   let state = created.state;
   const tokens = [created.token];
 
   for (const name of rest) {
-    const joined = joinRoom(state, name, deps);
+    const joined = joinRoom(state, name, undefined, deps);
 
     state = joined.state;
     tokens.push(joined.token);
@@ -268,7 +285,7 @@ describe("kick", () => {
       "SESSION_INVALID",
     );
 
-    const back = joinRoom(kicked, "ansel", deps);
+    const back = joinRoom(kicked, "ansel", undefined, deps);
 
     expect(back.player.id).not.toBe(id("Ansel"));
     expect(back.player.ready).toBe(false);
@@ -667,5 +684,146 @@ describe("saved rooms (upgradeRoom)", () => {
 
   it("creates rooms with no clock running", () => {
     expect(lobby(["A"]).state.hostAwaySince).toBeNull();
+  });
+});
+
+const avatarOf = (state: RoomState, id: string) =>
+  state.players.find((p) => p.id === id)?.avatar;
+
+describe("looks (issue 21)", () => {
+  const look: Avatar = {
+    body: "male",
+    skin: "starborn",
+    cloak: "moss",
+    headwear: "helm",
+    emblem: "key",
+  };
+  const other: Avatar = { ...DEFAULT_AVATAR, cloak: "plum" };
+
+  it.each([
+    ["without a look gets the look from its id", undefined, avatarFor("p2")],
+    ["with a look keeps it", look, look],
+  ])("a join %s", (_case, avatar, expected) => {
+    const { deps } = fixedDeps();
+    const host = createRoom("BCDF", "Wren", undefined, deps);
+    const joined = joinRoom(host.state, "Ansel", avatar, deps);
+
+    expect(joined.player.id).toBe("p2");
+    expect(avatarOf(joined.state, "p2")).toEqual(expected);
+  });
+
+  it.each([
+    ["without a look gets the look from its id", undefined, avatarFor("p1")],
+    ["with a look keeps it", look, look],
+  ])("a created room's host %s", (_case, avatar, expected) => {
+    const { deps } = fixedDeps();
+    const { state, player } = createRoom("BCDF", "Wren", avatar, deps);
+
+    expect(player.id).toBe("p1");
+    expect(avatarOf(state, "p1")).toEqual(expected);
+  });
+
+  it("stores a copy, not the object it was given", () => {
+    const { deps } = fixedDeps();
+    const given = { ...look };
+    const { state } = createRoom("BCDF", "Wren", given, deps);
+
+    given.cloak = "rose";
+    expect(avatarOf(state, "p1")).toEqual(look);
+  });
+
+  it("a seat changes its own look; nothing else changes, ready included", () => {
+    const { state: start, id } = lobby(["Wren", "Ansel", "Mira"]);
+    const state = setReady(start, id("Ansel"), true);
+    const next = setAvatar(state, id("Ansel"), other);
+
+    expect(avatarOf(next, id("Ansel"))).toEqual(other);
+    expect(next.players.find((p) => p.id === id("Ansel"))?.ready).toBe(true);
+    expect(next.players.filter((p) => p.id !== id("Ansel"))).toEqual(
+      state.players.filter((p) => p.id !== id("Ansel")),
+    );
+  });
+
+  it("the host may change their look too", () => {
+    const { state, id } = lobby(["Wren", "Ansel"]);
+
+    expect(avatarOf(setAvatar(state, id("Wren"), other), id("Wren"))).toEqual(
+      other,
+    );
+  });
+
+  it("the same look again returns the same object", () => {
+    const { state, id } = lobby(["Wren", "Ansel"]);
+    const same = { ...avatarFor(id("Ansel")) };
+
+    expect(setAvatar(state, id("Ansel"), same)).toBe(state);
+  });
+
+  it.each([
+    [
+      "a player with no seat",
+      (state: RoomState) => setAvatar(state, "nobody", look),
+      "NOT_IN_ROOM",
+    ],
+    [
+      "anyone during a game",
+      (state: RoomState) =>
+        // The cast goes once the game engine gives `game` a type (Phase 2).
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stands in for a started game
+        setAvatar({ ...state, game: {} as never }, "p2", look),
+      "ROOM_IN_PROGRESS",
+    ],
+  ])("refuses %s", (_case, run, code) => {
+    const { state } = lobby(["Wren", "Ansel"]);
+
+    expect(errorCode(() => run(state))).toBe(code);
+  });
+
+  it("two seats may share a look", () => {
+    const { state, id } = lobby(["Wren", "Ansel", "Mira"]);
+    const next = setAvatar(
+      setAvatar(state, id("Ansel"), look),
+      id("Mira"),
+      look,
+    );
+
+    expect(avatarOf(next, id("Ansel"))).toEqual(look);
+    expect(avatarOf(next, id("Mira"))).toEqual(look);
+  });
+
+  it("an old saved room gives each seat without a look the look from its id", () => {
+    const { state: start, id } = lobby(["Wren", "Ansel", "Mira"]);
+    const state = setAvatar(start, id("Mira"), look);
+    const old = {
+      ...state,
+      players: state.players.map((p) => {
+        if (p.id === id("Mira")) {
+          return p;
+        }
+
+        const { avatar: _, ...rest } = p;
+
+        return rest;
+      }),
+    };
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stands in for what an older deploy stored
+    const upgraded = upgradeRoom(old as RoomState);
+
+    expect(avatarOf(upgraded, id("Wren"))).toEqual(avatarFor(id("Wren")));
+    expect(avatarOf(upgraded, id("Ansel"))).toEqual(avatarFor(id("Ansel")));
+    expect(avatarOf(upgraded, id("Mira"))).toEqual(look);
+  });
+
+  it("an old room missing both the clock and the looks gets both", () => {
+    const { state } = lobby(["Wren", "Ansel"]);
+    const { hostAwaySince: _, ...rest } = state;
+    const old = {
+      ...rest,
+      players: rest.players.map(({ avatar: _a, ...p }) => p),
+    };
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stands in for what an older deploy stored
+    const upgraded = upgradeRoom(old as RoomState);
+
+    expect(upgraded).toEqual({ ...state, hostAwaySince: null });
   });
 });

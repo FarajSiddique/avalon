@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { avatarFor, type Avatar } from "@/shared/avatar";
 import { projectView } from "./project-view";
 import {
   createRoom,
   joinRoom,
+  setAvatar,
   setReady,
   setSettings,
   type RoomDeps,
@@ -16,9 +18,36 @@ const deps: RoomDeps = {
 };
 
 describe("projectView (lobby)", () => {
+  it("gives every viewer every seat's look, as a copy", () => {
+    const look: Avatar = {
+      body: "male",
+      skin: "starborn",
+      cloak: "moss",
+      headwear: "helm",
+      emblem: "key",
+    };
+    const host = createRoom("BCDF", "Wren", undefined, deps);
+    const guest = joinRoom(host.state, "Ansel", look, deps);
+    const state = setAvatar(guest.state, host.player.id, {
+      ...look,
+      cloak: "plum",
+    });
+    const connected = new Set([host.player.id, guest.player.id]);
+
+    for (const viewer of [host.player.id, guest.player.id]) {
+      const view = projectView(state, viewer, connected);
+
+      expect(view.players.map((p) => p.avatar)).toEqual([
+        { ...look, cloak: "plum" },
+        look,
+      ]);
+      expect(view.players[1]?.avatar).not.toBe(state.players[1]?.avatar);
+    }
+  });
+
   it("tells each viewer who they are and never includes seat secrets", () => {
-    const host = createRoom("BCDF", "Wren", deps);
-    const guest = joinRoom(host.state, "Ansel", deps);
+    const host = createRoom("BCDF", "Wren", undefined, deps);
+    const guest = joinRoom(host.state, "Ansel", undefined, deps);
     const connected = new Set([host.player.id]);
 
     const hostView = projectView(guest.state, host.player.id, connected);
@@ -33,6 +62,7 @@ describe("projectView (lobby)", () => {
         isHost: true,
         connected: true,
         ready: false,
+        avatar: avatarFor(host.player.id),
       },
       {
         id: guest.player.id,
@@ -40,6 +70,7 @@ describe("projectView (lobby)", () => {
         isHost: false,
         connected: false,
         ready: false,
+        avatar: avatarFor(guest.player.id),
       },
     ]);
 
@@ -54,7 +85,7 @@ describe("projectView (lobby)", () => {
   });
 
   it("lists why the game cannot start yet", () => {
-    const host = createRoom("BCDF", "Wren", deps);
+    const host = createRoom("BCDF", "Wren", undefined, deps);
 
     const view = projectView(
       host.state,
@@ -74,10 +105,10 @@ describe("projectView (lobby)", () => {
   });
 
   it("waits on every seat but the host to ready up", () => {
-    const host = createRoom("BCDF", "Wren", deps);
+    const host = createRoom("BCDF", "Wren", undefined, deps);
     let state = host.state;
     const guests = ["Ansel", "Mira", "Tobias", "Isolde"].map((name) => {
-      const seated = joinRoom(state, name, deps);
+      const seated = joinRoom(state, name, undefined, deps);
 
       state = seated.state;
 
@@ -110,7 +141,7 @@ describe("projectView (lobby)", () => {
   });
 
   it("blocks too many Evil roles for the seats there are now", () => {
-    const host = createRoom("BCDF", "Wren", deps);
+    const host = createRoom("BCDF", "Wren", undefined, deps);
     let state = setSettings(host.state, host.player.id, {
       optionalRoles: ["morgana", "mordred", "oberon"],
       ladyOfTheLake: true,
@@ -127,7 +158,7 @@ describe("projectView (lobby)", () => {
     expect(blockers()).toEqual([{ kind: "too_few_players", needed: 4 }]);
 
     for (const name of ["Ansel", "Mira", "Tobias", "Isolde"]) {
-      const seated = joinRoom(state, name, deps);
+      const seated = joinRoom(state, name, undefined, deps);
 
       state = setReady(seated.state, seated.player.id, true);
     }

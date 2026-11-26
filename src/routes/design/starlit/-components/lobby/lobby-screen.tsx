@@ -7,7 +7,7 @@ import {
 } from "react";
 import { noSnapshot, noSubscription } from "@/client/no-subscription";
 import { play } from "@/client/sound";
-import { avatarFor, lookSummary } from "@/client/avatar";
+import { lookSummary } from "@/client/avatar";
 import { designPaths } from "@/design/directions";
 import { useAvatar } from "@/client/use-avatar";
 import { useMockLobby } from "@/design/use-mock-lobby";
@@ -107,7 +107,7 @@ export function LobbyScreen({ via, name, code }: LobbySearch) {
         .map((p) => ({
           id: p.id,
           name: p.name,
-          avatar: p.id === view.you.id ? yours : avatarFor(p.id),
+          avatar: p.id === view.you.id ? yours : p.avatar,
           isHost: p.isHost,
           isYou: p.id === view.you.id,
           connected: p.connected,

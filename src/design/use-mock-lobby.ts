@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore } from "react";
 import type { StoreApi } from "zustand/vanilla";
 import { createDevStore } from "@/client/dev-store";
 import { play } from "@/client/sound";
+import { avatarFor } from "@/shared/avatar";
 import { MAX_PLAYERS, MIN_PLAYERS } from "@/shared/constants";
 import type { OptionalRole } from "@/shared/roles";
 import { tooManyEvilRoles } from "@/shared/settings";
@@ -244,14 +245,17 @@ function createMockLobby(options: MockLobbyOptions): MockLobbyInstance {
             return current;
           }
 
+          const id = `p-guest-${name.toLowerCase()}`;
+
           return withPlayers(current, [
             ...current.players,
             {
-              id: `p-guest-${name.toLowerCase()}`,
+              id,
               name,
               isHost: false,
               connected: true,
               ready: false,
+              avatar: avatarFor(id),
             },
           ]);
         }),

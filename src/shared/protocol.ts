@@ -17,6 +17,7 @@
  * The matching validators live in schemas.ts and run on the server.
  */
 
+import type { Avatar } from "./avatar";
 import type { OptionalRole } from "./roles";
 import type { PlayerId, QuestCard, RoomCode, RoomView, Vote } from "./views";
 
@@ -51,10 +52,18 @@ export interface SeatGrant {
 
 export interface CreateRoomInput {
   name: string;
+  /** The host's saved look. Missing or invalid gives a look from the seat id. */
+  avatar?: Avatar;
 }
 
 export interface JoinRoomInput {
   name: string;
+  /** The player's saved look. Missing or invalid gives a look from the seat id. */
+  avatar?: Avatar;
+}
+
+export interface AvatarInput {
+  avatar: Avatar;
 }
 
 export interface ResumeInput {
@@ -98,6 +107,8 @@ export interface RoomRequests {
   "lobby:settings": { input: SettingsInput; output: null };
   /** Host only, lobby only. Removes another seat. */
   "lobby:kick": { input: KickInput; output: null };
+  /** Lobby only. Changes your own look. The same look again changes nothing. */
+  "lobby:avatar": { input: AvatarInput; output: null };
   /** Next run. Host only. */
   "lobby:start": { input: null; output: null };
   /** Next run. Every in-game move goes through this one request. */

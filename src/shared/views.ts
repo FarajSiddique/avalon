@@ -8,6 +8,7 @@
  * which quest card.
  */
 
+import type { Avatar } from "./avatar";
 import type { Alignment, OptionalRole, Role } from "./roles";
 
 export type PlayerId = string;
@@ -27,6 +28,8 @@ export interface SeatView {
   connected: boolean;
   /** Lobby only. Always true once the game has started. */
   ready: boolean;
+  /** The seat's look. Public. Fixed once the game starts. */
+  avatar: Avatar;
 }
 
 /** A reason the host cannot start yet. Shown next to the Start button. */

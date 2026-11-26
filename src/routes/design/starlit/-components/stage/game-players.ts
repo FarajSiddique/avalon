@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { avatarFor } from "@/client/avatar";
 import { PLAYER_IDS } from "@/design/mock";
 import { useAvatar } from "@/client/use-avatar";
 import { useYourName } from "@/design/your-name";
@@ -40,7 +39,7 @@ export function useGamePlayers(view: GameView): Array<TablePlayer> {
       view.players.map((p) => ({
         id: p.id,
         name: p.name,
-        avatar: p.id === view.you.id ? yours : avatarFor(p.id),
+        avatar: p.id === view.you.id ? yours : p.avatar,
         isHost: p.isHost,
         isYou: p.id === view.you.id,
         connected: p.connected,

@@ -76,7 +76,7 @@ check(
   `HELD_DOWN_MS (${HELD_DOWN_MS}) is too close to HOST_AWAY_MS (${HOST_AWAY_MS})`,
 );
 
-const names = (page) => page.getByTestId("player").allInnerTexts();
+const names = (page) => page.getByTestId("player").allTextContents();
 const online = (page, value) =>
   page
     .locator(`[data-testid="connection"][data-online="${value}"]`)
@@ -108,6 +108,28 @@ try {
   await host.getByTestId("player").nth(1).waitFor();
   console.log(`Room ${code}: two players seated.`);
 
+  // The guest readies up and picks a look; both must outlive the restart.
+  const tag = host.locator("[data-tag]", { hasText: "Ansel" });
+  const lookBefore = await tag.getAttribute("data-look", { timeout: 60_000 });
+  const cloakBefore = lookBefore?.split("/")[2];
+  const cloak = ["rose", "moss"].find((c) => c !== cloakBefore);
+
+  await guest.getByRole("button", { name: "I'm ready" }).click();
+  await guest.getByRole("button", { name: /^Your look/ }).click();
+  await guest
+    .getByRole("dialog", { name: "Your look" })
+    .locator(`[data-look="cloak:${cloak}"]`)
+    .click();
+  await guest.getByRole("button", { name: "Done" }).click();
+  await host
+    .locator(`[data-tag][data-look*="/${cloak}/"]`, { hasText: "Ansel" })
+    .waitFor({ timeout: 20_000 });
+  await host
+    .getByRole("status", { name: "Before the game starts" })
+    .filter({ hasNotText: "Ansel" })
+    .waitFor({ timeout: 20_000 });
+  console.log(`The guest is ready and wears a ${cloak} cloak.`);
+
   await stopServer(server);
   await online(host, false);
   await online(guest, false);
@@ -130,6 +152,18 @@ try {
   check(hostSees[0]?.includes("Host"), "host lost the host role");
   check(guestSees[1]?.includes("Ansel (you)"), "guest lost their seat");
   console.log("Both players are back in their seats without a reload. OK.");
+
+  const blockers = await host
+    .getByRole("status", { name: "Before the game starts" })
+    .innerText();
+  const lookAfter = await tag.getAttribute("data-look");
+
+  check(!blockers.includes("Ansel"), "the guest lost their ready");
+  check(
+    lookAfter?.split("/")[2] === cloak,
+    `the guest's look is ${lookAfter}, not the ${cloak} cloak`,
+  );
+  console.log("The guest is still ready, in the same look. OK.");
 
   // Part two: a pending host hand-over survives a restart.
   const hostLeftAt = Date.now();

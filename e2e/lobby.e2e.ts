@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { CLOAKS } from "../src/shared/avatar";
+import { listNames } from "../src/shared/copy";
 import {
   STAGE_TIMEOUT,
   closePlayers,
@@ -156,4 +157,109 @@ test("a look is kept on reload and carried to the next room", async ({
     "data-look",
     new RegExp(`/${chosen}/`),
   );
+});
+
+const startButton = (page: Page) =>
+  page.getByRole("button", { name: "Start", exact: true });
+
+const blockers = (page: Page) =>
+  page.getByRole("status", { name: "Before the game starts" });
+
+test("five players ready up, and Start waits for the last", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const host = await newPlayer(browser);
+  const code = await createRoom(host.page, "Wren");
+  const names = ["Ansel", "Bram", "Cora", "Dov"];
+  const guests = [];
+
+  for (const name of names) {
+    const guest = await newPlayer(browser);
+
+    await joinRoom(guest.page, code, name);
+    guests.push(guest);
+  }
+
+  await expect(startButton(host.page)).toBeDisabled();
+  await expect(blockers(host.page)).toHaveText(
+    "Waiting for Ansel, Bram, Cora and Dov to ready up.",
+  );
+
+  const waiting = [...names];
+
+  for (const guest of guests) {
+    const ready = guest.page.getByRole("button", { name: "I'm ready" });
+
+    await ready.click();
+    await expect(ready).toHaveAttribute("aria-pressed", "true");
+    waiting.shift();
+
+    if (waiting.length > 0) {
+      await expect(blockers(host.page)).toHaveText(
+        `Waiting for ${listNames(waiting)} to ready up.`,
+      );
+      await expect(startButton(host.page)).toBeDisabled();
+    }
+  }
+
+  await expect(blockers(host.page)).toHaveText("Everyone is here and ready.");
+  await expect(startButton(host.page)).toBeEnabled();
+
+  // Until the game exists (Phase 2) the room refuses Start, and says so.
+  await startButton(host.page).click();
+  await expect(
+    host.page.getByRole("alert").filter({ hasText: /./ }),
+  ).toHaveText("That is not available yet.");
+
+  // One guest changes their mind: Start waits again.
+  const bram = guests[1];
+
+  if (!bram) {
+    throw new Error("No second guest");
+  }
+
+  await bram.page.getByRole("button", { name: "I'm ready" }).click();
+  await expect(startButton(host.page)).toBeDisabled();
+  await expect(blockers(host.page)).toHaveText("Waiting for Bram to ready up.");
+});
+
+test("when the host leaves, the table is told who hosts now", async ({
+  browser,
+}) => {
+  const wren = await newPlayer(browser);
+  const code = await createRoom(wren.page, "Wren");
+  const ansel = await newPlayer(browser);
+  const bram = await newPlayer(browser);
+
+  await joinRoom(ansel.page, code, "Ansel");
+  await joinRoom(bram.page, code, "Bram");
+  // Nobody is told anything on arrival.
+  await expect(ansel.page.getByTestId("notice")).toHaveCount(0);
+
+  await wren.page.getByRole("button", { name: "Leave room" }).click();
+  await wren.page
+    .getByRole("group", { name: "Leave the room?" })
+    .getByRole("button", { name: "Leave" })
+    .click();
+
+  await expect(ansel.page.getByTestId("notice")).toHaveText(
+    "You are now the host",
+  );
+  await expect(bram.page.getByTestId("notice")).toHaveText(
+    "Ansel is now the host",
+  );
+  // The crown moves in the list, and the notice goes after 5 seconds.
+  await expect(
+    bram.page.getByTestId("player").filter({ hasText: "Ansel" }),
+  ).toContainText("Host");
+  await expect(bram.page.getByTestId("notice")).toHaveCount(0, {
+    timeout: 10_000,
+  });
+  // A reload says nothing.
+  await ansel.page.reload();
+  await expect(
+    ansel.page.getByTestId("player").filter({ hasText: "Ansel (you)" }),
+  ).toContainText("Host", STAGE_TIMEOUT);
+  await expect(ansel.page.getByTestId("notice")).toHaveCount(0);
 });

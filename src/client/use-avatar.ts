@@ -2,18 +2,26 @@ import { useSyncExternalStore } from "react";
 import { createDevStore } from "@/client/dev-store";
 import { DEFAULT_AVATAR, sanitizeAvatar, type Avatar } from "@/shared/avatar";
 
-/** Your look, saved in this browser (the prototype has no account). */
+/**
+ * Your look, saved in this browser (there are no accounts). The prototype
+ * and the real lobby share the key, so a look picked in one carries over.
+ */
 const KEY = "avalon:starlit-avatar:v1";
 
-function load(): Avatar {
+/** The look saved in this browser, or null when none has been. */
+export function loadSavedAvatar(): Avatar | null {
   try {
     const raw = localStorage.getItem(KEY);
 
-    return raw ? sanitizeAvatar(JSON.parse(raw)) : DEFAULT_AVATAR;
+    return raw ? sanitizeAvatar(JSON.parse(raw)) : null;
   } catch {
-    // Storage blocked or a bad value: keep the default.
-    return DEFAULT_AVATAR;
+    // Storage blocked or a bad value: as if none was saved.
+    return null;
   }
+}
+
+function load(): Avatar {
+  return loadSavedAvatar() ?? DEFAULT_AVATAR;
 }
 
 const store = createDevStore<Avatar>("avatar", () =>
@@ -41,8 +49,14 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
+/** Change part of the saved look (the prototype's picker). */
 export function setAvatar(next: Partial<Avatar>): void {
-  const value = sanitizeAvatar({ ...store.getState(), ...next });
+  saveAvatar({ ...store.getState(), ...next });
+}
+
+/** Save a whole look in this browser, for the next room joined. */
+export function saveAvatar(next: Avatar): void {
+  const value = sanitizeAvatar(next);
 
   try {
     localStorage.setItem(KEY, JSON.stringify(value));

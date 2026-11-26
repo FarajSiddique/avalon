@@ -16,6 +16,7 @@ import { RoomConnection } from "./connection";
 import { createDevStore } from "./dev-store";
 import { clearToken, loadToken, saveToken } from "./session";
 import { play } from "./sound";
+import { loadSavedAvatar } from "./use-avatar";
 
 export type RoomStatus =
   /** Waiting for the socket or for the room to answer. */
@@ -93,19 +94,25 @@ export class RoomClient {
 
   readonly join = (name: string): void => {
     this.set({ error: null });
-    void this.connection.request("room:join", { name }).then((result) => {
-      if (result.ok) {
-        saveToken(result.data.code, result.data.token);
-      } else {
-        const gone = result.error.code === "ROOM_NOT_FOUND";
+    // The look saved in this browser, if one was ever picked; otherwise the
+    // room gives the seat a look of its own.
+    const avatar = loadSavedAvatar();
 
-        this.set({
-          error: result.error,
-          status: gone ? "closed" : "needs_name",
-          closedReason: gone ? "not_found" : null,
-        });
-      }
-    });
+    void this.connection
+      .request("room:join", avatar ? { name, avatar } : { name })
+      .then((result) => {
+        if (result.ok) {
+          saveToken(result.data.code, result.data.token);
+        } else {
+          const gone = result.error.code === "ROOM_NOT_FOUND";
+
+          this.set({
+            error: result.error,
+            status: gone ? "closed" : "needs_name",
+            closedReason: gone ? "not_found" : null,
+          });
+        }
+      });
   };
 
   /** Host only. The room answers with a new view, or the reason it refused. */

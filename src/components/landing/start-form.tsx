@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useId, useRef, useState } from "react";
 import { saveToken } from "@/client/session";
+import { loadSavedAvatar } from "@/client/use-avatar";
 import { useHydrated } from "@/client/use-hydrated";
 import { useWebGLGate } from "@/client/use-webgl-gate";
 import {
@@ -85,7 +86,11 @@ export function StartForm() {
     setCreateError(null);
 
     try {
-      const result = await createRoom({ data: { name } });
+      // The host's saved look, if one was ever picked.
+      const avatar = loadSavedAvatar();
+      const result = await createRoom({
+        data: avatar ? { name, avatar } : { name },
+      });
 
       if (result.ok) {
         saveToken(result.data.code, result.data.token);

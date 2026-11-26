@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { cssVars } from "@/client/css-vars";
 import { lookSummary } from "@/client/avatar";
 import type { RoomClient } from "@/client/room-client";
+import { saveAvatar } from "@/client/use-avatar";
 import { useWide } from "@/client/use-wide";
 import {
   useStage,
@@ -10,13 +11,16 @@ import {
   useStageStore,
 } from "@/components/stage/stage-context";
 import type { TablePlayer } from "@/components/three/types";
+import { IconArrowRight } from "@/components/ui/icons";
 import { ConnectionStatus } from "@/components/room/connection-status";
 import { OPTIONAL_ROLES, type OptionalRole } from "@/shared/roles";
+import { avatarKey, type Avatar } from "@/shared/avatar";
 import type { ProtocolError } from "@/shared/protocol";
 import type { LobbyView } from "@/shared/views";
 import { Disclosure } from "./disclosure";
 import { HostSettings } from "./host-settings";
 import { LobbyActions } from "./lobby-actions";
+import { LookPicker } from "./look-picker";
 import { PlayerList } from "./player-list";
 import { RoomCode } from "./room-code";
 import { playersSummary, settingsSummary } from "./summaries";
@@ -24,7 +28,7 @@ import { playersSummary, settingsSummary } from "./summaries";
 /** When the overlays rise in, if the camera is still flying here. */
 const AFTER_FLIGHT_MS = 1700;
 
-type Section = "players" | "look" | "settings";
+type Section = "players" | "settings";
 
 /**
  * The lobby: the Star Table fills the screen, everyone who has joined stands
@@ -47,7 +51,49 @@ export function LobbyScreen({
   const hostName = view.players.find((p) => p.isHost)?.name ?? "The host";
   const canStart = view.startBlockers.length === 0;
 
-  // The table's open space, claimed from the shared stage.
+  const you = view.players.find((p) => p.id === view.you.id);
+  const saved = you?.avatar ?? null;
+
+  // The look picker. While it is open your figure wears the draft; nobody
+  // else sees it until it is saved, once, when the picker closes. Until the
+  // room answers, your figure keeps the look being saved.
+  const [draft, setDraft] = useState<Avatar | null>(null);
+  const [saving, setSaving] = useState<Avatar | null>(null);
+  const picking = draft !== null;
+  const closing = useRef(false);
+
+  const openPicker = () => {
+    if (saved) {
+      closing.current = false;
+      setDraft(saved);
+    }
+  };
+
+  const closePicker = () => {
+    // Done, Escape and a tap outside can land together: save once.
+    if (closing.current || !draft) {
+      return;
+    }
+
+    closing.current = true;
+    setDraft(null);
+
+    if (saved && avatarKey(draft) === avatarKey(saved)) {
+      return;
+    }
+
+    setSaving(draft);
+    void client.setAvatar(draft).then((ok) => {
+      if (ok) {
+        saveAvatar(draft);
+      }
+
+      setSaving(null);
+    });
+  };
+
+  // The table's open space, claimed from the shared stage. The picker asks
+  // for a close shot of your figure.
   const store = useStageStore();
   const stage = useStage();
   const focus = useRef<HTMLDivElement>(null);
@@ -55,8 +101,15 @@ export function LobbyScreen({
     store.getState().pending ? AFTER_FLIGHT_MS : 0,
   );
 
-  useStageSlot({ mode: "lobby", reveal: "whole", fade: 0 }, focus);
+  useStageSlot(
+    picking
+      ? { mode: "lobby", reveal: "whole", fade: 0, shot: "portrait" }
+      : { mode: "lobby", reveal: "whole", fade: 0 },
+    focus,
+  );
   const landed = stage.phase === "lobby";
+  const yourLook = draft ?? saving;
+  const shownLook = yourLook ?? saved;
 
   // Your figure rises once the camera has landed; everyone else is here.
   const players = useMemo<Array<TablePlayer>>(
@@ -66,7 +119,7 @@ export function LobbyScreen({
         .map((p) => ({
           id: p.id,
           name: p.name,
-          avatar: p.avatar,
+          avatar: p.id === view.you.id && yourLook ? yourLook : p.avatar,
           isHost: p.isHost,
           isYou: p.id === view.you.id,
           connected: p.connected,
@@ -74,7 +127,7 @@ export function LobbyScreen({
           // set: nobody waits on the host to ready up.
           ready: p.isHost || p.ready,
         })),
-    [view.players, view.you.id, landed],
+    [view.players, view.you.id, landed, yourLook],
   );
 
   useStagePlayers(players);
@@ -85,13 +138,11 @@ export function LobbyScreen({
   const [chosen, setChosen] = useState<Partial<Record<Section, boolean>>>({});
   const open: Record<Section, boolean> = {
     players: chosen.players ?? wide,
-    look: chosen.look ?? false,
     settings: chosen.settings ?? false,
   };
   const toggle = (section: Section) => () =>
     setChosen((o) => ({ ...o, [section]: !open[section] }));
 
-  const you = view.players.find((p) => p.id === view.you.id);
   const lead = isHost
     ? "Share the code. The game can start once everyone here is ready."
     : `You are at ${hostName}'s table. Get ready, and ${hostName} starts the game.`;
@@ -143,6 +194,7 @@ export function LobbyScreen({
 
       <section
         aria-label="Room"
+        hidden={picking}
         className="sl-panel sl-overlay-in absolute inset-x-0 bottom-0 flex max-h-[78%] flex-col rounded-b-none border-b-0 lg:inset-x-auto lg:top-20 lg:right-6 lg:bottom-6 lg:max-h-none lg:w-[26rem] lg:rounded-b-[var(--corner-lg)] lg:border-b"
         style={arrive(140)}
       >
@@ -168,18 +220,27 @@ export function LobbyScreen({
               onKick={isHost ? client.kick : undefined}
             />
           </Disclosure>
-          <Disclosure
-            name="look"
-            title="Your look"
-            summary={you ? lookSummary(you.avatar) : ""}
-            open={open.look}
-            onToggle={toggle("look")}
-          >
-            {/* The picker comes with the portrait camera. */}
-            <p className="text-ink-muted text-base leading-snug">
-              How you appear at the table.
-            </p>
-          </Disclosure>
+          <div className="sl-disclosure" data-section="look">
+            <h2>
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={picking}
+                onClick={openPicker}
+                className="sl-disclosure__summary"
+              >
+                <span className="flex min-w-0 flex-1 items-baseline gap-3">
+                  <span className="font-display flex-none text-xl leading-tight font-medium">
+                    Your look
+                  </span>
+                  <span className="text-ink-muted min-w-0 flex-1 truncate text-right text-base leading-snug">
+                    {shownLook ? lookSummary(shownLook) : null}
+                  </span>
+                </span>
+                <IconArrowRight size={20} className="flex-none" />
+              </button>
+            </h2>
+          </div>
           <Disclosure
             name="settings"
             title={isHost ? "Host settings" : "Game settings"}
@@ -209,6 +270,10 @@ export function LobbyScreen({
           onLeave={client.leave}
         />
       </section>
+
+      {draft ? (
+        <LookPicker value={draft} onChange={setDraft} onClose={closePicker} />
+      ) : null}
     </main>
   );
 }

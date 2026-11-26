@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "zustand";
 import { noSnapshot, noop } from "@/client/no-subscription";
+import { avatarKey } from "@/shared/avatar";
 import type { Mounted, Rect, StageTarget } from "../three/engine";
 import type { FlightPath, TablePlayer } from "../three/types";
 import {
@@ -276,6 +277,7 @@ function measure(
     fade: live && focus ? focus.h * live.fade : 0,
     animate: true,
     move: inFlow(),
+    shot: live?.shot,
   };
 }
 
@@ -351,6 +353,7 @@ function NameTag({ player }: { player: TablePlayer }) {
   return (
     <div
       data-tag={player.id}
+      data-look={avatarKey(player.avatar)}
       className="sl-name-tag absolute top-0 left-0 opacity-0"
     >
       {icon}

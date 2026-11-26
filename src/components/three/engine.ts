@@ -79,6 +79,8 @@ export interface StageTarget {
    * the game's flow). False: it cuts, as for a jump from the nav bar.
    */
   move?: boolean;
+  /** The lobby only: a close shot of your figure, for the look picker. */
+  shot?: "portrait";
 }
 
 export interface Mounted {
@@ -282,6 +284,10 @@ export async function mountStarTable(
 
   const resolveShot = (): TableShot | null => {
     const mode = aim?.mode;
+
+    if (mode === "lobby") {
+      return aim?.shot ?? null;
+    }
 
     if (mode !== "role" && mode !== "table") {
       return null;
@@ -873,7 +879,8 @@ export async function mountStarTable(
       settled = true;
     }
 
-    retarget(next.move ?? false);
+    // In the lobby a new shot (the look picker) is always the next step.
+    retarget(next.mode === "lobby" || (next.move ?? false));
 
     // A new screen's framing: settled now, or once the move arrives.
     if (settled) {

@@ -61,6 +61,7 @@ export async function createRoom(page: Page, name: string): Promise<string> {
 
 export async function joinRoom(page: Page, code: string, name: string) {
   await page.goto(`/room/${code}`);
+  await onStage(page, "lobby");
   await field(page, "Your name").fill(name);
   await page.getByRole("button", { name: "Join room" }).click();
   await onStage(page, "lobby");

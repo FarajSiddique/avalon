@@ -1,9 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { saveToken } from "@/client/session";
 import { useHydrated } from "@/client/use-hydrated";
 import { useWebGLGate } from "@/client/use-webgl-gate";
-import { useStageStatus } from "@/components/stage/stage-context";
+import {
+  useStageStatus,
+  useStageStore,
+} from "@/components/stage/stage-context";
+import type { FlightPath } from "@/components/three/types";
 import { NoWebGLNotice } from "@/components/ui/no-webgl-notice";
 import { IconArrowRight, IconStar } from "@/components/ui/icons";
 import { createRoom } from "@/functions/rooms";
@@ -14,6 +18,9 @@ import {
   normalizeName,
   normalizeRoomCode,
 } from "@/shared/constants";
+
+/** How long the landing takes to step aside before the room replaces it. */
+const LEAVE_MS = 420;
 
 /** The value of a named text field, read at submit time. */
 function field(form: HTMLFormElement, name: string): string {
@@ -37,6 +44,34 @@ export function StartForm() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const gate = useWebGLGate();
   const stageFailed = useStageStatus() === "failed";
+  const stage = useStageStore();
+  const timer = useRef(0);
+  // The form owns the pending navigation: when it leaves the page, so does
+  // the timer. Stable, so React attaches it once.
+  const owner = useCallback(() => () => window.clearTimeout(timer.current), []);
+
+  /**
+   * Set the camera off towards the room, then go there once the landing has
+   * stepped aside. Without a running stage, or with reduced motion, go now.
+   */
+  function fly(path: FlightPath, code: string) {
+    const { depart, status } = stage.getState();
+    const still =
+      status === "failed" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (status !== "failed") {
+      depart(path);
+    }
+
+    window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
+    timer.current = window.setTimeout(
+      () => {
+        void navigate({ to: "/room/$code", params: { code } });
+      },
+      still ? 0 : LEAVE_MS,
+    );
+  }
 
   async function onCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,10 +89,7 @@ export function StartForm() {
 
       if (result.ok) {
         saveToken(result.data.code, result.data.token);
-        await navigate({
-          to: "/room/$code",
-          params: { code: result.data.code },
-        });
+        fly("create", result.data.code);
 
         return;
       }
@@ -81,7 +113,7 @@ export function StartForm() {
     }
 
     setJoinError(null);
-    void navigate({ to: "/room/$code", params: { code } });
+    fly("join", code);
   }
 
   // The game is played at the 3D table: without it there is nothing to
@@ -92,7 +124,7 @@ export function StartForm() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={owner} className="flex flex-col gap-4">
       <form
         onSubmit={(event) => void onCreate(event)}
         className="flex flex-col gap-4"

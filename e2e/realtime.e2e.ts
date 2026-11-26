@@ -93,6 +93,7 @@ test("two players see each other join, drop and return", async ({
   const stranger = await strangerContext.newPage();
 
   await stranger.goto(`/room/${code}`);
+  await onStage(stranger, "lobby");
   await field(stranger, "Your name").fill("wren");
   await stranger.getByRole("button", { name: "Join room" }).click();
   await expect(
@@ -109,6 +110,7 @@ test("two players see each other join, drop and return", async ({
   const guestAgain = await guestContext.newPage();
 
   await guestAgain.goto(`/room/${code}`);
+  await onStage(guestAgain, "lobby");
   await expect(players(guestAgain)).toHaveCount(2);
   await expect(players(guestAgain).nth(1)).toContainText("Ansel (you)");
   await expect(players(host).nth(1)).toHaveAttribute("data-connected", "true");
@@ -138,6 +140,7 @@ test("each browser is only ever sent its own view", async ({ browser }) => {
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`/room/${code}`);
+  await onStage(guest, "lobby");
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
   await onStage(guest, "lobby");
@@ -274,6 +277,7 @@ test("a guest readies up, and the host cannot", async ({ browser }) => {
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`/room/${code}`);
+  await onStage(guest, "lobby");
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
   await onStage(guest, "lobby");
@@ -328,6 +332,7 @@ test("the host saves any role mix, and too many Evil roles block Start", async (
 
   for (const [i, guest] of guests.entries()) {
     await guest.goto(`/room/${code}`);
+    await onStage(guest, "lobby");
     await field(guest, "Your name").fill(`Guest${i + 1}`);
     await guest.getByRole("button", { name: "Join room" }).click();
     await onStage(guest, "lobby");

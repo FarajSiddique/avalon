@@ -1,8 +1,8 @@
 import { Link, Navigate } from "@tanstack/react-router";
-import { useId } from "react";
+import { useId, useRef } from "react";
 import { useRoom } from "@/client/use-room";
 import { useWebGLGate } from "@/client/use-webgl-gate";
-import { useStageStatus } from "@/components/stage/stage-context";
+import { useStageSlot, useStageStatus } from "@/components/stage/stage-context";
 import { NoWebGLNotice } from "@/components/ui/no-webgl-notice";
 import { LobbyScreen } from "@/components/lobby/lobby-screen";
 import { IconArrowRight, IconRing, IconStar } from "@/components/ui/icons";
@@ -31,6 +31,16 @@ export function RoomScreen({ code }: { code: RoomCode }) {
 function RoomSession({ code }: { code: RoomCode }) {
   const room = useRoom(code);
   const stageFailed = useStageStatus() === "failed";
+  const inLobby = room.status === "seated" && room.view?.stage === "lobby";
+  // The table stands behind the join form and the closed states too, so a
+  // flight from the landing always lands (and its pending flight clears).
+  // Seated, the lobby claims the stage itself.
+  const behind = useRef<HTMLDivElement>(null);
+
+  useStageSlot(
+    inLobby || stageFailed ? null : { mode: "lobby", reveal: "whole", fade: 0 },
+    behind,
+  );
   const nameId = useId();
 
   if (room.status === "closed" && room.closedReason === "left") {
@@ -44,7 +54,7 @@ function RoomSession({ code }: { code: RoomCode }) {
     return <NoWebGLNotice onReload={() => window.location.reload()} />;
   }
 
-  if (room.status === "seated" && room.view?.stage === "lobby") {
+  if (inLobby && room.view?.stage === "lobby") {
     return (
       <LobbyScreen
         view={room.view}
@@ -57,7 +67,12 @@ function RoomSession({ code }: { code: RoomCode }) {
 
   return (
     <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-7 pb-8 lg:pt-16">
-      <header className="sl-rise sl-seq">
+      <div
+        ref={behind}
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10"
+      />
+      <header className="sl-rise sl-seq sl-over-scene">
         <p className="sl-eyebrow">Room code</p>
         <h1 className="sl-code mt-2" data-testid="room-code">
           {code}

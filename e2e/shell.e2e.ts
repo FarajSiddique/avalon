@@ -162,7 +162,8 @@ test("the room page is rendered in the browser only", async ({
   await page.goto("/room/BCDF");
   await expect(page.locator('[data-art="night-sky"]')).toBeAttached();
   await expect(page.getByTestId("connection")).toBeAttached();
-  await expect(page.locator("[data-stage-host]")).toHaveCount(0);
+  // The table stands behind the room's own screens too.
+  await expect(page.locator("[data-stage-host]")).toBeAttached();
 });
 
 // getAnimations() sees CSS animations only, not the scene's render loop, so

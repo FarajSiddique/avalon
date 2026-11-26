@@ -54,6 +54,36 @@ export interface Rect {
   h: number;
 }
 
+function sameRect(a: Rect | null, b: Rect | null): boolean {
+  return (
+    a === b ||
+    (a !== null &&
+      b !== null &&
+      a.x === b.x &&
+      a.y === b.y &&
+      a.w === b.w &&
+      a.h === b.h)
+  );
+}
+
+/**
+ * The same framing as before. The stage re-aims on every frame for a moment
+ * after each screen change (fonts and late layout move it), and with reduced
+ * motion each aim redraws the whole scene, which in software takes seconds.
+ */
+function sameTarget(a: StageTarget, b: StageTarget): boolean {
+  return (
+    a.mode === b.mode &&
+    a.path === b.path &&
+    a.fade === b.fade &&
+    a.animate === b.animate &&
+    a.move === b.move &&
+    a.shot === b.shot &&
+    sameRect(a.focus, b.focus) &&
+    sameRect(a.reveal, b.reveal)
+  );
+}
+
 /** Where the stage is: settled on one framing, or flying between them. */
 /** Settled on a framing (the mode's name), or flying between two. */
 export type StagePhase = "hero" | "lobby" | "role" | "table" | "flying";
@@ -839,7 +869,7 @@ export async function mountStarTable(
   };
 
   const setTarget = (next: StageTarget) => {
-    if (!stage) {
+    if (!stage || (aim && sameTarget(aim, next))) {
       return;
     }
 

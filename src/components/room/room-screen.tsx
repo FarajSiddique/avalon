@@ -8,6 +8,7 @@ import { LobbyScreen } from "@/components/lobby/lobby-screen";
 import { IconArrowRight, IconRing, IconStar } from "@/components/ui/icons";
 import { NAME_MAX_LENGTH, normalizeName } from "@/shared/constants";
 import { ConnectionStatus } from "./connection-status";
+import { HostNotice } from "./host-notice";
 import { closedMessage } from "@/shared/copy";
 import type { RoomCode } from "@/shared/views";
 
@@ -54,14 +55,21 @@ function RoomSession({ code }: { code: RoomCode }) {
     return <NoWebGLNotice onReload={() => window.location.reload()} />;
   }
 
+  const notice = (
+    <HostNotice notice={room.notice} onDone={room.client.dismissNotice} />
+  );
+
   if (inLobby && room.view?.stage === "lobby") {
     return (
-      <LobbyScreen
-        view={room.view}
-        client={room.client}
-        error={room.error}
-        online={room.online}
-      />
+      <>
+        <LobbyScreen
+          view={room.view}
+          client={room.client}
+          error={room.error}
+          online={room.online}
+        />
+        {notice}
+      </>
     );
   }
 
@@ -164,8 +172,9 @@ function RoomSession({ code }: { code: RoomCode }) {
       )}
 
       {room.status === "seated" && room.view?.stage === "game" && (
-        <section className="sl-panel sl-rise sl-seq p-5" role="status">
+        <section className="sl-panel sl-rise sl-seq p-5">
           <p className="text-lg">The game is under way.</p>
+          {notice}
         </section>
       )}
 

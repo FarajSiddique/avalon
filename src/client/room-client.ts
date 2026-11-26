@@ -13,6 +13,7 @@ import type {
 } from "@/shared/protocol";
 import type { GameSettings, RoomCode, RoomView } from "@/shared/views";
 import { RoomConnection } from "./connection";
+import { hostChangeNotice } from "@/shared/copy";
 import { createDevStore } from "./dev-store";
 import { clearToken, loadToken, saveToken } from "./session";
 import { play } from "./sound";
@@ -36,6 +37,12 @@ export interface RoomSnapshot {
   online: boolean;
   /** Why the room closed for this browser. Set with status "closed". */
   closedReason: RoomClosedReason | null;
+  /**
+   * A short notice for the table ("Sam is now the host"), from a change
+   * between two views. `id` tells one notice from the next with the same
+   * words. Kept until dismissed or replaced by the next notice.
+   */
+  notice: { text: string; id: number } | null;
 }
 
 const initial: RoomSnapshot = {
@@ -44,6 +51,7 @@ const initial: RoomSnapshot = {
   error: null,
   online: false,
   closedReason: null,
+  notice: null,
 };
 
 /**
@@ -152,6 +160,11 @@ export class RoomClient {
     });
   };
 
+  /** The notice has been shown for its time. */
+  readonly dismissNotice = (): void => {
+    this.set({ notice: null });
+  };
+
   /** After being removed: open a fresh socket and show the name form. */
   readonly rejoin = (): void => {
     // Stop first, so the old socket is gone before the fresh state. Pending
@@ -181,9 +194,15 @@ export class RoomClient {
   }
 
   private readonly onState = (view: RoomView): void => {
-    const before = this.store.getState().view;
+    const { view: before, notice } = this.store.getState();
+    const text = hostChangeNotice(before, view);
 
-    this.set({ status: "seated", view, error: null });
+    this.set({
+      status: "seated",
+      view,
+      error: null,
+      notice: text ? { text, id: (notice?.id ?? 0) + 1 } : notice,
+    });
 
     // Everyone is ready: the host's phone says so (only the host's, since
     // the players share one room and Start is the host's). Not on the first

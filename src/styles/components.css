@@ -984,9 +984,43 @@
     font-size: 1.875rem;
     white-space: nowrap;
   }
+
+  /*
+   * A short notice at the top of the screen (the host changed). It shows
+   * for 5 seconds; the screen removes it when its animation ends, so the
+   * animation is its timer.
+   */
+  .sl-toast {
+    animation: sl-toast 5s var(--ease-out) both;
+  }
 }
 
 /* ------------------------------------------------------------- keyframes */
+
+@keyframes sl-toast {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+
+  6%,
+  92% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: no fade or slide, but the notice still lasts 5 seconds. */
+@keyframes sl-toast-hold {
+  from,
+  to {
+    opacity: 1;
+  }
+}
 
 @keyframes sl-twinkle {
   50% {
@@ -1053,5 +1087,16 @@
 
   .sl-shooting-star {
     display: none;
+  }
+}
+
+/*
+ * The one exception to the cut above: the toast's animation is its timer,
+ * and holds still, so it keeps its 5 seconds.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .sl-toast {
+    animation-name: sl-toast-hold !important;
+    animation-duration: 5s !important;
   }
 }

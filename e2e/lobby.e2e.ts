@@ -124,8 +124,11 @@ test("a look is kept on reload and carried to the next room", async ({
 
   await openPicker(guest.page);
   await picker(guest.page).locator(`[data-look="cloak:${chosen}"]`).click();
-  // A tap outside the picker saves and closes it.
-  await guest.page.mouse.click(10, 300);
+  // A tap outside the picker saves and closes it. Clicking the backdrop
+  // itself fails loudly if the sheet or another control covers that spot.
+  await guest.page
+    .getByRole("button", { name: "Close your look" })
+    .click({ position: { x: 10, y: 300 } });
   await expect(picker(guest.page)).toHaveCount(0);
   await expect(tagOf(host.page, "Ansel")).toHaveAttribute(
     "data-look",

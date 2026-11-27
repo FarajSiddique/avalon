@@ -172,10 +172,14 @@ function RoomSession({ code }: { code: RoomCode }) {
       )}
 
       {room.status === "seated" && room.view?.stage === "game" && (
-        <section className="sl-panel sl-rise sl-seq p-5">
-          <p className="text-lg">The game is under way.</p>
+        <>
+          <section className="sl-panel sl-rise sl-seq p-5">
+            <p className="text-lg">The game is under way.</p>
+          </section>
+          {/* Outside the section: its rise animation is a transform, which
+              would hold the fixed toast to the section while it runs. */}
           {notice}
-        </section>
+        </>
       )}
 
       {/* On a panel: at the bottom of the page the hills and clouds behind

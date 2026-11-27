@@ -70,24 +70,29 @@ test.describe("with full motion", () => {
   }) => {
     // A room to join, made in another browser.
     const other = await browser.newContext({ reducedMotion: "reduce" });
-    const host = await other.newPage();
 
-    await openLanding(host);
-    await field(host, "Your name").fill("Wren");
-    await host.getByRole("button", { name: "Create a room" }).click();
-    await onStage(host, "lobby");
-    const code = await host.getByTestId("room-code").innerText();
+    // Closed even when an assertion fails, so it does not outlive the test.
+    try {
+      const host = await other.newPage();
 
-    await watchStage(page);
-    await openLanding(page);
-    await markHost(page);
-    await field(page, "Have a room code?").fill(code);
-    await page.getByRole("button", { name: "Join", exact: true }).click();
-    await expect(field(page, "Your name")).toBeVisible(STAGE_TIMEOUT);
-    await onStage(page, "lobby");
-    expect(await phases(page)).toMatch(/hero.* flying.* lobby$/);
-    await expectSameStage(page);
-    await other.close();
+      await openLanding(host);
+      await field(host, "Your name").fill("Wren");
+      await host.getByRole("button", { name: "Create a room" }).click();
+      await onStage(host, "lobby");
+      const code = await host.getByTestId("room-code").innerText();
+
+      await watchStage(page);
+      await openLanding(page);
+      await markHost(page);
+      await field(page, "Have a room code?").fill(code);
+      await page.getByRole("button", { name: "Join", exact: true }).click();
+      await expect(field(page, "Your name")).toBeVisible(STAGE_TIMEOUT);
+      await onStage(page, "lobby");
+      expect(await phases(page)).toMatch(/hero.* flying.* lobby$/);
+      await expectSameStage(page);
+    } finally {
+      await other.close();
+    }
   });
 });
 

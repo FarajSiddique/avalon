@@ -12,7 +12,6 @@ import { closePlayers, createRoom, newPlayer } from "./room-helpers";
  * budget refills while the messages travel.
  */
 
-test.describe.configure({ timeout: 60_000 });
 test.afterEach(closePlayers);
 
 interface Flood {

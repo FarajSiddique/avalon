@@ -5,7 +5,7 @@
 
 import type { RoomClosedReason } from "./protocol";
 import { evilRoleCount, settingsHints, type SettingsHint } from "./settings";
-import type { LobbyView, PlayerId, StartBlocker } from "./views";
+import type { LobbyView, PlayerId, RoomView, StartBlocker } from "./views";
 
 export function listNames(names: Array<string>): string {
   if (names.length <= 1) {
@@ -95,4 +95,25 @@ export function closedMessage(reason: RoomClosedReason | null): string {
     case null:
       return "This room does not exist or has ended.";
   }
+}
+
+/**
+ * "Sam is now the host" or "You are now the host", when the host changed
+ * between two views. Null when it did not, or there is no earlier view (a
+ * first load or a reload says nothing).
+ */
+export function hostChangeNotice(
+  before: RoomView | null,
+  after: RoomView,
+): string | null {
+  const was = before?.players.find((p) => p.isHost);
+  const now = after.players.find((p) => p.isHost);
+
+  if (!was || !now || was.id === now.id) {
+    return null;
+  }
+
+  return now.id === after.you.id
+    ? "You are now the host"
+    : `${now.name} is now the host`;
 }

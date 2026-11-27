@@ -3,7 +3,7 @@ import { TEAM_BALANCE, isPlayerCount } from "@/shared/constants";
 import { settingsBlockerMessages, settingsHintMessages } from "@/shared/copy";
 import { OPTIONAL_ROLES, ROLES, type OptionalRole } from "@/shared/roles";
 import type { LobbyView } from "@/shared/views";
-import { AlignmentTag } from "../alignment-tag";
+import { AlignmentTag } from "./alignment-tag";
 import {
   IconCheck,
   IconRing,

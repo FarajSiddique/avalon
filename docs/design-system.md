@@ -56,7 +56,7 @@ The reference prototype, driven by one mock game (`src/design/mock.ts`: seven pl
 | Table: quest cards    | `/design/starlit/table/quest`   | A team member plays Success or Fail in private.                                              |
 | Table: quest result   | `/design/starlit/table/result`  | The shuffled cards, the outcome, the updated quest track.                                    |
 
-The primary button on each prototype screen leads to the next one, so it can be clicked through from landing to quest result. Without WebGL the lobby, role and table screens show a short notice instead; the landing form still works.
+The primary button on each prototype screen leads to the next one, so it can be clicked through from landing to quest result. Without WebGL the lobby, role and table screens show a short notice instead; the prototype's landing form still works.
 
 Screenshots at 390px and 1440px are written by `pnpm build && pnpm screenshots` (software WebGL in headless Chromium) to `docs/design/screenshots/app/` (the real screens) and `docs/design/screenshots/starlit/` (the prototype). They are not committed.
 
@@ -482,11 +482,13 @@ only in the browser, never in the Worker. On a wide screen the camera's film
 offset slides the subject right of the title. Not yet checked on a real phone
 or Safari: frame rate and battery there are the open question.
 
-Without WebGL (or when the GPU drops the context) the lobby, role and table
-screens show one short notice instead (`src/routes/design/starlit/-components/no-webgl-notice.tsx`, moving with the game screens):
+Without WebGL (or when the GPU drops the context) every game screen shows
+one short notice instead (`src/components/ui/no-webgl-notice.tsx`):
 "This game needs 3D graphics. Try another browser, or turn on hardware
-acceleration in this one." The landing keeps its form; the hero band stays
-empty.
+acceleration in this one." In the real app this is the 3D gate: the
+landing shows the notice in place of its form, and a room link shows it
+without joining (see "3D gate" in `docs/architecture.md`). A context lost
+after joining adds a Reload button. The prototype's landing keeps its form.
 
 - **Lobby table and avatars.** The prototype lobby opens on The Star Table
   framed from above, with every player standing at a seat as a small

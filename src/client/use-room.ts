@@ -3,6 +3,8 @@ import type { RoomCode } from "@/shared/views";
 import { RoomClient, type RoomSnapshot } from "./room-client";
 
 export interface UseRoom extends RoomSnapshot {
+  /** The room's client, for screens that send more than these. */
+  client: RoomClient;
   join: (name: string) => void;
   kick: (playerId: string) => void;
   leave: () => void;
@@ -21,6 +23,7 @@ export function useRoom(code: RoomCode): UseRoom {
 
   return {
     ...snapshot,
+    client,
     join: client.join,
     kick: client.kick,
     leave: client.leave,

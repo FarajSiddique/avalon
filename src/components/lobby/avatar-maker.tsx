@@ -19,16 +19,22 @@ import {
   type Emblem,
   type Skin,
 } from "@/shared/avatar";
-import { setAvatar, useAvatar } from "@/client/use-avatar";
 import { sparklePath } from "@/components/art/seeded";
 import { IconCheck, IconMoon, IconSun } from "@/components/ui/icons";
 
 /**
- * "Your look": pick a body, a skin, a cloak, headwear and an emblem. Your figure at the
- * table changes as you choose. Saved in this browser.
+ * "Your look": pick a body, a skin, a cloak, headwear and an emblem. Your
+ * figure at the table changes as you choose. Controlled: the screen holds
+ * the look (a draft in the lobby) and decides when it is saved.
  */
-export function AvatarMaker() {
-  const look = useAvatar();
+export function AvatarMaker({
+  value: look,
+  onChange,
+}: {
+  value: Avatar;
+  onChange: (next: Avatar) => void;
+}) {
+  const choose = (change: Partial<Avatar>) => onChange({ ...look, ...change });
 
   return (
     <div>
@@ -57,11 +63,13 @@ export function AvatarMaker() {
           label="Everyday"
           skins={SKINS.slice(0, FIRST_FANCY_SKIN)}
           chosen={look.skin}
+          onPick={(skin) => choose({ skin })}
         />
         <SkinRow
           label="Fantastical"
           skins={SKINS.slice(FIRST_FANCY_SKIN)}
           chosen={look.skin}
+          onPick={(skin) => choose({ skin })}
         />
       </Picker>
 
@@ -117,19 +125,17 @@ export function AvatarMaker() {
   );
 }
 
-function choose(change: Partial<Avatar>): void {
-  setAvatar(change);
-}
-
 /** One labelled row of skin swatches inside the Skin picker. */
 function SkinRow({
   label,
   skins,
   chosen,
+  onPick,
 }: {
   label: string;
   skins: ReadonlyArray<Skin>;
   chosen: Skin;
+  onPick: (skin: Skin) => void;
 }) {
   return (
     <div role="group" aria-label={`${label} skins`} className="w-full">
@@ -143,7 +149,7 @@ function SkinRow({
             aria-label={SKIN_LABELS[skin]}
             title={SKIN_LABELS[skin]}
             data-look={`skin:${skin}`}
-            onClick={() => choose({ skin })}
+            onClick={() => onPick(skin)}
             className="sl-swatch"
             style={{ background: `var(${SKIN_TOKENS[skin]})` }}
           >

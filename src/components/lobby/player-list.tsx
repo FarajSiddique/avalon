@@ -1,12 +1,14 @@
-import type { LobbyView, SeatView } from "@/shared/views";
+import { useState } from "react";
+import type { LobbyView, PlayerId, SeatView } from "@/shared/views";
 import { cssVars } from "@/client/css-vars";
 import {
   IconCheck,
+  IconCross,
   IconCrown,
   IconMoon,
   IconRing,
 } from "@/components/ui/icons";
-import { initialOf } from "../names";
+import { initialOf } from "./names";
 
 /** Keyed by state where it is used, so a change pops in instead of snapping. */
 function PlayerState({ player }: { player: SeatView }) {
@@ -61,15 +63,21 @@ function stateKey(player: SeatView): string {
  * Everyone in the room, with host, you, and ready, not ready or away. When
  * `allReady` turns on, the stars by each name flare one after another. Sits
  * inside a lobby section, which carries the heading; the Ready button is in
- * the lobby's action bar.
+ * the lobby's action bar. With `onKick` (the host's own list) each other
+ * seat has a remove button that asks before it acts.
  */
 export function PlayerList({
   view,
   allReady = false,
+  onKick,
 }: {
   view: LobbyView;
   allReady?: boolean;
+  onKick?: (id: PlayerId) => void;
 }) {
+  /** The seat about to be removed, waiting for the confirm. */
+  const [removing, setRemoving] = useState<PlayerId | null>(null);
+
   return (
     <ul data-all-ready={allReady}>
       {view.players.map((player, index) => (
@@ -78,6 +86,17 @@ export function PlayerList({
           player={player}
           index={index}
           isYou={player.id === view.you.id}
+          confirming={removing === player.id}
+          onRemove={
+            onKick && player.id !== view.you.id
+              ? () => setRemoving(player.id)
+              : undefined
+          }
+          onConfirm={() => {
+            setRemoving(null);
+            onKick?.(player.id);
+          }}
+          onCancel={() => setRemoving(null)}
         />
       ))}
     </ul>
@@ -88,13 +107,26 @@ function PlayerRow({
   player,
   index,
   isYou,
+  confirming,
+  onRemove,
+  onConfirm,
+  onCancel,
 }: {
   player: SeatView;
   index: number;
   isYou: boolean;
+  confirming: boolean;
+  /** Unset: this seat cannot be removed from here. */
+  onRemove?: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
 }) {
   return (
-    <li className="border-line flex min-h-[3.75rem] items-center gap-3 border-t border-dashed py-2 first:border-t-0">
+    <li
+      data-testid="player"
+      data-connected={player.connected}
+      className="border-line flex min-h-[3.75rem] flex-wrap items-center gap-3 border-t border-dashed py-2 first:border-t-0"
+    >
       <span
         aria-hidden="true"
         style={cssVars({ "--i": index })}
@@ -109,8 +141,13 @@ function PlayerRow({
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
         <span className="min-w-0 truncate text-lg font-bold">
           {player.name}
+          {isYou && <span className="sr-only"> (you)</span>}
         </span>
-        {isYou && <span className="sl-chip text-accent-cool">You</span>}
+        {isYou && (
+          <span className="sl-chip text-accent-cool" aria-hidden="true">
+            You
+          </span>
+        )}
         {player.isHost && (
           <span className="sl-chip text-accent">
             <IconCrown size={14} />
@@ -119,6 +156,39 @@ function PlayerRow({
         )}
       </span>
       <PlayerState key={stateKey(player)} player={player} />
+      {onRemove && !confirming && (
+        <button
+          type="button"
+          className="sl-btn sl-btn--ghost flex-none px-3"
+          aria-label={`Remove ${player.name}`}
+          onClick={onRemove}
+        >
+          <IconCross size={18} />
+        </button>
+      )}
+      {onRemove && confirming && (
+        <div
+          role="group"
+          aria-label={`Remove ${player.name}?`}
+          className="flex w-full items-center gap-2"
+        >
+          <p className="flex-1 font-bold">Remove {player.name}?</p>
+          <button
+            type="button"
+            className="sl-btn sl-btn--primary px-4"
+            onClick={onConfirm}
+          >
+            Remove
+          </button>
+          <button
+            type="button"
+            className="sl-btn sl-btn--ghost px-4"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </li>
   );
 }

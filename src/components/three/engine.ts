@@ -9,6 +9,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { hasWebGL2 } from "@/client/webgl";
 import { isHtmlElement, at as nth, need } from "./guards";
 import { readPalette } from "./palette";
 import type {
@@ -53,6 +54,36 @@ export interface Rect {
   h: number;
 }
 
+function sameRect(a: Rect | null, b: Rect | null): boolean {
+  return (
+    a === b ||
+    (a !== null &&
+      b !== null &&
+      a.x === b.x &&
+      a.y === b.y &&
+      a.w === b.w &&
+      a.h === b.h)
+  );
+}
+
+/**
+ * The same framing as before. The stage re-aims on every frame for a moment
+ * after each screen change (fonts and late layout move it), and with reduced
+ * motion each aim redraws the whole scene, which in software takes seconds.
+ */
+function sameTarget(a: StageTarget, b: StageTarget): boolean {
+  return (
+    a.mode === b.mode &&
+    a.path === b.path &&
+    a.fade === b.fade &&
+    a.animate === b.animate &&
+    a.move === b.move &&
+    a.shot === b.shot &&
+    sameRect(a.focus, b.focus) &&
+    sameRect(a.reveal, b.reveal)
+  );
+}
+
 /** Where the stage is: settled on one framing, or flying between them. */
 /** Settled on a framing (the mode's name), or flying between two. */
 export type StagePhase = "hero" | "lobby" | "role" | "table" | "flying";
@@ -78,6 +109,8 @@ export interface StageTarget {
    * the game's flow). False: it cuts, as for a jump from the nav bar.
    */
   move?: boolean;
+  /** The lobby only: a close shot of your figure, for the look picker. */
+  shot?: "portrait";
 }
 
 export interface Mounted {
@@ -164,7 +197,7 @@ export async function mountStarTable(
   );
 
   // Ask quietly first: three.js logs an error when it cannot get a context.
-  if (!document.createElement("canvas").getContext("webgl2")) {
+  if (!hasWebGL2()) {
     return null;
   }
 
@@ -281,6 +314,10 @@ export async function mountStarTable(
 
   const resolveShot = (): TableShot | null => {
     const mode = aim?.mode;
+
+    if (mode === "lobby") {
+      return aim?.shot ?? null;
+    }
 
     if (mode !== "role" && mode !== "table") {
       return null;
@@ -832,7 +869,7 @@ export async function mountStarTable(
   };
 
   const setTarget = (next: StageTarget) => {
-    if (!stage) {
+    if (!stage || (aim && sameTarget(aim, next))) {
       return;
     }
 
@@ -872,7 +909,11 @@ export async function mountStarTable(
       settled = true;
     }
 
-    retarget(next.move ?? false);
+    // Within the lobby a new shot (the look picker) is always the next
+    // step; arriving in the lobby from elsewhere moves only when asked.
+    retarget(
+      (next.mode === "lobby" && was === "lobby") || (next.move ?? false),
+    );
 
     // A new screen's framing: settled now, or once the move arrives.
     if (settled) {

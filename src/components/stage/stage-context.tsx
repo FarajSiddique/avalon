@@ -29,9 +29,11 @@ export interface StageSlot {
   reveal: "focus" | "whole";
   /** Soft fade at the top of the focus box, as a fraction of its height. */
   fade: number;
+  /** The lobby only: a close shot of your figure (the look picker). */
+  shot?: "portrait";
 }
 
-type StageStatus = "idle" | "loading" | "running" | "failed";
+export type StageStatus = "idle" | "loading" | "running" | "failed";
 
 type Picker = (clientX: number, clientY: number) => string | null;
 
@@ -168,6 +170,11 @@ export function useStage(): StageValue {
   return useStore(useStageStore());
 }
 
+/** Only the stage's status, so a screen does not re-render on every change. */
+export function useStageStatus(): StageStatus {
+  return useStore(useStageStore(), (s) => s.status);
+}
+
 /*
  * Holding the stage. Each hook below claims part of the stage while its
  * screen is mounted: useSyncExternalStore subscribes (claims) after the
@@ -185,6 +192,7 @@ export function useStageSlot(
   const mode = options?.mode;
   const reveal = options?.reveal;
   const fade = options?.fade;
+  const shot = options?.shot;
 
   const hold = useCallback(() => {
     if (!mode || !reveal || fade === undefined) {
@@ -192,12 +200,14 @@ export function useStageSlot(
     }
 
     const { setSlot } = store.getState();
-    const slot: StageSlot = { mode, reveal, fade, focus };
+    const slot: StageSlot = shot
+      ? { mode, reveal, fade, focus, shot }
+      : { mode, reveal, fade, focus };
 
     setSlot(() => slot);
 
     return () => setSlot((current) => (current === slot ? null : current));
-  }, [mode, reveal, fade, focus, store]);
+  }, [mode, reveal, fade, shot, focus, store]);
 
   useSyncExternalStore(hold, noSnapshot, noSnapshot);
 }

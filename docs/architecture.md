@@ -297,8 +297,10 @@ avalon/
 │   │   ├── art/                 The night sky and other large drawings. Browser only
 │   │   ├── three/               The Star Table scene (three.js). Loaded on demand, browser only
 │   │   ├── stage/               The shared stage that hosts the scene, and its store
-│   │   ├── landing/             LandingScreen, LandingArt, StartForm
-│   │   └── room/room-screen.tsx The room screen (flat until Phase 1)
+│   │   ├── ui/no-webgl-notice.tsx  The 3D gate's notice (no WebGL, or the GPU dropped it)
+│   │   ├── landing/             LandingScreen, LandingArt, StartForm (flies the camera into the room)
+│   │   ├── lobby/               The lobby on the Star Table: LobbyScreen, actions, look picker, player list, settings
+│   │   └── room/                RoomScreen (join form, closed states, then the lobby), connection, host notice
 │   ├── styles/                  app.css (entry), tokens.css, fonts.css, components.css, motion.css
 │   ├── functions/rooms.ts       Server functions. `createRoom` is the only one
 │   ├── shared/                  Used by both sides. Plain TypeScript, plus zod in schemas.ts only
@@ -321,6 +323,8 @@ avalon/
 │   │   ├── room-client.ts       Holds the latest RoomView
 │   │   ├── use-room.ts          React hook over room-client
 │   │   ├── use-hydrated.ts      True once React has taken over the page
+│   │   ├── webgl.ts, use-webgl-gate.ts  The 3D gate's check, asked once per page
+│   │   ├── app-flow.ts          The real app's "next step" rule: the landing to a room flies
 │   │   ├── use-hold-to-reveal.ts  Press-and-hold privacy behaviour
 │   │   ├── avatar.ts, use-avatar.ts  How a look is shown (labels, art tokens) and the saved choice
 │   │   └── sound/               Synthesised sound cues and ambience
@@ -333,13 +337,13 @@ avalon/
 
 ### Routes
 
-| Route                  | Kind         | Purpose                                                                                                                                                          |
-| ---------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                    | Page         | Enter a name and create a room, or enter a code to join. On the 3D Star Table; the scene renders in the browser.                                                 |
-| `/room/$code`          | Page         | Everything from lobby to game over. The screen is chosen from `view.stage` and `view.phase.name`, not from the URL. Rendered in the browser only (`ssr: false`). |
-| `/api/health`          | Server route | Returns `{ "status": "ok" }`.                                                                                                                                    |
-| `/api/socket/CODE`     | Not a route  | WebSocket upgrade, sent by `src/server.ts` straight to room CODE's Durable Object.                                                                               |
-| `/design`, `/design/*` | Pages        | The Starlit reference prototype with mock data (`/design` redirects to `/design/starlit`). Deleted when Phase 4 ends.                                            |
+| Route                  | Kind         | Purpose                                                                                                                                                                                                    |
+| ---------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                    | Page         | Enter a name and create a room, or enter a code to join. On the 3D Star Table; the scene renders in the browser.                                                                                           |
+| `/room/$code`          | Page         | Everything from lobby to game over, on the 3D Star Table (the join form too). The screen is chosen from `view.stage` and `view.phase.name`, not from the URL. Rendered in the browser only (`ssr: false`). |
+| `/api/health`          | Server route | Returns `{ "status": "ok" }`.                                                                                                                                                                              |
+| `/api/socket/CODE`     | Not a route  | WebSocket upgrade, sent by `src/server.ts` straight to room CODE's Durable Object.                                                                                                                         |
+| `/design`, `/design/*` | Pages        | The Starlit reference prototype with mock data (`/design` redirects to `/design/starlit`). Deleted when Phase 4 ends.                                                                                      |
 
 The game is one route on purpose. Phase changes arrive over the socket, and a
 URL per phase would let the address bar disagree with the room.
@@ -908,10 +912,11 @@ newer client against an older room fails politely.
   like any closed tab (away and host hand-over rules apply).
 - Client only. The server cannot check a browser's 3D, so there is no
   protocol change and no new `ErrorCode`.
-- e2e uses `withoutWebGL()` (`e2e/no-webgl.ts`): the landing shows the
-  notice and no form; `/room/CODE` from a link shows it and the room gains
-  no seat; a seated player reopening without WebGL gets it. A lost-context
-  e2e (`WEBGL_lose_context`) is added only if it is cheap.
+- e2e uses `withoutWebGL()` (`e2e/no-webgl.ts`, in `e2e/gate.e2e.ts`): the
+  landing shows the notice and no form; `/room/CODE` from a link shows it
+  and opens no socket; a seated player reopening without WebGL gets it and
+  shows as away. No lost-context e2e. Every other browser test runs with
+  software WebGL (SwiftShader), since a room cannot be joined without it.
 
 Avatar picker (decided in issue 21):
 
@@ -964,14 +969,19 @@ run only in GitHub Actions. Nobody runs `pnpm run deploy`, `wrangler deploy` or
 `wrangler preview` by hand.
 
 - **A merge to `main` deploys.** The owner merging is the approval. The
-  `deploy` job in `.github/workflows/ci.yml` runs after `check` passes, then
-  runs the browser tests and the CPU check (`pnpm test:cpu`) against the live
-  site. A failure turns the run red; it does not roll back. Deploys queue, so a
-  second merge waits for the running deploy to finish.
+  `deploy` job in `.github/workflows/ci.yml` runs after `check` and `e2e`
+  pass and runs the CPU check (`pnpm test:cpu`) against the live site; then
+  `live-e2e` runs the browser tests against it. A failure turns the run red; it
+  does not roll back. Deploys queue, so a second merge waits for the running
+  deploy to finish.
+- **Browser tests run in four shards.** Every test draws the 3D table in
+  software (the room needs WebGL, see the 3D gate), which is several times
+  slower on a 4-vCPU runner than on a laptop, so `e2e`, `live-e2e` and
+  `preview-e2e` each split the suite with `--shard=N/4` into parallel jobs.
 - **Every pull request from a branch in this repo gets a preview.**
   `.github/workflows/preview.yml` uploads a preview named `pr-<number>`,
-  comments its address on the pull request, and runs the browser tests against
-  it. Closing the pull request deletes the preview. Previews do not inherit
+  comments its address on the pull request, and `preview-e2e` runs the
+  browser tests against it. Closing the pull request deletes the preview. Previews do not inherit
   bindings, so `wrangler.jsonc` repeats the `ROOM` binding under `previews`;
   each preview has its own empty set of rooms. Pull requests from forks and
   from Dependabot have no secrets, so they get no preview.
@@ -1035,16 +1045,16 @@ step in `load`, or a deploy at a time when no rooms exist (rooms live at most
 
 ## Testing
 
-| Layer               | Tool                                              | What it covers                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Shared tables       | Vitest (`src/shared/*.test.ts`)                   | Team balance, quest sizes, the two-fail rule, name and code cleanup, looks (`avatarFor`, `sanitizeAvatar`) and the look schemas.                                                                                                                                                                                                                                                                       |
-| Room rules          | Vitest (`src/server/room/*.test.ts`)              | Create, join, seat tokens, presence, expiry, host hand-over, what is due next, the message budget, looks (set on create and join, `setAvatar`), saved-room upgrades, and that state is plain JSON. Clock and randomness are passed in.                                                                                                                                                                 |
-| Engine (next run)   | Vitest (`src/server/game/*.test.ts`)              | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                                                                                                                                                                                                               |
-| View projection     | Vitest                                            | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own.                                                                                                                                                                                            |
-| Room object and app | Playwright (`e2e/*.e2e.ts`)                       | Separate browser contexts as separate phones, against the built Worker in Cloudflare's local runtime. Now: create, join, presence, drop, return, kick and leave, a message flood refused with `RATE_LIMITED`, looks on `room:join` and `lobby:avatar`, and that each browser is only ever sent its own view. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport. |
-| Restart             | `pnpm test:restart` (`scripts/restart-check.mjs`) | A room and its seats survive the server process being stopped and started, with no page reload. A host hand-over pending at the restart still lands 60 seconds after the host left.                                                                                                                                                                                                                    |
-| HTTP                | Bruno (`bruno/`)                                  | The health endpoint.                                                                                                                                                                                                                                                                                                                                                                                   |
-| Design              | Playwright (`e2e/*.shots.ts`)                     | Screenshots of every prototype screen at 390px and 1440px, with no console errors and no sideways scrolling.                                                                                                                                                                                                                                                                                           |
+| Layer               | Tool                                              | What it covers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared tables       | Vitest (`src/shared/*.test.ts`)                   | Team balance, quest sizes, the two-fail rule, name and code cleanup, looks (`avatarFor`, `sanitizeAvatar`) and the look schemas.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Room rules          | Vitest (`src/server/room/*.test.ts`)              | Create, join, seat tokens, presence, expiry, host hand-over, what is due next, the message budget, looks (set on create and join, `setAvatar`), saved-room upgrades, and that state is plain JSON. Clock and randomness are passed in.                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Engine (next run)   | Vitest (`src/server/game/*.test.ts`)              | Every phase transition and rule as table-driven cases. Seeded random full games that must always finish and never throw.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| View projection     | Vitest                                            | The knowledge matrix for every role. A leak test: for every viewer at every step of a seeded game, the serialized view contains no other player's role, no unrevealed vote and no quest card but their own.                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Room object and app | Playwright (`e2e/*.e2e.ts`)                       | Separate browser contexts as separate phones, against the built Worker in Cloudflare's local runtime, with software WebGL. Now: create, join, presence, drop, return, kick and leave, a message flood refused with `RATE_LIMITED`, looks on `room:join` and `lobby:avatar`, that each browser is only ever sent its own view, the 3D gate, the flight from `/` into the room, the look picker (one `lobby:avatar` on close, the portrait shot, kept on reload and in the next room), five players readying up against Start, and the host-change notice. Next run: a full five-player game with a fixed seed (`AVALON_SEED`), at a phone viewport. |
+| Restart             | `pnpm test:restart` (`scripts/restart-check.mjs`) | A room and its seats survive the server process being stopped and started, with no page reload, and so do a guest's ready and look. A host hand-over pending at the restart still lands 60 seconds after the host left.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| HTTP                | Bruno (`bruno/`)                                  | The health endpoint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Design              | Playwright (`e2e/*.shots.ts`)                     | Screenshots of every prototype screen and every real screen (landing, gate notice, join form, lobby as host and guest, look picker) at 390px and 1440px, with no console errors and no sideways scrolling.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 The room object is tested through real browsers and a real local Worker, not
 with a mocked runtime. `pnpm lint`, `pnpm typecheck`, `pnpm test`,
@@ -1134,6 +1144,9 @@ What is left is the live CPU check, which runs after the merge (below).
 
 ### Phase 1: the lobby
 
+**Built on 26 November 2026** (plan: `docs/plans/03-phase-1-lobby.md`; 1a in
+#43, 1b in #44, 1c in the pull request for `phase-1/1c-lobby-screen`).
+
 - Room: handlers for `lobby:settings`, `lobby:kick` and
   `room:leave` in `room-object.ts`, with the rules as pure functions in
   `state.ts`. Host-only checks. Host hand-over after 60 seconds away, as an
@@ -1181,7 +1194,7 @@ What is left is the live CPU check, which runs after the merge (below).
   look on `room:join`, `lobby:avatar`, the look in `RoomState`, `LobbyView`
   and `GameView`, and old saved rooms loading with `avatarFor` (built in
   #44). **1c, the
-  lobby screen:** the 3D gate, the lobby components moved onto the Star
+  lobby screen** (built on 26 November 2026): the 3D gate, the lobby components moved onto the Star
   Table, the flight from the landing, the picker with the portrait camera,
   the host-change notice, and the five-context e2e. 1a and 1b do not touch
   each other; 1c needs 1b's view fields. `room:reset` is only specified

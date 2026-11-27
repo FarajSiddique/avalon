@@ -103,9 +103,10 @@ for (const viewport of VIEWPORTS) {
     test("02-landing-no-webgl", async ({ page }) => {
       await withoutWebGL(page);
       await page.goto("/");
+      // The 3D gate: the notice takes the form's place.
       await expect(
-        page.getByRole("button", { name: "Create a room" }),
-      ).toBeEnabled();
+        page.getByRole("heading", { name: "This game needs 3D graphics" }),
+      ).toBeVisible();
       await capture(page, "02-landing-no-webgl", viewport.width);
     });
 
@@ -130,11 +131,26 @@ for (const viewport of VIEWPORTS) {
       const guest = await guestPage(browser);
 
       await guest.goto(`/room/${await code.innerText()}`);
+      await expect(guest.locator("[data-stage-host]")).toHaveAttribute(
+        "data-stage",
+        "lobby",
+        STAGE_TIMEOUT,
+      );
+      await capture(guest, "06-room-join-form", viewport.width);
       await guest.getByLabel("Your name").fill("Ansel");
       await guest.getByRole("button", { name: "Join room" }).click();
       await expect(players).toHaveCount(2);
       await expect(players.nth(1)).toHaveAttribute("data-connected", "true");
       await capture(page, "04-room-two-players", viewport.width);
+      await capture(guest, "07-lobby-guest", viewport.width);
+
+      await guest.getByRole("button", { name: /^Your look/ }).click();
+      await expect(guest.locator("[data-stage-host]")).toHaveAttribute(
+        "data-shot",
+        "portrait",
+      );
+      await capture(guest, "08-lobby-look-picker", viewport.width);
+      await guest.getByRole("button", { name: "Done" }).click();
 
       await guest.context().close();
       await expect(players.nth(1)).toHaveAttribute("data-connected", "false");

@@ -553,10 +553,16 @@ export const createStarTable: CreateConcept = ({
     anchors() {
       // Behind your seat, your own figure is the shoulder in the foreground:
       // its tag would float over the others, so it has none.
+      // The look picker's close shot is on your figure: its tag would sit
+      // in its face.
       const all = seating.anchors();
-      const you = play.youId();
+      const close = shotNow.to === "role" || shotNow.to === "portrait";
+      const you =
+        shotNow.to === "portrait"
+          ? (seating.standing().find((s) => s.isYou)?.id ?? null)
+          : play.youId();
 
-      if (shotNow.to !== "role" || !you || !all.has(you)) {
+      if (!close || !you || !all.has(you)) {
         return all;
       }
 

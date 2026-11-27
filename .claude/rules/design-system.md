@@ -83,5 +83,6 @@ Worker: server-rendering them costs several times the free plan's CPU limit
   (not a type) from `src/components/three`. `rg -l WebGLRenderer dist/server`
   must print nothing after `pnpm build`.
 - The scene is decorative: what it shows is also said in text. Its colours come
-  from the `--art-*` tokens at runtime. Without WebGL the landing keeps its form
-  and the game screens show a short notice.
+  from the `--art-*` tokens at runtime. Without WebGL the real app shows a
+  short notice instead of the landing form and every room screen (the 3D
+  gate); the prototype's landing keeps its form.

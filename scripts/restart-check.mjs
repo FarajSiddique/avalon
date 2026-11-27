@@ -76,30 +76,60 @@ check(
   `HELD_DOWN_MS (${HELD_DOWN_MS}) is too close to HOST_AWAY_MS (${HOST_AWAY_MS})`,
 );
 
-const names = (page) => page.getByTestId("player").allInnerTexts();
+const names = (page) => page.getByTestId("player").allTextContents();
 const online = (page, value) =>
   page
     .locator(`[data-testid="connection"][data-online="${value}"]`)
     .waitFor({ timeout: 20_000 });
 
 let server = await startServer();
-const browser = await chromium.launch();
+// Software WebGL: a browser without it may not take a seat (the 3D gate).
+const browser = await chromium.launch({
+  args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+});
+/** The stage has settled, so the page is interactive (see e2e/room-helpers.ts). */
+const onStage = (page) =>
+  page.locator("[data-stage-host][data-stage]").waitFor({ timeout: 60_000 });
 
 try {
   const host = await (await browser.newContext()).newPage();
   const guest = await (await browser.newContext()).newPage();
 
   await host.goto(base);
+  await onStage(host);
   await host.getByRole("textbox", { name: "Your name" }).fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
   await host.getByTestId("room-code").waitFor();
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`${base}/room/${code}`);
+  await onStage(guest);
   await guest.getByRole("textbox", { name: "Your name" }).fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
   await host.getByTestId("player").nth(1).waitFor();
   console.log(`Room ${code}: two players seated.`);
+
+  // The guest readies up and picks a look; both must outlive the restart.
+  const tag = host.locator("[data-tag]", { hasText: "Ansel" });
+  const lookBefore = await tag.getAttribute("data-look", { timeout: 60_000 });
+  const cloakBefore = lookBefore?.split("/")[2];
+  const cloak = ["rose", "moss"].find((c) => c !== cloakBefore);
+
+  await guest.getByRole("button", { name: "I'm ready" }).click();
+  await guest.getByRole("button", { name: /^Your look/ }).click();
+  await guest
+    .getByRole("dialog", { name: "Your look" })
+    .locator(`[data-look="cloak:${cloak}"]`)
+    .click();
+  await guest.getByRole("button", { name: "Done" }).click();
+  await host
+    .locator(`[data-tag][data-look*="/${cloak}/"]`, { hasText: "Ansel" })
+    .waitFor({ timeout: 20_000 });
+  await host
+    .getByRole("status", { name: "Before the game starts" })
+    .filter({ hasNotText: "Ansel" })
+    .waitFor({ timeout: 20_000 });
+  console.log(`The guest is ready and wears a ${cloak} cloak.`);
 
   await stopServer(server);
   await online(host, false);
@@ -124,13 +154,27 @@ try {
   check(guestSees[1]?.includes("Ansel (you)"), "guest lost their seat");
   console.log("Both players are back in their seats without a reload. OK.");
 
+  const blockers = await host
+    .getByRole("status", { name: "Before the game starts" })
+    .innerText();
+  const lookAfter = await tag.getAttribute("data-look");
+
+  check(!blockers.includes("Ansel"), "the guest lost their ready");
+  check(
+    lookAfter?.split("/")[2] === cloak,
+    `the guest's look is ${lookAfter}, not the ${cloak} cloak`,
+  );
+  console.log("The guest is still ready, in the same look. OK.");
+
   // Part two: a pending host hand-over survives a restart.
   const hostLeftAt = Date.now();
 
   await host.context().close();
+  // Up to HELD_DOWN_MS: a page drawing the table in software (CI) can take
+  // a while to show the change, and the sleep below takes off what it used.
   await guest
     .locator('[data-testid="player"][data-connected="false"]')
-    .waitFor({ timeout: 10_000 });
+    .waitFor({ timeout: HELD_DOWN_MS });
   console.log("The host closed their page. The guest sees them as away.");
 
   await stopServer(server);

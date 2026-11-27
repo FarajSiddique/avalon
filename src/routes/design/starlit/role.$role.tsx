@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { isRoleVariant } from "@/design/directions";
-import { NoWebGLNotice } from "./-components/no-webgl-notice";
+import { NoWebGLNotice } from "@/components/ui/no-webgl-notice";
 import { RoleStageScreen } from "./-components/role/role-stage-screen";
 import { useStage } from "@/components/stage/stage-context";
 

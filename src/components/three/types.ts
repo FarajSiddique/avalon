@@ -37,8 +37,10 @@ export interface Flight {
  * - table: high over the table, every figure and tag in view.
  * - team: drawn in on the glowing team (the quest).
  * - cards: over the table's centre, where quest cards land and turn.
+ * - portrait: the lobby's look picker, close on your own figure from the
+ *   table's side, so you see the look you are choosing.
  */
-export type TableShot = "role" | "table" | "team" | "cards";
+export type TableShot = "role" | "table" | "team" | "cards" | "portrait";
 
 /**
  * What the game shows in the scene. Display only: it never carries a vote,

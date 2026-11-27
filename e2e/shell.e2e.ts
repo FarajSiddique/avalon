@@ -128,7 +128,7 @@ test.describe("with the scene", () => {
     ).toBe("on");
   });
 
-  test("creating a room from the landing lets go of the stage", async ({
+  test("creating a room from the landing keeps one stage into the lobby", async ({
     page,
   }) => {
     await page.goto("/");
@@ -140,19 +140,13 @@ test.describe("with the scene", () => {
     await page.getByLabel("Your name").fill("Wren");
     await page.getByRole("button", { name: "Create a room" }).click(STAGE);
     await expect(page.getByTestId("room-code")).toBeVisible(STAGE);
-    await expect(page.locator("[data-stage-host]")).toHaveCount(0);
+    await expect(page.locator("[data-stage-host]")).toHaveAttribute(
+      "data-stage",
+      "lobby",
+      STAGE,
+    );
+    await expect(page.locator("[data-stage-host] canvas")).toHaveCount(1);
   });
-});
-
-test("without WebGL the landing still creates a room", async ({ page }) => {
-  await withoutWebGL(page);
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "This game needs 3D graphics" }),
-  ).toHaveCount(0);
-  await page.getByLabel("Your name").fill("Wren");
-  await page.getByRole("button", { name: "Create a room" }).click();
-  await expect(page.getByTestId("room-code")).toBeVisible();
 });
 
 // BCDF is a well-formed code (ABCD is not: A is not in the alphabet).
@@ -168,7 +162,8 @@ test("the room page is rendered in the browser only", async ({
   await page.goto("/room/BCDF");
   await expect(page.locator('[data-art="night-sky"]')).toBeAttached();
   await expect(page.getByTestId("connection")).toBeAttached();
-  await expect(page.locator("[data-stage-host]")).toHaveCount(0);
+  // The table stands behind the room's own screens too.
+  await expect(page.locator("[data-stage-host]")).toBeAttached();
 });
 
 // getAnimations() sees CSS animations only, not the scene's render loop, so
@@ -216,17 +211,27 @@ test.describe("with reduced motion", () => {
           "data-phases",
           /flying/,
         );
+      } else {
+        // The room answers "not found" a moment after load.
+        await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
       }
 
-      await page.waitForTimeout(400);
-      const running = await page.evaluate(
-        () =>
-          document
-            .getAnimations()
-            .filter((animation) => animation.playState === "running").length,
-      );
-
-      expect(running).toBe(0);
+      // Under reduced motion every animation lasts 0.01 ms, but a page
+      // that has just started software WebGL can hold its first frames for
+      // a moment. An animation that is still running after that never ends.
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              () =>
+                document
+                  .getAnimations()
+                  .filter((animation) => animation.playState === "running")
+                  .length,
+            ),
+          { timeout: 5000 },
+        )
+        .toBe(0);
     });
   }
 });

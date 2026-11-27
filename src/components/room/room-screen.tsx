@@ -1,44 +1,86 @@
 import { Link, Navigate } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useId, useRef } from "react";
 import { useRoom } from "@/client/use-room";
-import {
-  IconArrowRight,
-  IconCheck,
-  IconCross,
-  IconCrown,
-  IconMoon,
-  IconRing,
-  IconStar,
-} from "@/components/ui/icons";
-import {
-  MAX_PLAYERS,
-  MIN_PLAYERS,
-  NAME_MAX_LENGTH,
-  normalizeName,
-} from "@/shared/constants";
+import { useWebGLGate } from "@/client/use-webgl-gate";
+import { useStageSlot, useStageStatus } from "@/components/stage/stage-context";
+import { NoWebGLNotice } from "@/components/ui/no-webgl-notice";
+import { LobbyScreen } from "@/components/lobby/lobby-screen";
+import { IconArrowRight, IconRing, IconStar } from "@/components/ui/icons";
+import { NAME_MAX_LENGTH, normalizeName } from "@/shared/constants";
+import { ConnectionStatus } from "./connection-status";
+import { HostNotice } from "./host-notice";
 import { closedMessage } from "@/shared/copy";
 import type { RoomCode } from "@/shared/views";
 
 /**
- * The room, flat for now: the code, who is here, and the connection. It
- * proves the real-time round trip (join, presence, reconnect, kick, leave).
- * The 3D lobby, ready, settings and the start button are Phase 1. It renders
- * in the browser only and does not claim the stage.
+ * The room at /room/CODE: the join form, the closed states, and once seated
+ * the lobby on the Star Table. It renders in the browser only.
  */
 export function RoomScreen({ code }: { code: RoomCode }) {
+  // Checked before the socket opens: a browser that cannot draw the table
+  // must not join, or it would take a seat it cannot play from.
+  const gate = useWebGLGate();
+
+  if (gate !== "ok") {
+    return gate === "none" ? <NoWebGLNotice /> : null;
+  }
+
+  return <RoomSession code={code} />;
+}
+
+/** The room once the browser can draw it: the socket is open while mounted. */
+function RoomSession({ code }: { code: RoomCode }) {
   const room = useRoom(code);
+  const stageFailed = useStageStatus() === "failed";
+  const inLobby = room.status === "seated" && room.view?.stage === "lobby";
+  // The table stands behind the join form and the closed states too, so a
+  // flight from the landing always lands (and its pending flight clears).
+  // Seated, the lobby claims the stage itself.
+  const behind = useRef<HTMLDivElement>(null);
+
+  useStageSlot(
+    inLobby || stageFailed ? null : { mode: "lobby", reveal: "whole", fade: 0 },
+    behind,
+  );
   const nameId = useId();
-  /** The seat the host is about to remove, waiting for the confirm. */
-  const [removing, setRemoving] = useState<string | null>(null);
-  const [leaving, setLeaving] = useState(false);
 
   if (room.status === "closed" && room.closedReason === "left") {
     return <Navigate to="/" />;
   }
 
+  // The GPU dropped the table after the page had it. The socket and the
+  // seat stay as they are (this component stays mounted); a reload brings
+  // the table back.
+  if (stageFailed) {
+    return <NoWebGLNotice onReload={() => window.location.reload()} />;
+  }
+
+  const notice = (
+    <HostNotice notice={room.notice} onDone={room.client.dismissNotice} />
+  );
+
+  if (inLobby && room.view?.stage === "lobby") {
+    return (
+      <>
+        <LobbyScreen
+          view={room.view}
+          client={room.client}
+          error={room.error}
+          online={room.online}
+        />
+        {notice}
+      </>
+    );
+  }
+
   return (
     <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-7 pb-8 lg:pt-16">
-      <header className="sl-rise sl-seq">
+      <div
+        ref={behind}
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10"
+      />
+      <header className="sl-rise sl-seq sl-over-scene">
         <p className="sl-eyebrow">Room code</p>
         <h1 className="sl-code mt-2" data-testid="room-code">
           {code}
@@ -68,12 +110,7 @@ export function RoomScreen({ code }: { code: RoomCode }) {
             <button
               type="button"
               className="sl-btn sl-btn--primary w-full"
-              onClick={() => {
-                // A confirm left open before the kick must not come back.
-                setLeaving(false);
-                setRemoving(null);
-                room.rejoin();
-              }}
+              onClick={room.rejoin}
             >
               Join again
               <IconArrowRight size={18} />
@@ -134,150 +171,20 @@ export function RoomScreen({ code }: { code: RoomCode }) {
         </form>
       )}
 
-      {room.status === "seated" && room.view && (
-        <section
-          className="sl-panel sl-rise sl-seq p-5"
-          aria-labelledby="players-heading"
-        >
-          <h2 id="players-heading" className="sl-eyebrow">
-            Players ({room.view.players.length} of {MAX_PLAYERS}, {MIN_PLAYERS}{" "}
-            needed)
-          </h2>
-          <ul className="mt-2">
-            {room.view.players.map((player) => (
-              <li
-                key={player.id}
-                data-testid="player"
-                data-connected={player.connected}
-                className="border-line flex min-h-[3.75rem] flex-wrap items-center gap-3 border-t border-dashed py-2 first:border-t-0"
-              >
-                <span
-                  aria-hidden="true"
-                  className={`font-display bg-well grid size-11 flex-none place-items-center rounded-full border-[1.5px] text-xl font-semibold ${
-                    player.connected
-                      ? "border-line-strong text-ink"
-                      : "border-line text-ink-muted border-dashed"
-                  }`}
-                >
-                  {player.name.trim().charAt(0).toUpperCase()}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="min-w-0 truncate text-lg font-bold">
-                    {player.name}
-                    {player.id === room.view?.you.id && (
-                      <span className="text-accent-cool text-base font-semibold">
-                        {" "}
-                        (you)
-                      </span>
-                    )}
-                  </span>
-                  {player.isHost && (
-                    <span className="sl-chip text-accent">
-                      <IconCrown size={14} />
-                      Host
-                    </span>
-                  )}
-                </span>
-                {player.connected ? (
-                  <span className="text-success inline-flex flex-none items-center gap-1.5 text-base font-bold">
-                    <IconCheck size={18} />
-                    Online
-                  </span>
-                ) : (
-                  <span className="text-ink-muted inline-flex flex-none items-center gap-1.5 text-base font-bold">
-                    <IconMoon size={18} />
-                    Away
-                  </span>
-                )}
-                {room.view?.you.isHost &&
-                  player.id !== room.view.you.id &&
-                  removing !== player.id && (
-                    <button
-                      type="button"
-                      className="sl-btn sl-btn--ghost flex-none px-3"
-                      aria-label={`Remove ${player.name}`}
-                      onClick={() => setRemoving(player.id)}
-                    >
-                      <IconCross size={18} />
-                    </button>
-                  )}
-                {/* Gated on host too: host can pass on while this is open. */}
-                {room.view?.you.isHost && removing === player.id && (
-                  <div
-                    role="group"
-                    aria-label={`Remove ${player.name}?`}
-                    className="flex w-full items-center gap-2"
-                  >
-                    <p className="flex-1 font-bold">Remove {player.name}?</p>
-                    <button
-                      type="button"
-                      className="sl-btn sl-btn--primary px-4"
-                      onClick={() => {
-                        setRemoving(null);
-                        room.kick(player.id);
-                      }}
-                    >
-                      Remove
-                    </button>
-                    <button
-                      type="button"
-                      className="sl-btn sl-btn--ghost px-4"
-                      onClick={() => setRemoving(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p role="alert" className="text-fail min-h-5 text-sm">
-            {room.error?.message}
-          </p>
-          {leaving ? (
-            <div
-              role="group"
-              aria-label="Leave the room?"
-              className="mt-2 flex items-center gap-2"
-            >
-              <p className="flex-1 font-bold">Leave the room?</p>
-              <button
-                type="button"
-                className="sl-btn sl-btn--primary px-4"
-                onClick={room.leave}
-              >
-                Leave
-              </button>
-              <button
-                type="button"
-                className="sl-btn sl-btn--ghost px-4"
-                onClick={() => setLeaving(false)}
-              >
-                Stay
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="sl-btn sl-btn--ghost mt-2 w-full"
-              onClick={() => setLeaving(true)}
-            >
-              Leave room
-            </button>
-          )}
-        </section>
+      {room.status === "seated" && room.view?.stage === "game" && (
+        <>
+          <section className="sl-panel sl-rise sl-seq p-5">
+            <p className="text-lg">The game is under way.</p>
+          </section>
+          {/* Outside the section: its rise animation is a transform, which
+              would hold the fixed toast to the section while it runs. */}
+          {notice}
+        </>
       )}
 
       {/* On a panel: at the bottom of the page the hills and clouds behind
           it are too light for muted text. */}
-      <footer
-        className="sl-panel text-ink-muted mt-auto inline-flex items-center gap-2 self-start px-3 py-2 text-sm"
-        data-testid="connection"
-        data-online={room.online}
-      >
-        {room.online ? <IconCheck size={16} /> : <IconRing size={16} />}
-        {room.online ? "Connected" : "Reconnecting…"}
-      </footer>
+      <ConnectionStatus online={room.online} className="mt-auto self-start" />
     </main>
   );
 }

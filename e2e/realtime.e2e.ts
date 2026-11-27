@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { z } from "zod";
-import { field, players } from "./room-helpers";
+import { field, onStage, openLanding, players } from "./room-helpers";
 
 /**
  * The real-time proof for this checkpoint: two separate browsers (separate
@@ -55,9 +55,10 @@ test("two players see each other join, drop and return", async ({
   const guest = await guestContext.newPage();
 
   // Host creates a room from the landing page.
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
@@ -67,13 +68,14 @@ test("two players see each other join, drop and return", async ({
   await expectConnected(host);
 
   // Guest joins with the code from the landing page.
-  await guest.goto("/");
+  await openLanding(guest);
   await field(guest, "Have a room code?").fill(code.toLowerCase());
   await guest.getByRole("button", { name: "Join", exact: true }).click();
   // The address changes before the new screen is drawn, so wait for the screen.
   await expect(guest.getByTestId("room-code")).toHaveText(code);
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest, "lobby");
 
   // Both browsers now show both players, without a reload.
   for (const page of [host, guest]) {
@@ -91,6 +93,7 @@ test("two players see each other join, drop and return", async ({
   const stranger = await strangerContext.newPage();
 
   await stranger.goto(`/room/${code}`);
+  await onStage(stranger, "lobby");
   await field(stranger, "Your name").fill("wren");
   await stranger.getByRole("button", { name: "Join room" }).click();
   await expect(
@@ -107,6 +110,7 @@ test("two players see each other join, drop and return", async ({
   const guestAgain = await guestContext.newPage();
 
   await guestAgain.goto(`/room/${code}`);
+  await onStage(guestAgain, "lobby");
   await expect(players(guestAgain)).toHaveCount(2);
   await expect(players(guestAgain).nth(1)).toContainText("Ansel (you)");
   await expect(players(host).nth(1)).toHaveAttribute("data-connected", "true");
@@ -128,15 +132,18 @@ test("each browser is only ever sent its own view", async ({ browser }) => {
   const hostSaw = watch(host);
   const guestSaw = watch(guest);
 
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`/room/${code}`);
+  await onStage(guest, "lobby");
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest, "lobby");
   await expect(players(host)).toHaveCount(2);
   await expect(players(guest)).toHaveCount(2);
 
@@ -175,8 +182,8 @@ interface SentView {
 /**
  * Open a second socket from this page, take the page's seat with its stored
  * token, then send one request. Returns its answer and the view in the state
- * that followed. Phase 1 has no lobby controls on the real room screen yet,
- * so this drives the protocol directly.
+ * that followed. This drives the protocol directly, to test the room's
+ * answers (refusals included) apart from the lobby's controls.
  */
 async function sendRequest(
   page: Page,
@@ -262,15 +269,18 @@ test("a guest readies up, and the host cannot", async ({ browser }) => {
   const host = await hostContext.newPage();
   const guest = await guestContext.newPage();
 
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
   await guest.goto(`/room/${code}`);
+  await onStage(guest, "lobby");
   await field(guest, "Your name").fill("Ansel");
   await guest.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest, "lobby");
   await expect(players(host)).toHaveCount(2);
   await expect(players(guest)).toHaveCount(2);
 
@@ -313,16 +323,19 @@ test("the host saves any role mix, and too many Evil roles block Start", async (
     throw new Error("No host page");
   }
 
-  await host.goto("/");
+  await openLanding(host);
   await field(host, "Your name").fill("Wren");
   await host.getByRole("button", { name: "Create a room" }).click();
+  await onStage(host, "lobby");
   await expect(host.getByTestId("room-code")).toHaveText(/^[A-Z]{4}$/);
   const code = await host.getByTestId("room-code").innerText();
 
   for (const [i, guest] of guests.entries()) {
     await guest.goto(`/room/${code}`);
+    await onStage(guest, "lobby");
     await field(guest, "Your name").fill(`Guest${i + 1}`);
     await guest.getByRole("button", { name: "Join room" }).click();
+    await onStage(guest, "lobby");
     await expect(players(guest)).toHaveCount(i + 2);
     await sendReady(guest, code, true);
   }

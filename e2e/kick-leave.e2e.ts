@@ -6,6 +6,7 @@ import {
   field,
   joinRoom,
   newPlayer,
+  onStage,
   players,
 } from "./room-helpers";
 
@@ -13,10 +14,6 @@ import {
  * Kick, leave and rejoin in the lobby (issue 17), through the real Worker and
  * room object. Each player is a separate browser context, like a phone.
  */
-
-// Several browsers each load the landing and its scene, so allow longer than
-// the default 30 seconds.
-test.describe.configure({ timeout: 90_000 });
 
 // Close the players' contexts even when a test fails. Only the ones
 // `newPlayer` made, so Playwright's own fixtures are left alone.
@@ -87,6 +84,7 @@ test("the host kicks a connected player, who can join again under the same name"
   await guest.page.getByRole("button", { name: "Join again" }).click();
   await field(guest.page, "Your name").fill("Ansel");
   await guest.page.getByRole("button", { name: "Join room" }).click();
+  await onStage(guest.page, "lobby");
   await expect(players(host.page)).toHaveCount(2);
   await expect(players(guest.page).nth(1)).toContainText("Ansel (you)");
 });
@@ -111,6 +109,7 @@ test("a seat kicked while away finds the join form when it wakes", async ({
   const woke = await guest.context.newPage();
 
   await woke.goto(`/room/${code}`);
+  await onStage(woke, "lobby");
   await expect(field(woke, "Your name")).toBeVisible();
   await expect(
     woke.getByRole("main").getByRole("alert").filter({ hasText: /./ }),
@@ -128,6 +127,7 @@ test("leaving closes every tab of that seat and goes home", async ({
   const secondTab = await guest.context.newPage();
 
   await secondTab.goto(`/room/${code}`);
+  await onStage(secondTab, "lobby");
   await expect(players(secondTab).nth(1)).toContainText("Ansel (you)");
 
   // Stay keeps the seat.
@@ -182,6 +182,7 @@ test("a leaving host hands over at once, and the last seat out ends the room", a
   const late = await newPlayer(browser);
 
   await late.page.goto(`/room/${code}`);
+  await onStage(late.page, "lobby");
   await expect(late.page.getByRole("main").getByRole("alert")).toContainText(
     "does not exist",
   );

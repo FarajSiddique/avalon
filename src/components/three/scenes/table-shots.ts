@@ -148,6 +148,36 @@ export function shotPose(out: Pose, shot: TableShot, input: ShotInput): Pose {
       );
     }
 
+    case "portrait": {
+      const you = standing.find((s) => s.isYou);
+
+      if (!you) {
+        return shotPose(out, "table", input);
+      }
+
+      // From across the table's edge, turned a little to one side (so the
+      // fire is not in the way), slightly low: your whole figure, facing
+      // the camera.
+      const back = phone ? 7.2 : 6.4;
+      const turn = 0.62 + pointer.x * 0.04;
+      const ux = Math.cos(you.angle);
+      const uz = Math.sin(you.angle);
+      // Inward from the figure, turned by `turn`.
+      const ix = -ux * Math.cos(turn) + uz * Math.sin(turn);
+      const iz = -uz * Math.cos(turn) - ux * Math.sin(turn);
+      const cx = you.at.x + ix * back;
+      const cz = you.at.z + iz * back;
+
+      out.az = Math.atan2(cx, cz);
+      out.dist = Math.hypot(cx, cz);
+      out.height = (phone ? 3.9 : 3.5) + pointer.y * 0.15;
+      out.look.set(you.at.x, phone ? 2.1 : 2.0, you.at.z);
+      out.fov = phone ? 46 : 40;
+      out.tallFov = phone ? 56 : 50;
+
+      return out;
+    }
+
     case "cards": {
       const points = input.cardCorners.map((p) => ({
         p,

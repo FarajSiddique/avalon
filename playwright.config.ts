@@ -23,7 +23,9 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  reporter: process.env.CI ? "github" : "list",
+  // In CI, list prints every test with its duration as it finishes (even in
+  // a run that is cancelled), and github turns failures into annotations.
+  reporter: process.env.CI ? [["list"], ["github"]] : "list",
   timeout: 30_000 * slow,
   expect: { timeout: 5000 * slow },
   use: { baseURL, trace: "retain-on-failure", actionTimeout: 10_000 * slow },
@@ -31,16 +33,24 @@ export default defineConfig({
     {
       name: "e2e",
       testMatch: /.*\.e2e\.ts/,
-      // A headless CI runner draws the 3D scene in software. Building it
-      // (one still frame, even with reduced motion) froze a page's main
-      // thread for 7 to 8 seconds on a 4-vCPU runner, so clicks right after
-      // the landing loaded timed out. Room tests do not test the scene, so
-      // they run without WebGL: the app's own no-WebGL path, which skips
-      // the scene. The files that test it (game.e2e.ts, shell.e2e.ts) set
-      // their own launch options, with software WebGL and full motion.
+      // The room needs WebGL (a browser without it may not take a seat, see
+      // "3D gate" in docs/architecture.md), so every test runs with
+      // software WebGL. A headless CI runner draws the scene in software:
+      // building it (one still frame, even with reduced motion) froze a
+      // page's main thread for 7 to 8 seconds on a 4-vCPU runner. So tests
+      // wait for the stage to settle (`onStage` in e2e/room-helpers.ts)
+      // before their first click, and reduced motion stays on. Files that
+      // watch the scene move set full motion themselves. Each page builds
+      // and redraws the scene in software, so a test with several players
+      // gets three minutes (they take about one locally), and each
+      // assertion 15 seconds.
+      timeout: 180_000 * slow,
+      expect: { timeout: 15_000 * slow },
       use: {
         reducedMotion: "reduce",
-        launchOptions: { args: ["--disable-webgl"] },
+        launchOptions: {
+          args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+        },
       },
     },
     {

@@ -10,6 +10,10 @@ concurrency:
   # Pull requests cancel stale runs. Pushes to main never cancel each other.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# No job writes through the GitHub token (deploy uses Cloudflare's).
+permissions:
+  contents: read
+
 env:
   # Wrangler and the Cloudflare tooling must not phone home from CI.
   WRANGLER_SEND_METRICS: "false"
@@ -34,17 +38,37 @@ jobs:
       - name: The committed route tree matches the routes
         run: git diff --exit-code src/routeTree.gen.ts
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
       - run: pnpm test:restart
+
+  # The browser tests draw the 3D table in software (the room needs WebGL),
+  # which is slow on a 4-vCPU runner, so they run in four shards side by side.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e --shard=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.shard }}
           path: test-results/
           retention-days: 7
 
   deploy:
-    needs: check
+    needs: [check, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -69,16 +93,35 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Deploy
         run: pnpm run deploy
-      - run: pnpm exec playwright install --with-deps chromium
-      - name: Browser tests against the live site
-        run: pnpm test:e2e
-        env:
-          E2E_BASE_URL: ${{ env.PRODUCTION_URL }}
       - name: CPU check against the live site
         run: node scripts/cpu-check.mjs --url "$PRODUCTION_URL" --worker avalon --paths /,/room/ZZZZ
+
+  live-e2e:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      PRODUCTION_URL: https://avalon.hong-ladder.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Browser tests against the live site
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/4
+        env:
+          E2E_BASE_URL: ${{ env.PRODUCTION_URL }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: live-test-results
+          name: live-test-results-${{ matrix.shard }}
           path: test-results/
           retention-days: 7

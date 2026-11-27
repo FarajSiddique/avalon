@@ -27,6 +27,8 @@ jobs:
       github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      url: ${{ steps.preview.outputs.url }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -54,15 +56,34 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           URL: ${{ steps.preview.outputs.url }}
+
+  # The browser tests draw the 3D table in software, so they run in four
+  # shards side by side (see ci.yml).
+  preview-e2e:
+    needs: preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - name: Browser tests against the preview
-        run: pnpm test:e2e
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/4
         env:
-          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+          E2E_BASE_URL: ${{ needs.preview.outputs.url }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: preview-test-results
+          name: preview-test-results-${{ matrix.shard }}
           path: test-results/
           retention-days: 7
 

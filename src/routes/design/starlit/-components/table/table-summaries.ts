@@ -2,7 +2,7 @@ import type { TableStep } from "@/design/directions";
 import { playerName, playerNames, questReveal } from "@/design/mock";
 import { MAX_REJECTIONS } from "@/shared/constants";
 import type { GameView, ProposalRecord } from "@/shared/views";
-import { joinNames, numberWord } from "../names";
+import { joinNames, numberWord } from "@/components/lobby/names";
 import { tallyOf } from "./vote-history";
 
 /** The step's heading: which quest, what is happening, and one line more. */

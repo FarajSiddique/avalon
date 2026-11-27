@@ -10,6 +10,10 @@ concurrency:
   # Pull requests cancel stale runs. Pushes to main never cancel each other.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# No job writes through the GitHub token (deploy uses Cloudflare's).
+permissions:
+  contents: read
+
 env:
   # Wrangler and the Cloudflare tooling must not phone home from CI.
   WRANGLER_SEND_METRICS: "false"

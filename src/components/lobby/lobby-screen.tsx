@@ -140,8 +140,13 @@ export function LobbyScreen({
     players: chosen.players ?? wide,
     settings: chosen.settings ?? false,
   };
+  // Read from the state the update starts from, not this render's.
   const toggle = (section: Section) => () =>
-    setChosen((o) => ({ ...o, [section]: !open[section] }));
+    setChosen((o) => {
+      const isOpen = o[section] ?? (section === "players" ? wide : false);
+
+      return { ...o, [section]: !isOpen };
+    });
 
   const lead = isHost
     ? "Share the code. The game can start once everyone here is ready."
